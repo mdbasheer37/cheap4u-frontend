@@ -4,56 +4,187 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+
+env:
+  # Centralised version pins so SDK / NDK / build-tools always agree
+  # with what buildozer.spec expects.
+  ANDROID_COMPILE_SDK: "35"
+  ANDROID_BUILD_TOOLS: "35.0.0"
+  ANDROID_NDK_VERSION: "25.1.8937393"   # = NDK 25b
+  ANDROID_HOME: ${{ github.workspace }}/android-sdk
+  ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Install system dependencies
+      # ---------------------------------------------------------------
+      # System / native build dependencies that python-for-android (p4a)
+      # needs on the host to cross-compile Kivy's C extensions.
+      # ---------------------------------------------------------------
+      - name: Install Linux build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            git zip unzip openjdk-17-jdk \
-            autoconf libtool pkg-config \
-            zlib1g-dev libncurses5-dev \
-            libncursesw5-dev libtinfo5 \
-            cmake libffi-dev libssl-dev
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            git zip unzip curl wget \
+            build-essential pkg-config \
+            autoconf automake libtool libltdl-dev \
+            zlib1g-dev libncurses-dev libtinfo6 \
+            cmake libffi-dev libssl-dev \
+            ccache
 
-      - name: Install Buildozer
+      # ---------------------------------------------------------------
+      # Buildozer + Cython. Cython is pinned to a 3.0.x release because
+      # the current Kivy 2.3.0 p4a recipe is not yet compatible with
+      # Cython 3.1+.
+      # ---------------------------------------------------------------
+      - name: Install Buildozer and Cython
         run: |
-          python -m pip install --upgrade pip
-          pip install buildozer Cython
+          python -m pip install --upgrade pip wheel setuptools
+          pip install --upgrade "buildozer>=1.5.0" "Cython==3.0.11"
 
-      - name: Accept Android SDK Licenses
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            .buildozer
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+          restore-keys: |
+            buildozer-global-
+
+      - name: Cache Android SDK/NDK
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_HOME }}
+          key: android-sdk-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}-${{ env.ANDROID_NDK_VERSION }}
+
+      # ---------------------------------------------------------------
+      # Manually provision the Android SDK command-line tools.
+      # We do this ourselves (instead of letting buildozer auto-download
+      # the SDK) because buildozer's own SDK bootstrap is a common
+      # source of CI failures: missing sdkmanager, unaccepted licenses,
+      # and mismatched build-tools. Doing it explicitly here gives full
+      # control and guarantees no interactive prompts.
+      # ---------------------------------------------------------------
+      - name: Install Android SDK command-line tools
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/.android
-          touch ~/.android/repositories.cfg
-          yes | buildozer android update
+          set -euo pipefail
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          cd "$ANDROID_HOME/cmdline-tools"
 
-      - name: Build APK
+          # Resolve the current "latest" Linux command-line tools URL from
+          # Google's own download page, with a known-good pinned fallback
+          # in case the page layout changes.
+          CMDLINE_URL=$(curl -fsSL https://developer.android.com/studio | \
+            grep -o 'https://dl.google.com/android/repository/commandlinetools-linux-[0-9]*_latest.zip' | \
+            head -n1 || true)
+          if [ -z "$CMDLINE_URL" ]; then
+            CMDLINE_URL="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          fi
+          echo "Using command-line tools: $CMDLINE_URL"
+
+          curl -fsSL -o cmdline-tools.zip "$CMDLINE_URL"
+          unzip -q cmdline-tools.zip
+          rm cmdline-tools.zip
+          # sdkmanager requires the tools to live under cmdline-tools/latest
+          rm -rf latest
+          mv cmdline-tools latest
+
+      - name: Accept all Android SDK licenses
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          mkdir -p "$ANDROID_HOME/licenses"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /dev/null || true
+
+      - name: Install Android platform-tools, build-tools, platform and NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
+            "platform-tools" \
+            "platforms;android-${ANDROID_COMPILE_SDK}" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "ndk;${ANDROID_NDK_VERSION}"
+
+          # Re-accept licenses once more now that new packages exist -
+          # some sdkmanager versions write fresh license files per package.
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /dev/null || true
+
+      - name: Verify Android SDK / NDK / aidl are present
+        run: |
+          set -euo pipefail
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -d "$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}"
+          test -x "$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}/aidl"
+          test -d "$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}"
+          test -d "$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}"
+          echo "Android SDK looks good:"
+          ls "$ANDROID_HOME"
+
+      # ---------------------------------------------------------------
+      # Build the APK. We point buildozer at the SDK/NDK we just
+      # installed (via env-var overrides, since buildozer.spec supports
+      # SECTION_OPTION env overrides) and tell it not to manage the SDK
+      # itself (android.skip_update = True is already set in
+      # buildozer.spec). `yes |` is a final safety net so the process
+      # can never block on an unexpected interactive prompt.
+      # ---------------------------------------------------------------
+      - name: Build APK with Buildozer
         env:
-          ANDROID_ACCEPT_SDK_LICENSE: "1"
+          APP_ANDROID_SDK_PATH: ${{ env.ANDROID_HOME }}
+          APP_ANDROID_NDK_PATH: ${{ env.ANDROID_HOME }}/ndk/${{ env.ANDROID_NDK_VERSION }}
+          APP_ANDROID_ACCEPT_SDK_LICENSE: "True"
+          APP_ANDROID_SKIP_UPDATE: "True"
         run: |
-          buildozer android debug
+          set -euo pipefail
+          yes | buildozer -v android debug
 
-      - name: Upload APK
+      - name: Locate built APK
+        id: locate_apk
+        run: |
+          set -euo pipefail
+          APK_PATH=$(find bin -maxdepth 1 -name "*.apk" | head -n1)
+          if [ -z "$APK_PATH" ]; then
+            echo "No APK found in bin/ - build failed." >&2
+            exit 1
+          fi
+          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cheap4U-APK
+          name: Cheap4U-debug-apk
           path: bin/*.apk
+          if-no-files-found: error
+
+      - name: Upload full build log (always, for debugging failures)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildozer-log
+          path: .buildozer/android/platform/build-*/build.log
+          if-no-files-found: ignore
+
