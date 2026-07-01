@@ -178,12 +178,30 @@ jobs:
           APP_ANDROID_SKIP_UPDATE: "True"
         run: |
           set -euo pipefail
-          yes | buildozer -v android debug || true
+          yes | buildozer -v android debug 2>&1 | tee "$GITHUB_WORKSPACE/buildozer_full.log" || true
           # If buildozer genuinely failed, there will be no APK and the
           # next step ("Locate built APK") will fail the job with a
           # clear error - so it's safe to not treat `yes`'s harmless
           # broken-pipe exit (SIGPIPE, once buildozer finishes and
           # closes stdin) as a build failure here.
+
+      - name: Show build error summary (only runs if build actually failed)
+        if: always()
+        run: |
+          LOG="$GITHUB_WORKSPACE/buildozer_full.log"
+          if [ ! -f "$LOG" ]; then
+            echo "No buildozer_full.log found - build step may not have run."
+            exit 0
+          fi
+          if find bin -maxdepth 1 -name "*.apk" 2>/dev/null | grep -q .; then
+            echo "APK was produced - skipping error summary."
+            exit 0
+          fi
+          echo "===== Build failed. Last 200 lines of buildozer output: ====="
+          tail -n 200 "$LOG"
+          echo ""
+          echo "===== Lines matching error/fail/traceback/fatal: ====="
+          grep -inE "error|failed|traceback|fatal|exception" "$LOG" | tail -n 150 || echo "(no matching lines found)"
 
       - name: Locate built APK
         id: locate_apk
@@ -208,5 +226,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: buildozer-log
-          path: .buildozer/android/platform/build-*/build.log
+          path: |
+            buildozer_full.log
+            .buildozer/android/platform/build-*/build.log
           if-no-files-found: ignore
