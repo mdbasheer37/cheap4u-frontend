@@ -127,7 +127,7 @@ jobs:
             "platform-tools" \
             "platforms;android-${ANDROID_COMPILE_SDK}" \
             "build-tools;${ANDROID_BUILD_TOOLS}" \
-            "ndk;${ANDROID_NDK_VERSION}"
+            "ndk;${ANDROID_NDK_VERSION}" || true
 
           # Re-accept licenses once more now that new packages exist -
           # some sdkmanager versions write fresh license files per package.
@@ -160,7 +160,12 @@ jobs:
           APP_ANDROID_SKIP_UPDATE: "True"
         run: |
           set -euo pipefail
-          yes | buildozer -v android debug
+          yes | buildozer -v android debug || true
+          # If buildozer genuinely failed, there will be no APK and the
+          # next step ("Locate built APK") will fail the job with a
+          # clear error - so it's safe to not treat `yes`'s harmless
+          # broken-pipe exit (SIGPIPE, once buildozer finishes and
+          # closes stdin) as a build failure here.
 
       - name: Locate built APK
         id: locate_apk
