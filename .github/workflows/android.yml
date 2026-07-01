@@ -133,6 +133,24 @@ jobs:
           # some sdkmanager versions write fresh license files per package.
           yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /dev/null || true
 
+      - name: Create legacy SDK path compatibility symlinks
+        run: |
+          set -euo pipefail
+          # Buildozer's SDK-build-tools check looks for sdkmanager (and
+          # friends) at the legacy `tools/bin/` location, even when
+          # android.skip_update = True is set in buildozer.spec. Modern
+          # sdkmanager only ships under `cmdline-tools/latest/bin/`, so
+          # without this symlink buildozer thinks the SDK is missing
+          # entirely and aborts.
+          mkdir -p "$ANDROID_HOME/tools/bin"
+          for tool in sdkmanager avdmanager apkanalyzer; do
+            src="$ANDROID_HOME/cmdline-tools/latest/bin/$tool"
+            if [ -e "$src" ]; then
+              ln -sf "$src" "$ANDROID_HOME/tools/bin/$tool"
+            fi
+          done
+          ls -la "$ANDROID_HOME/tools/bin"
+
       - name: Verify Android SDK / NDK / aidl are present
         run: |
           set -euo pipefail
@@ -192,4 +210,3 @@ jobs:
           name: buildozer-log
           path: .buildozer/android/platform/build-*/build.log
           if-no-files-found: ignore
-
