@@ -13,6 +13,11 @@ env:
   # Centralised version pins so SDK / NDK / build-tools always agree
   # with what buildozer.spec expects.
   ANDROID_COMPILE_SDK: "35"
+  # Bump this whenever a toolchain change (e.g. the Cython pin) needs to
+  # invalidate the .buildozer cache even though buildozer.spec itself
+  # didn't change - otherwise stale, already-Cythonized C files from a
+  # previous run get silently reused.
+  CACHE_VERSION: "v2-cython0294"
   ANDROID_BUILD_TOOLS: "35.0.0"
   ANDROID_NDK_VERSION: "25.1.8937393"   # = NDK 25b
   ANDROID_HOME: ${{ github.workspace }}/android-sdk
@@ -53,14 +58,18 @@ jobs:
             ccache
 
       # ---------------------------------------------------------------
-      # Buildozer + Cython. Cython is pinned to a 3.0.x release because
-      # the current Kivy 2.3.0 p4a recipe is not yet compatible with
-      # Cython 3.1+.
+      # Buildozer + Cython. Cython MUST be pinned to the 0.29.x line.
+      # Cython 3.x generates C code that fails to compile for several
+      # of Kivy's graphics .pyx files (observed as errors like
+      # "member reference type 'int' is not a pointer" in
+      # vertex_instructions.c). This is a known incompatibility between
+      # current Kivy/python-for-android recipes and Cython 3 - the
+      # buildozer maintainers pin below Cython 3.0 for the same reason.
       # ---------------------------------------------------------------
       - name: Install Buildozer and Cython
         run: |
           python -m pip install --upgrade pip wheel setuptools
-          pip install --upgrade "buildozer>=1.5.0" "Cython==3.0.11"
+          pip install --upgrade "buildozer>=1.5.0" "Cython==0.29.36"
 
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
@@ -68,7 +77,7 @@ jobs:
           path: |
             ~/.buildozer
             .buildozer
-          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-global-${{ env.CACHE_VERSION }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
             buildozer-global-
 
