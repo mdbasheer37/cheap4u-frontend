@@ -171,20 +171,32 @@ jobs:
           echo "Android SDK looks good:"
           ls "$ANDROID_HOME"
 
+      - name: Point buildozer.spec at the pre-installed SDK/NDK
+        run: |
+          set -euo pipefail
+          # Buildozer's own internal pre-flight check (the one that
+          # looks for build-tools/aidl before it even hands off to
+          # python-for-android) does not reliably pick up the
+          # APP_ANDROID_SDK_PATH / APP_ANDROID_NDK_PATH env-var
+          # overrides - it falls back to its default
+          # ~/.buildozer/android/platform/android-sdk path for that
+          # specific check. Writing the real paths directly into
+          # buildozer.spec removes any ambiguity.
+          NDK_PATH="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          sed -i "s|^#\?android.sdk_path *=.*|android.sdk_path = $ANDROID_HOME|" buildozer.spec
+          sed -i "s|^#\?android.ndk_path *=.*|android.ndk_path = $NDK_PATH|" buildozer.spec
+          echo "buildozer.spec now points to:"
+          grep -n "^android.sdk_path\|^android.ndk_path" buildozer.spec
+
       # ---------------------------------------------------------------
-      # Build the APK. We point buildozer at the SDK/NDK we just
-      # installed (via env-var overrides, since buildozer.spec supports
-      # SECTION_OPTION env overrides) and tell it not to manage the SDK
-      # itself (android.skip_update = True is already set in
-      # buildozer.spec). `yes |` is a final safety net so the process
-      # can never block on an unexpected interactive prompt.
+      # Build the APK. buildozer.spec now has explicit android.sdk_path
+      # / android.ndk_path pointing at the SDK/NDK we installed above,
+      # and android.skip_update = True (also in buildozer.spec) tells
+      # buildozer not to try to manage the SDK itself. `yes |` is a
+      # final safety net so the process can never block on an
+      # unexpected interactive prompt.
       # ---------------------------------------------------------------
       - name: Build APK with Buildozer
-        env:
-          APP_ANDROID_SDK_PATH: ${{ env.ANDROID_HOME }}
-          APP_ANDROID_NDK_PATH: ${{ env.ANDROID_HOME }}/ndk/${{ env.ANDROID_NDK_VERSION }}
-          APP_ANDROID_ACCEPT_SDK_LICENSE: "True"
-          APP_ANDROID_SKIP_UPDATE: "True"
         run: |
           set -euo pipefail
           yes | buildozer -v android debug 2>&1 | tee "$GITHUB_WORKSPACE/buildozer_full.log" || true
