@@ -20,8 +20,8 @@ env:
   CACHE_VERSION: "v2-cython0294"
   ANDROID_BUILD_TOOLS: "35.0.0"
   ANDROID_NDK_VERSION: "25.1.8937393"   # = NDK 25b
-  ANDROID_HOME: ${{ github.workspace }}/android-sdk
-  ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+  ANDROID_HOME: /home/runner/android-sdk
+  ANDROID_SDK_ROOT: /home/runner/android-sdk
 
 jobs:
   build:
@@ -275,4 +275,3 @@ jobs:
             buildozer_full.log
             .buildozer/android/platform/build-*/build.log
           if-no-files-found: ignore
-
