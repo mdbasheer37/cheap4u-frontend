@@ -218,11 +218,35 @@ jobs:
             echo "APK was produced - skipping error summary."
             exit 0
           fi
-          echo "===== Build failed. Last 200 lines of buildozer output: ====="
-          tail -n 200 "$LOG"
+
+          echo "===== Gradle failure block (if this was a gradle/aapt/packaging failure) ====="
+          # Gradle always prints one of these markers when a build fails.
+          # Print from the FIRST such marker to the end of the file, since
+          # that's where the actual causing task/error lives - a generic
+          # keyword grep gets flooded by repeated deprecation-warning
+          # lines that also contain "fail" and pushes the real signal out
+          # of a tail window.
+          if grep -nE "FAILURE:|BUILD FAILED|What went wrong" "$LOG" > /dev/null; then
+            FIRST_LINE=$(grep -nE "FAILURE:|BUILD FAILED|What went wrong" "$LOG" | head -n1 | cut -d: -f1)
+            sed -n "${FIRST_LINE},\$p" "$LOG" | head -n 200
+          else
+            echo "(no Gradle FAILURE/BUILD FAILED marker found in log)"
+          fi
+
           echo ""
-          echo "===== Lines matching error/fail/traceback/fatal: ====="
-          grep -inE "error|failed|traceback|fatal|exception" "$LOG" | tail -n 150 || echo "(no matching lines found)"
+          echo "===== AAPT / manifest / resource errors (if any) ====="
+          grep -inE "aapt|AndroidManifest|resource.*error|duplicate.*resource" "$LOG" | tail -n 60 || echo "(none found)"
+
+          echo ""
+          echo "===== python-for-android 'Command failed' block (fallback) ====="
+          if grep -n "# Command failed:" "$LOG" > /dev/null; then
+            LAST_CMD_LINE=$(grep -n "# Command failed:" "$LOG" | tail -n1 | cut -d: -f1)
+            sed -n "$((LAST_CMD_LINE>50 ? LAST_CMD_LINE-50 : 1)),${LAST_CMD_LINE}p" "$LOG"
+          fi
+
+          echo ""
+          echo "===== Last 100 lines of raw output (final fallback) ====="
+          tail -n 100 "$LOG"
 
       - name: Locate built APK
         id: locate_apk
@@ -251,3 +275,4 @@ jobs:
             buildozer_full.log
             .buildozer/android/platform/build-*/build.log
           if-no-files-found: ignore
+
