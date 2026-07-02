@@ -1,4 +1,4 @@
-from Cheap4u import DashboardApp
+
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.list import (
