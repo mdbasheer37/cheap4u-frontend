@@ -6,11 +6,11 @@
 [app]
 
 # (str) Title of your application
-title = Cheap4U Technology
+title = Cheap4U 
 
 
 # (str) Package name
-package.name = Cheap4u
+package.name = Cheap4u Technology 
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = com.cheap4u
@@ -57,7 +57,7 @@ requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset
 #presplash.filename = %(source.dir)s/data/presplash.png
 
 # (str) Icon of the application
-#icon.filename = %(source.dir)s/data/icon.png
+icon.filename = %(source.dir)s/data/icon.png
 
 # (list) Supported orientations
 # Valid options are: landscape, portrait, portrait-reverse, landscape-reverse, or all
