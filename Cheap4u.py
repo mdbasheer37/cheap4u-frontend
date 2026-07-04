@@ -1,4 +1,3 @@
-
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.list import (
@@ -1046,7 +1045,7 @@ MDScreenManager:
 
                             icon_right: "phone"
 
-                            on_text: app.validate_phone_input(self.text, root.selected_data_network)                            
+                            on_text: app.validate_phone_input(self.text, app.selected_data_network)                            
 
                             color_active: app.theme_cls.primary_color
 
@@ -7499,8 +7498,8 @@ class DashboardApp(MDApp):
             print(f"Error resetting airtime selections: {str(e)}")
 
 
-    def fetch_data_plans(self, network=None):
-        """Fetch data plans from backend and display them."""
+    def fetch_data_plans(self, network=None, data_type=None):
+        """Fetch data plans from backend and display them, optionally filtered by data_type (SME, Gifting, Corporate, etc.)."""
         self.show_loader("Loading data plans...")
         
         def on_success(req, result):
@@ -7510,6 +7509,22 @@ class DashboardApp(MDApp):
                 # Filter by network if provided
                 if network:
                     plans = [p for p in plans if p['provider'].lower() == network.lower()]
+                # Filter by data_type if the backend tags plans with a type/category.
+                # NOTE: as of now the /api/plans/data backend response does not include
+                # a type/category field per plan, so this filter has no effect yet and
+                # all plans are shown regardless of the selected tab (SME/Gifting/etc).
+                # Once the backend adds a "type" (or "category") key to each plan object,
+                # this will start filtering automatically - no further frontend change
+                # needed.
+                if data_type:
+                    typed_plans = [
+                        p for p in plans
+                        if str(p.get('type', p.get('category', ''))).strip().lower() == data_type.strip().lower()
+                    ]
+                    # Only apply the filter if the backend actually returned typed data;
+                    # otherwise fall back to showing the full (untyped) list.
+                    if typed_plans:
+                        plans = typed_plans
                 self.display_data_plans(plans)
             else:
                 self.show_error_dialog("Failed to load data plans")
@@ -7611,7 +7626,7 @@ class DashboardApp(MDApp):
 
     def load_data_plans(self, network, data_type):
         """Called when user selects network and data type. Fetches plans."""
-        self.fetch_data_plans(network)
+        self.fetch_data_plans(network, data_type)
 
     def _execute_data_purchase(self):
         """Execute data purchase after PIN verified - uses plan_id."""
@@ -11563,20 +11578,20 @@ class DashboardApp(MDApp):
             data_types = {
                 "MTN": [
                     {"name": "SME",       "color": [0.1, 0.6, 1.0, 1]},
-                  #  {"name": "SME2",      "color": [0.2, 0.8, 0.2, 1]},
+                    {"name": "SME2",      "color": [0.2, 0.8, 0.2, 1]},
                     {"name": "Gifting",   "color": [0.8, 0.2, 0.8, 1]},
-                   # {"name": "Corporate", "color": [0.9, 0.5, 0.1, 1]},
+                    {"name": "Corporate", "color": [0.9, 0.5, 0.1, 1]},
                 ],
                 "Airtel": [
                     {"name": "SME",     "color": [0.9, 0.3, 0.3, 1]},
-                 #   {"name": "SME2",    "color": [0.1, 0.6, 1.0, 1]},
+                    {"name": "SME2",    "color": [0.1, 0.6, 1.0, 1]},
                     {"name": "Gifting",  "color": [0.2, 0.8, 0.2, 1]},
-                #    {"name": "CG",      "color": [0.9, 0.5, 0.1, 1]},
+                    {"name": "CG",      "color": [0.9, 0.5, 0.1, 1]},
                 ],
                 "Glo": [
                     {"name": "Corprate gifting",     "color": [0.2, 0.8, 0.2, 1]},
-                   # {"name": "SME2",    "color": [0.1, 0.6, 1.0, 1]},
-                 #   {"name": "Regular", "color": [0.4, 0.7, 0.2, 1]},
+                    {"name": "SME2",    "color": [0.1, 0.6, 1.0, 1]},
+                    {"name": "Regular", "color": [0.4, 0.7, 0.2, 1]},
                     {"name": "Gifting", "color": [0.8, 0.2, 0.8, 1]},
                 ],
                 "9Mobile": [
@@ -11629,7 +11644,7 @@ class DashboardApp(MDApp):
             if selected_box.height == 0:
                 Animation(height=dp(50), opacity=1, duration=0.2).start(selected_box)
             
-            self.fetch_data_plans(self.selected_data_network)
+            self.fetch_data_plans(self.selected_data_network, self.selected_data_type)
             
             # Show plan section
             plan_scroll = screen.ids.data_plan_grid.parent
