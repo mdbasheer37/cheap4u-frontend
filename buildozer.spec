@@ -6,11 +6,11 @@
 [app]
 
 # (str) Title of your application
-title = Cheap4U 
+title = Cheap4U Technology
 
 
 # (str) Package name
-package.name = Cheap4u Technology 
+package.name = Cheap4u
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = com.cheap4u
