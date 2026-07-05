@@ -1111,9 +1111,9 @@ MDScreenManager:
 
                             md_bg_color: app.theme_cls.primary_color
 
-                            disabled: not (hasattr(app, 'root') or not app.validate_data_purchase())
+                            disabled: not (app.selected_data_network and app.selected_data_type and app.selected_data_plan and len(data_phone_input.text) == 11 and data_phone_input.text.isdigit())
 
-                            opacity: 1 if (hasattr(app, 'root') and app.validate_data_purchase()) else 0.5
+                            opacity: 1 if (app.selected_data_network and app.selected_data_type and app.selected_data_plan and len(data_phone_input.text) == 11 and data_phone_input.text.isdigit()) else 0.5
 
                             
 
@@ -7509,22 +7509,13 @@ class DashboardApp(MDApp):
                 # Filter by network if provided
                 if network:
                     plans = [p for p in plans if p['provider'].lower() == network.lower()]
-                # Filter by data_type if the backend tags plans with a type/category.
-                # NOTE: as of now the /api/plans/data backend response does not include
-                # a type/category field per plan, so this filter has no effect yet and
-                # all plans are shown regardless of the selected tab (SME/Gifting/etc).
-                # Once the backend adds a "type" (or "category") key to each plan object,
-                # this will start filtering automatically - no further frontend change
-                # needed.
+                # Filter by data_type - the backend now tags each plan with a real
+                # type (SME / Gifting / Corporate) from the provider catalog.
                 if data_type:
-                    typed_plans = [
+                    plans = [
                         p for p in plans
                         if str(p.get('type', p.get('category', ''))).strip().lower() == data_type.strip().lower()
                     ]
-                    # Only apply the filter if the backend actually returned typed data;
-                    # otherwise fall back to showing the full (untyped) list.
-                    if typed_plans:
-                        plans = typed_plans
                 self.display_data_plans(plans)
             else:
                 self.show_error_dialog("Failed to load data plans")
@@ -7543,7 +7534,7 @@ class DashboardApp(MDApp):
         
         if not plans:
             no_plan_label = MDLabel(
-                text="No data plans available for this network",
+                text="No plans available in this category yet",
                 halign="center",
                 theme_text_color="Secondary"
             )
@@ -11578,26 +11569,23 @@ class DashboardApp(MDApp):
             data_types = {
                 "MTN": [
                     {"name": "SME",       "color": [0.1, 0.6, 1.0, 1]},
-                    {"name": "SME2",      "color": [0.2, 0.8, 0.2, 1]},
                     {"name": "Gifting",   "color": [0.8, 0.2, 0.8, 1]},
                     {"name": "Corporate", "color": [0.9, 0.5, 0.1, 1]},
                 ],
                 "Airtel": [
                     {"name": "SME",     "color": [0.9, 0.3, 0.3, 1]},
-                    {"name": "SME2",    "color": [0.1, 0.6, 1.0, 1]},
-                    {"name": "Gifting",  "color": [0.2, 0.8, 0.2, 1]},
-                    {"name": "CG",      "color": [0.9, 0.5, 0.1, 1]},
+                    {"name": "Gifting", "color": [0.2, 0.8, 0.2, 1]},
                 ],
                 "Glo": [
-                    {"name": "Corprate gifting",     "color": [0.2, 0.8, 0.2, 1]},
-                    {"name": "SME2",    "color": [0.1, 0.6, 1.0, 1]},
-                    {"name": "Regular", "color": [0.4, 0.7, 0.2, 1]},
-                    {"name": "Gifting", "color": [0.8, 0.2, 0.8, 1]},
+                    {"name": "Corporate", "color": [0.9, 0.5, 0.1, 1]},
+                    {"name": "Gifting",   "color": [0.8, 0.2, 0.8, 1]},
                 ],
                 "9Mobile": [
+                    # NOTE: there are currently NO 9Mobile data plans in the
+                    # database at all (this predates these changes) - these
+                    # tabs will show an empty list until 9Mobile plan_ids are
+                    # added to init_plans.py.
                     {"name": "SME",     "color": [0.1, 0.6, 1.0, 1]},
-                    {"name": "SME2",    "color": [0.2, 0.8, 0.2, 1]},
-                    {"name": "Regular", "color": [0.4, 0.7, 0.2, 1]},
                     {"name": "Gifting", "color": [0.8, 0.2, 0.8, 1]},
                 ],
             }
