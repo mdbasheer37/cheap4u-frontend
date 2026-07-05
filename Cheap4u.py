@@ -42,6 +42,103 @@ from kivymd.toast import toast
 import os, re, json, hashlib, random, traceback, webbrowser, threading
 from datetime import datetime
 
+# ─────────────────────────────────────────────────────────────────────────
+# Legal text (Terms of Service / Privacy Policy)
+# ─────────────────────────────────────────────────────────────────────────
+# NOTE: This is a solid, genuinely useful starting point covering the main
+# things a Nigerian VTU app needs (wallet funding, no-refund policy for
+# correctly-entered wrong numbers, provider dependency, referral terms,
+# data usage/third parties). It is NOT a substitute for review by a
+# Nigerian lawyer, especially regarding NDPR (Nigeria Data Protection
+# Regulation) compliance once you have real paying users at scale -
+# please have a lawyer review before you scale significantly.
+
+TERMS_OF_SERVICE_TEXT = """Terms of Service
+
+Last updated: July 2026
+
+Welcome to Cheap4U. These Terms of Service ("Terms") govern your use of the Cheap4U mobile application ("App") operated by Cheap4U Technology ("we", "us", "our"). By creating an account or using the App, you agree to these Terms. If you do not agree, please do not use the App.
+
+1. Our Services
+Cheap4U lets you purchase airtime, mobile data, cable TV subscriptions, electricity tokens, and examination PINs (WAEC, NECO, NABTEB, JAMB), and to fund and manage an in-app wallet, for yourself or on behalf of another phone number/meter/smartcard that you provide.
+
+2. Account Registration
+You must provide accurate, current information when creating an account, including a valid phone number and email address. You are responsible for keeping your login details and OTPs confidential. You must be at least 18 years old, or have the consent of a parent/guardian, to use this App.
+
+3. Wallet & Payments
+- Wallet funding is processed through Paystack. We do not store your card details.
+- Prices shown in the App include our service margin and may change without prior notice to reflect changes in provider pricing.
+- All wallet top-ups and successful purchases are final. We do not offer cash refunds for wallet balance; unused balance remains in your wallet for future purchases.
+
+4. Accuracy of Recipient Details
+You are solely responsible for entering the correct phone number, meter number, smartcard number, or exam type before confirming any purchase. Once a transaction is successfully processed by the network/provider, we cannot reverse, cancel, or refund it because of an incorrect number you supplied. Please double-check all details before confirming.
+
+5. Service Availability
+Airtime, data, cable, and electricity purchases depend on third-party network providers (MTN, Airtel, Glo, 9Mobile, DSTV, GOTV, StarTimes, and electricity distribution companies) and payment processors. We are not responsible for delays, failures, or downtime caused by these third parties, but we will make reasonable efforts to reverse your wallet debit if a provider confirms a transaction genuinely failed on their end.
+
+6. Referral Program
+Referral bonuses are credited according to the terms displayed in the Referral section of the App at the time you earn them. We reserve the right to withhold or reverse referral bonuses obtained through fraud, fake accounts, or abuse of the program, and to change referral terms for future referrals at any time.
+
+7. Prohibited Use
+You agree not to use the App for money laundering, fraud, purchasing services for resale without our written permission, or any illegal activity. We may suspend or terminate accounts that violate this section, misuse the referral program, or attempt to abuse wallet funding (e.g. chargebacks after successful purchases).
+
+8. Limitation of Liability
+To the maximum extent permitted by law, Cheap4U Technology is not liable for indirect, incidental, or consequential damages arising from your use of the App, including losses from an incorrectly entered recipient number, network provider downtime, or unauthorized access to your account caused by your failure to keep your login details secure.
+
+9. Changes to These Terms
+We may update these Terms from time to time. Continued use of the App after changes are posted means you accept the updated Terms.
+
+10. Governing Law
+These Terms are governed by the laws of the Federal Republic of Nigeria.
+
+11. Contact Us
+For questions about these Terms, contact us through the support option in the App."""
+
+PRIVACY_POLICY_TEXT = """Privacy Policy
+
+Last updated: July 2026
+
+This Privacy Policy explains how Cheap4U Technology ("we", "us", "our") collects, uses, and protects your information when you use the Cheap4U mobile application ("App").
+
+1. Information We Collect
+- Account information: your name, email address, phone number, and password (stored securely as a hash, never in plain text).
+- Transaction information: purchases you make (airtime, data, cable TV, electricity, exam pins), amounts, timestamps, and recipient details you enter (phone numbers, meter numbers, smartcard numbers).
+- Wallet & payment information: wallet balance and funding history. Card/bank details you enter to fund your wallet are handled directly by Paystack, our payment processor - we do not receive or store your full card number, CVV, or PIN.
+- Device & usage information: basic technical information such as app version and error logs, used to diagnose and fix problems.
+
+2. How We Use Your Information
+- To process your airtime, data, cable TV, electricity, and exam PIN purchases through our provider partners (CheapDataHub, VTpass, and similar VTU providers).
+- To fund and manage your in-app wallet, including via Paystack.
+- To communicate with you about your transactions, account, or referral earnings (via SMS, email, or in-app notifications).
+- To detect and prevent fraud, and to enforce our Terms of Service.
+- To improve the App and fix bugs.
+
+3. How We Share Your Information
+We share only what's necessary to provide the service:
+- With Paystack, to process wallet funding.
+- With our VTU provider partners (e.g. CheapDataHub, VTpass), to fulfil the specific airtime/data/cable/electricity/exam-pin purchase you request - this includes the recipient phone number, meter number, or smartcard number you provide.
+- With SMS/communication providers, to send you OTPs and transaction notifications.
+- We do not sell your personal information to advertisers or other third parties.
+- We may disclose information if required by Nigerian law or a valid legal request.
+
+4. Data Retention
+We retain your account and transaction data for as long as your account is active, and for a reasonable period afterward as required for accounting, fraud prevention, and legal compliance.
+
+5. Your Rights
+You can review and update your profile information in the App at any time. You may request account deletion through the Account Deletion option in your Profile - this will deactivate your account and remove your personal data from our active systems, except where we are required to retain transaction records for legal/accounting purposes.
+
+6. Security
+We use industry-standard measures (password hashing, encrypted connections, rate limiting) to protect your data. No method of transmission or storage is 100% secure, but we work to protect your information to the best of our ability.
+
+7. Children's Privacy
+The App is not directed at children under 18. We do not knowingly collect data from children under 18.
+
+8. Changes to This Policy
+We may update this Privacy Policy from time to time. We will indicate the "Last updated" date above when changes are made. Continued use of the App after changes are posted means you accept the updated Policy.
+
+9. Contact Us
+For questions about this Privacy Policy or your data, contact us through the support option in the App."""
+
 
 # HTTP
 import requests
@@ -254,7 +351,16 @@ class ProfitScreen(Screen):
     
 class ReferralScreen(Screen):
     pass
-    
+
+class TermsScreen(Screen):
+    pass
+
+class PrivacyScreen(Screen):
+    pass
+
+class SplashScreen(Screen):
+    pass
+
 KV = '''
 
 #:import hex kivy.utils.get_color_from_hex
@@ -333,6 +439,8 @@ KV = '''
 
 MDScreenManager:
 
+    SplashScreen:
+
     LoginScreen:
 
     RegisterScreen:
@@ -369,9 +477,225 @@ MDScreenManager:
     
     ReferralScreen:
 
+    TermsScreen:
+
+    PrivacyScreen:
+
     OTPVerificationScreen:
 
         name: "otp_verification"   
+
+
+
+<TermsScreen>:
+
+    name: "terms"
+
+    MDScreen:
+
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+
+            orientation: 'vertical'
+
+            padding: dp(2)
+
+            spacing: dp(10)
+
+            MDBoxLayout:
+
+                size_hint_y: None
+
+                height: dp(60)
+
+                padding: [dp(10), 0]
+
+                spacing: dp(10)
+
+                md_bg_color: app.theme_cls.primary_color
+
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+
+                    icon: "arrow-left"
+
+                    theme_icon_color: "Custom"
+
+                    icon_color: [1, 1, 1, 1]
+
+                    on_release: app.root.current = "profile"
+
+                MDLabel:
+
+                    text: "Terms of Service"
+
+                    font_style: "H5"
+
+                    bold: True
+
+                    theme_text_color: "Custom"
+
+                    text_color: [1, 1, 1, 1]
+
+                    halign: "center"
+
+            ScrollView:
+
+                MDLabel:
+
+                    text: app.terms_text
+
+                    padding: dp(20), dp(20)
+
+                    size_hint_y: None
+
+                    height: self.texture_size[1] + dp(40)
+
+                    text_size: self.width - dp(40), None
+
+
+
+<PrivacyScreen>:
+
+    name: "privacy"
+
+    MDScreen:
+
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+
+            orientation: 'vertical'
+
+            padding: dp(2)
+
+            spacing: dp(10)
+
+            MDBoxLayout:
+
+                size_hint_y: None
+
+                height: dp(60)
+
+                padding: [dp(10), 0]
+
+                spacing: dp(10)
+
+                md_bg_color: app.theme_cls.primary_color
+
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+
+                    icon: "arrow-left"
+
+                    theme_icon_color: "Custom"
+
+                    icon_color: [1, 1, 1, 1]
+
+                    on_release: app.root.current = "profile"
+
+                MDLabel:
+
+                    text: "Privacy Policy"
+
+                    font_style: "H5"
+
+                    bold: True
+
+                    theme_text_color: "Custom"
+
+                    text_color: [1, 1, 1, 1]
+
+                    halign: "center"
+
+            ScrollView:
+
+                MDLabel:
+
+                    text: app.privacy_text
+
+                    padding: dp(20), dp(20)
+
+                    size_hint_y: None
+
+                    height: self.texture_size[1] + dp(40)
+
+                    text_size: self.width - dp(40), None
+
+
+
+<SplashScreen>:
+
+    name: "splash"
+
+    MDScreen:
+
+        md_bg_color: 10/255, 20/255, 100/255, 1
+
+        FloatLayout:
+
+            Image:
+
+                id: splash_logo
+
+                source: "data/icon.png"
+
+                size_hint: None, None
+
+                size: dp(160), dp(160)
+
+                pos_hint: {'center_x': 0.5, 'center_y': 0.58}
+
+                opacity: 0
+
+            MDLabel:
+
+                id: splash_welcome
+
+                text: "Welcome to Cheap4U"
+
+                font_style: "H5"
+
+                bold: True
+
+                halign: "center"
+
+                theme_text_color: "Custom"
+
+                text_color: [1, 1, 1, 1]
+
+                size_hint: None, None
+
+                size: dp(300), dp(40)
+
+                pos_hint: {'center_x': 0.5, 'center_y': 0.42}
+
+                opacity: 0
+
+            MDLabel:
+
+                id: splash_subtext
+
+                text: "Fast. Simple. Reliable."
+
+                font_style: "Body1"
+
+                halign: "center"
+
+                theme_text_color: "Custom"
+
+                text_color: [0.8, 0.85, 1, 1]
+
+                size_hint: None, None
+
+                size: dp(300), dp(30)
+
+                pos_hint: {'center_x': 0.5, 'center_y': 0.37}
+
+                opacity: 0
 
 
 
@@ -6590,6 +6914,8 @@ class DashboardApp(MDApp):
     selected_meter_type = StringProperty("")
 
     selected_data_network = StringProperty("")
+    terms_text = StringProperty(TERMS_OF_SERVICE_TEXT)
+    privacy_text = StringProperty(PRIVACY_POLICY_TEXT)
 
     selected_data_plan = StringProperty("")
 
@@ -11362,7 +11688,7 @@ class DashboardApp(MDApp):
  
     def on_start(self):
         try:
-            self.root.current = "login"
+            self.play_splash_animation()
             self.load_networks()
             self.setup_airtime_topup_screen()
             self.setup_cable_tv_screen()
@@ -11374,6 +11700,38 @@ class DashboardApp(MDApp):
             print(f"on_start error: {e}")
             if hasattr(self, 'root'):
                 self.root.current = "login"
+
+    def play_splash_animation(self):
+        """Animated welcome splash shown once on app launch, then transitions to login."""
+        try:
+            self.root.current = "splash"
+            screen = self.root.get_screen("splash")
+            logo = screen.ids.splash_logo
+            welcome = screen.ids.splash_welcome
+            subtext = screen.ids.splash_subtext
+
+            # Logo pops in with a gentle bounce
+            logo.size = (dp(100), dp(100))
+            logo.opacity = 0
+            (Animation(opacity=1, size=(dp(160), dp(160)), duration=0.8, transition='out_back')).start(logo)
+
+            # Welcome text fades in shortly after the logo
+            def show_welcome(dt):
+                Animation(opacity=1, duration=0.6, transition='out_quad').start(welcome)
+            Clock.schedule_once(show_welcome, 0.6)
+
+            # Subtext fades in last
+            def show_subtext(dt):
+                Animation(opacity=1, duration=0.6, transition='out_quad').start(subtext)
+            Clock.schedule_once(show_subtext, 1.0)
+
+            # Auto-advance to login once the sequence has played
+            def go_to_login(dt):
+                self.root.current = "login"
+            Clock.schedule_once(go_to_login, 2.4)
+        except Exception as e:
+            print(f"play_splash_animation error: {e}")
+            self.root.current = "login"
 
     def initialize_services(self):
         def ok(req, r): print(f"✅ Backend: {r.get('message','OK')}")
@@ -16744,7 +17102,7 @@ class DashboardApp(MDApp):
 
                  height=dp(50),
 
-                 on_release=lambda x: webbrowser.open("https://example.com/terms")
+                 on_release=lambda x: (dialog.dismiss(), setattr(self.root, 'current', 'terms'))
 
     ))
 
@@ -16756,7 +17114,7 @@ class DashboardApp(MDApp):
 
                  height=dp(50),
 
-                 on_release=lambda x: webbrowser.open("https://example.com/privacy")
+                 on_release=lambda x: (dialog.dismiss(), setattr(self.root, 'current', 'privacy'))
 
     ))
 
