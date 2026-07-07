@@ -4842,6 +4842,296 @@ MDScreenManager:
 
 
 
+                        # Transfer to Banks
+
+                        MDCard:
+
+                            orientation: 'vertical'
+
+                            size_hint: [None, None]
+
+                            size: [dp(105), dp(105)]
+
+                            md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
+
+                            radius: [15]
+
+                            padding: dp(10)
+
+                            elevation: 2
+
+                            on_release: app.show_coming_soon("Transfer to Banks")
+
+                            MDBoxLayout:
+
+                                orientation: 'vertical'
+
+                                spacing: dp(5)
+
+                                size_hint_y: None
+
+                                height: dp(80)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "bank-transfer"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(40), dp(40)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.5, 0.9, 1]
+
+                                MDLabel:
+
+                                    text: "Transfer to Banks"
+
+                                    halign: "center"
+
+                                    font_style: "Subtitle1"
+
+                                    theme_text_color: "Primary"
+
+
+
+                        # Transfer to Cheap4U
+
+                        MDCard:
+
+                            orientation: 'vertical'
+
+                            size_hint: [None, None]
+
+                            size: [dp(105), dp(105)]
+
+                            md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
+
+                            radius: [15]
+
+                            padding: dp(10)
+
+                            elevation: 2
+
+                            on_release: app.show_coming_soon("Transfer to Cheap4U")
+
+                            MDBoxLayout:
+
+                                orientation: 'vertical'
+
+                                spacing: dp(5)
+
+                                size_hint_y: None
+
+                                height: dp(80)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "account-arrow-right"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(40), dp(40)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.6, 1, 1]
+
+                                MDLabel:
+
+                                    text: "Transfer to Cheap4U"
+
+                                    halign: "center"
+
+                                    font_style: "Subtitle1"
+
+                                    theme_text_color: "Primary"
+
+
+
+                        # Betting
+
+                        MDCard:
+
+                            orientation: 'vertical'
+
+                            size_hint: [None, None]
+
+                            size: [dp(105), dp(105)]
+
+                            md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
+
+                            radius: [15]
+
+                            padding: dp(10)
+
+                            elevation: 2
+
+                            on_release: app.show_coming_soon("Betting")
+
+                            MDBoxLayout:
+
+                                orientation: 'vertical'
+
+                                spacing: dp(5)
+
+                                size_hint_y: None
+
+                                height: dp(80)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "soccer"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(40), dp(40)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.2, 0.7, 0.3, 1]
+
+                                MDLabel:
+
+                                    text: "Betting"
+
+                                    halign: "center"
+
+                                    font_style: "Subtitle1"
+
+                                    theme_text_color: "Primary"
+
+
+
+                        # Gift Cards
+
+                        MDCard:
+
+                            orientation: 'vertical'
+
+                            size_hint: [None, None]
+
+                            size: [dp(105), dp(105)]
+
+                            md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
+
+                            radius: [15]
+
+                            padding: dp(10)
+
+                            elevation: 2
+
+                            on_release: app.show_coming_soon("Gift Card Trading")
+
+                            MDBoxLayout:
+
+                                orientation: 'vertical'
+
+                                spacing: dp(5)
+
+                                size_hint_y: None
+
+                                height: dp(80)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "gift"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(40), dp(40)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.9, 0.3, 0.5, 1]
+
+                                MDLabel:
+
+                                    text: "Gift Cards"
+
+                                    halign: "center"
+
+                                    font_style: "Subtitle1"
+
+                                    theme_text_color: "Primary"
+
+
+
+                        # Airtime to Cash
+
+                        MDCard:
+
+                            orientation: 'vertical'
+
+                            size_hint: [None, None]
+
+                            size: [dp(105), dp(105)]
+
+                            md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
+
+                            radius: [15]
+
+                            padding: dp(10)
+
+                            elevation: 2
+
+                            on_release: app.show_coming_soon("Airtime to Cash")
+
+                            MDBoxLayout:
+
+                                orientation: 'vertical'
+
+                                spacing: dp(5)
+
+                                size_hint_y: None
+
+                                height: dp(80)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "cash-refund"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(40), dp(40)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.9, 0.5, 0.1, 1]
+
+                                MDLabel:
+
+                                    text: "Airtime to Cash"
+
+                                    halign: "center"
+
+                                    font_style: "Subtitle1"
+
+                                    theme_text_color: "Primary"
+
+
+
             # Bottom navigation
             # Bottom navigation (custom - avoids FBO crash)
             MDBoxLayout:
