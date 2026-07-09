@@ -12156,17 +12156,7 @@ class DashboardApp(MDApp):
 
             # Auto-advance to login (or quick PIN screen) once the sequence has played
             def go_to_login(dt):
-                if self.quick_pin_data and self.quick_pin_data.get('pin_hash'):
-                    try:
-                        pin_screen = self.root.get_screen("pin_login")
-                        cached_user = self.quick_pin_data.get('user') or {}
-                        name = cached_user.get('name') or self.quick_pin_data.get('email', '')
-                        pin_screen.ids.pin_welcome_label.text = f"Welcome back, {name}!"
-                    except Exception as e:
-                        print(f"pin welcome label error: {e}")
-                    self.root.current = "pin_login"
-                else:
-                    self.root.current = "login"
+                self.route_to_login_or_pin()
             Clock.schedule_once(go_to_login, 2.4)
         except Exception as e:
             print(f"play_splash_animation error: {e}")
@@ -16920,17 +16910,29 @@ class DashboardApp(MDApp):
         self.root.current = "profile"
 
     
+    def route_to_login_or_pin(self):
+        """Go to the PIN quick-unlock screen if one is configured, else full login."""
+        if self.quick_pin_data and self.quick_pin_data.get('pin_hash'):
+            try:
+                pin_screen = self.root.get_screen("pin_login")
+                cached_user = self.quick_pin_data.get('user') or {}
+                name = cached_user.get('name') or self.quick_pin_data.get('email', '')
+                pin_screen.ids.pin_welcome_label.text = f"Welcome back, {name}!"
+            except Exception as e:
+                print(f"pin welcome label error: {e}")
+            self.root.current = "pin_login"
+        else:
+            self.root.current = "login"
+
     def logout_user(self):
 
         self.current_user = None
 
         self.session_token = None
 
-        self.clear_quick_pin()
-
         self.show_success_dialog("Logged out successfully")
 
-        self.root.current = "login"
+        self.route_to_login_or_pin()
 
     def register_user(self, name, email, phone, referral_code, password, confirm_password):
         """Handle user registration with backend API"""
@@ -17226,8 +17228,12 @@ class DashboardApp(MDApp):
         return self.quick_pin_data
 
     def save_quick_pin(self, pin, email, session_token, user):
-        """Persist a hashed PIN plus the session needed to restore login on unlock."""
+        """Persist a hashed PIN plus the session needed to restore login on unlock.
+        Returns True on success, False on failure (caller should check this -
+        previously a failed save still showed a false 'success' message)."""
         try:
+            path = self._quick_pin_path()
+            os.makedirs(os.path.dirname(path), exist_ok=True)
             pin_hash = hashlib.sha256(f"{pin}:{email.lower()}".encode()).hexdigest()
             data = {
                 "email": email.lower(),
@@ -17235,11 +17241,16 @@ class DashboardApp(MDApp):
                 "session_token": session_token,
                 "user": user,
             }
-            with open(self._quick_pin_path(), "w") as f:
+            with open(path, "w") as f:
                 json.dump(data, f)
+            # Verify it actually round-trips before trusting it
+            with open(path, "r") as f:
+                json.load(f)
             self.quick_pin_data = data
+            return True
         except Exception as e:
             print(f"save_quick_pin error: {e}")
+            return False
 
     def clear_quick_pin(self):
         try:
@@ -17284,9 +17295,12 @@ class DashboardApp(MDApp):
                 if pin != confirm:
                     self.show_error_dialog("PINs do not match")
                     return
-                self.save_quick_pin(pin, email, session_token, user)
-                dialog.dismiss()
-                self.show_success_dialog("Quick PIN login enabled!")
+                if self.save_quick_pin(pin, email, session_token, user):
+                    dialog.dismiss()
+                    self.show_success_dialog("Quick PIN login enabled!")
+                else:
+                    dialog.dismiss()
+                    self.show_error_dialog("Couldn't save PIN - please try again")
 
             def do_skip(*a):
                 dialog.dismiss()
