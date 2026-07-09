@@ -361,6 +361,9 @@ class PrivacyScreen(Screen):
 class SplashScreen(Screen):
     pass
 
+class PinLoginScreen(Screen):
+    pass
+
 KV = '''
 
 #:import hex kivy.utils.get_color_from_hex
@@ -440,6 +443,8 @@ KV = '''
 MDScreenManager:
 
     SplashScreen:
+
+    PinLoginScreen:
 
     LoginScreen:
 
@@ -4092,7 +4097,7 @@ MDScreenManager:
 
 
 
-                        # Pricing
+                        # Transfer to Banks
 
                         MDCard:
 
@@ -4110,7 +4115,7 @@ MDScreenManager:
 
                             md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
-                            on_release: app.show_pricing()
+                            on_release: app.show_coming_soon("Transfer to Banks")
 
                             MDBoxLayout:
 
@@ -4128,7 +4133,7 @@ MDScreenManager:
 
                                 MDIcon:
 
-                                    icon: "cash"
+                                    icon: "bank-transfer"
 
                                     size_hint: [None, None]
 
@@ -4140,11 +4145,11 @@ MDScreenManager:
 
                               #      radius: [dp(12),]                                
 
-                                    text_color: [0.2, 0.8, 0.2, 1]
+                                    text_color: [0.1, 0.5, 0.9, 1]
 
                                 MDLabel:
 
-                                    text: "Pricing"
+                                    text: "Transfer to Banks"
 
                                     font_style: "Caption"
 
@@ -4156,7 +4161,7 @@ MDScreenManager:
 
 
 
-                        # Upgrade
+                        # Transfer to Cheap4U
 
                         MDCard:
 
@@ -4174,7 +4179,7 @@ MDScreenManager:
 
                             md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
-                            on_release: app.show_upgrade_options()
+                            on_release: app.show_coming_soon("Transfer to Cheap4U")
 
                             MDBoxLayout:
 
@@ -4192,7 +4197,7 @@ MDScreenManager:
 
                                 MDIcon:
 
-                                    icon: "account-arrow-up"
+                                    icon: "account-arrow-right"
 
                                     size_hint: [None, None]
 
@@ -4202,11 +4207,11 @@ MDScreenManager:
 
                                     theme_text_color: "Custom"
 
-                                    text_color: [0.8, 0.4, 0.1, 1]
+                                    text_color: [0.1, 0.6, 1, 1]
 
                                 MDLabel:
 
-                                    text: "Upgrade"
+                                    text: "Transfer to Cheap4U"
 
                                     font_style: "Caption"
 
@@ -4842,7 +4847,7 @@ MDScreenManager:
 
 
 
-                        # Transfer to Banks
+                        # Pricing
 
                         MDCard:
 
@@ -4860,7 +4865,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            on_release: app.show_coming_soon("Transfer to Banks")
+                            on_release: app.show_pricing()
 
                             MDBoxLayout:
 
@@ -4876,7 +4881,7 @@ MDScreenManager:
 
                                 MDIcon:
 
-                                    icon: "bank-transfer"
+                                    icon: "cash"
 
                                     size_hint: [None, None]
 
@@ -4886,11 +4891,11 @@ MDScreenManager:
 
                                     theme_text_color: "Custom"
 
-                                    text_color: [0.1, 0.5, 0.9, 1]
+                                    text_color: [0.2, 0.8, 0.2, 1]
 
                                 MDLabel:
 
-                                    text: "Transfer to Banks"
+                                    text: "Pricing"
 
                                     halign: "center"
 
@@ -4900,7 +4905,7 @@ MDScreenManager:
 
 
 
-                        # Transfer to Cheap4U
+                        # Upgrade
 
                         MDCard:
 
@@ -4918,7 +4923,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            on_release: app.show_coming_soon("Transfer to Cheap4U")
+                            on_release: app.show_upgrade_options()
 
                             MDBoxLayout:
 
@@ -4934,7 +4939,7 @@ MDScreenManager:
 
                                 MDIcon:
 
-                                    icon: "account-arrow-right"
+                                    icon: "account-arrow-up"
 
                                     size_hint: [None, None]
 
@@ -4944,11 +4949,11 @@ MDScreenManager:
 
                                     theme_text_color: "Custom"
 
-                                    text_color: [0.1, 0.6, 1, 1]
+                                    text_color: [0.8, 0.4, 0.1, 1]
 
                                 MDLabel:
 
-                                    text: "Transfer to Cheap4U"
+                                    text: "Upgrade"
 
                                     halign: "center"
 
@@ -5534,7 +5539,141 @@ MDScreenManager:
 
                 radius: [dp(50), dp(50), 0, 0]
 
-                
+
+
+<PinLoginScreen>:
+
+    name: "pin_login"
+
+    MDScreen:
+
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+
+            orientation: 'vertical'
+
+            size_hint: (1, 1)
+
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+            MDBoxLayout:
+
+                size_hint_y: 0.3
+
+                md_bg_color: app.theme_cls.primary_color
+
+                radius: [0, 0, dp(50), dp(50)]
+
+            MDBoxLayout:
+
+                orientation: 'vertical'
+
+                padding: dp(40)
+
+                spacing: dp(25)
+
+                size_hint_y: 0.7
+
+                MDBoxLayout:
+
+                    orientation: 'vertical'
+
+                    spacing: dp(10)
+
+                    size_hint_y: None
+
+                    height: dp(100)
+
+                    pos_hint: {'center_x': 0.5}
+
+                    MDIcon:
+
+                        icon: "lock"
+
+                        size_hint: (None, None)
+
+                        size: [dp(60), dp(60)]
+
+                        pos_hint: {'center_x': 0.5}
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.primary_color
+
+                    MDLabel:
+
+                        id: pin_welcome_label
+
+                        text: "Welcome back!"
+
+                        font_style: "H5"
+
+                        halign: "center"
+
+                        theme_text_color: "Primary"
+
+                MDCard:
+
+                    orientation: 'vertical'
+
+                    padding: dp(25)
+
+                    spacing: dp(20)
+
+                    size_hint: (0.9, None)
+
+                    height: dp(260)
+
+                    pos_hint: {'center_x': 0.5}
+
+                    MDTextField:
+
+                        id: pin_input
+
+                        hint_text: "Enter your PIN"
+
+                        password: True
+
+                        input_filter: "int"
+
+                        max_text_length: 6
+
+                        halign: "center"
+
+                        font_size: "24sp"
+
+                        on_text_validate: app.attempt_pin_login()
+
+                    MDRaisedButton:
+
+                        text: "UNLOCK"
+
+                        size_hint_x: 1
+
+                        height: dp(50)
+
+                        md_bg_color: app.theme_cls.primary_color
+
+                        on_release: app.attempt_pin_login()
+
+                    MDFlatButton:
+
+                        text: "Not you? Use email & password"
+
+                        size_hint_x: 1
+
+                        on_release: app.switch_to_full_login()
+
+            MDBoxLayout:
+
+                size_hint_y: 0.3
+
+                md_bg_color: app.theme_cls.primary_color
+
+                radius: [dp(50), dp(50), 0, 0]
+
+
 
 <RegisterScreen>:
     name: "register"
@@ -12015,9 +12154,19 @@ class DashboardApp(MDApp):
                 Animation(opacity=1, duration=0.6, transition='out_quad').start(subtext)
             Clock.schedule_once(show_subtext, 1.0)
 
-            # Auto-advance to login once the sequence has played
+            # Auto-advance to login (or quick PIN screen) once the sequence has played
             def go_to_login(dt):
-                self.root.current = "login"
+                if self.quick_pin_data and self.quick_pin_data.get('pin_hash'):
+                    try:
+                        pin_screen = self.root.get_screen("pin_login")
+                        cached_user = self.quick_pin_data.get('user') or {}
+                        name = cached_user.get('name') or self.quick_pin_data.get('email', '')
+                        pin_screen.ids.pin_welcome_label.text = f"Welcome back, {name}!"
+                    except Exception as e:
+                        print(f"pin welcome label error: {e}")
+                    self.root.current = "pin_login"
+                else:
+                    self.root.current = "login"
             Clock.schedule_once(go_to_login, 2.4)
         except Exception as e:
             print(f"play_splash_animation error: {e}")
@@ -16775,6 +16924,10 @@ class DashboardApp(MDApp):
 
         self.current_user = None
 
+        self.session_token = None
+
+        self.clear_quick_pin()
+
         self.show_success_dialog("Logged out successfully")
 
         self.root.current = "login"
@@ -17052,6 +17205,142 @@ class DashboardApp(MDApp):
         )           
 
     
+    def _quick_pin_path(self):
+        try:
+            return os.path.join(self.user_data_dir, "quick_pin.json")
+        except Exception:
+            return "quick_pin.json"
+
+    def load_quick_pin(self):
+        """Load saved quick-PIN data (email, pin_hash, session_token, cached user), if any."""
+        try:
+            path = self._quick_pin_path()
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    self.quick_pin_data = json.load(f)
+            else:
+                self.quick_pin_data = None
+        except Exception as e:
+            print(f"load_quick_pin error: {e}")
+            self.quick_pin_data = None
+        return self.quick_pin_data
+
+    def save_quick_pin(self, pin, email, session_token, user):
+        """Persist a hashed PIN plus the session needed to restore login on unlock."""
+        try:
+            pin_hash = hashlib.sha256(f"{pin}:{email.lower()}".encode()).hexdigest()
+            data = {
+                "email": email.lower(),
+                "pin_hash": pin_hash,
+                "session_token": session_token,
+                "user": user,
+            }
+            with open(self._quick_pin_path(), "w") as f:
+                json.dump(data, f)
+            self.quick_pin_data = data
+        except Exception as e:
+            print(f"save_quick_pin error: {e}")
+
+    def clear_quick_pin(self):
+        try:
+            path = self._quick_pin_path()
+            if os.path.exists(path):
+                os.remove(path)
+        except Exception as e:
+            print(f"clear_quick_pin error: {e}")
+        self.quick_pin_data = None
+
+    def prompt_setup_quick_pin(self, email, session_token, user):
+        """After a successful full login, offer to set up a quick PIN for next time."""
+        try:
+            pin_field = MDTextField(
+                hint_text="Choose a 4-6 digit PIN",
+                password=True,
+                input_filter="int",
+                max_text_length=6,
+            )
+            confirm_field = MDTextField(
+                hint_text="Confirm PIN",
+                password=True,
+                input_filter="int",
+                max_text_length=6,
+            )
+            content = MDBoxLayout(
+                orientation="vertical",
+                spacing=dp(15),
+                size_hint_y=None,
+                height=dp(120),
+                padding=[dp(10), dp(10), dp(10), dp(10)],
+            )
+            content.add_widget(pin_field)
+            content.add_widget(confirm_field)
+
+            def do_enable(*a):
+                pin = pin_field.text.strip()
+                confirm = confirm_field.text.strip()
+                if len(pin) < 4:
+                    self.show_error_dialog("PIN must be at least 4 digits")
+                    return
+                if pin != confirm:
+                    self.show_error_dialog("PINs do not match")
+                    return
+                self.save_quick_pin(pin, email, session_token, user)
+                dialog.dismiss()
+                self.show_success_dialog("Quick PIN login enabled!")
+
+            def do_skip(*a):
+                dialog.dismiss()
+
+            dialog = MDDialog(
+                title="Set up quick PIN login?",
+                text="Skip typing your email and password next time - just use a short PIN.",
+                type="custom",
+                content_cls=content,
+                buttons=[
+                    MDFlatButton(text="SKIP", on_release=do_skip),
+                    MDRaisedButton(text="ENABLE", on_release=do_enable),
+                ],
+            )
+            dialog.open()
+        except Exception as e:
+            print(f"prompt_setup_quick_pin error: {e}")
+
+    def attempt_pin_login(self):
+        """Validate the entered PIN against the saved hash and restore the session."""
+        try:
+            screen = self.root.get_screen("pin_login")
+            pin = screen.ids.pin_input.text.strip()
+            if not self.quick_pin_data:
+                self.switch_to_full_login()
+                return
+            expected_hash = hashlib.sha256(
+                f"{pin}:{self.quick_pin_data.get('email', '')}".encode()
+            ).hexdigest()
+            if pin and expected_hash == self.quick_pin_data.get("pin_hash"):
+                self.session_token = self.quick_pin_data.get("session_token") or ""
+                self.current_user = self.quick_pin_data.get("user") or {}
+                self.virtual_account_number = self.current_user.get('virtual_account_number') or ''
+                self.virtual_bank_name = self.current_user.get('virtual_bank_name') or ''
+                self.virtual_account_name = self.current_user.get('virtual_account_name') or ''
+                screen.ids.pin_input.text = ""
+                self.update_dashboard()
+                self.update_dashboard_virtual_account()
+                self.fetch_virtual_account_details()
+                self.root.current = "dashboard"
+            else:
+                screen.ids.pin_input.text = ""
+                self.show_error_dialog("Incorrect PIN")
+        except Exception as e:
+            print(f"attempt_pin_login error: {e}")
+
+    def switch_to_full_login(self):
+        try:
+            screen = self.root.get_screen("pin_login")
+            screen.ids.pin_input.text = ""
+        except Exception:
+            pass
+        self.root.current = "login"
+
     def login_user(self, email, password):
         if not email or not password:
             self.show_error_dialog("Email and password are required")
@@ -17074,6 +17363,8 @@ class DashboardApp(MDApp):
                 self.fetch_virtual_account_details()   # token is set now
                 self.show_success_dialog("Login successful!")
                 self.root.current = "dashboard"
+                if not self.quick_pin_data or self.quick_pin_data.get('email') != email.lower():
+                    Clock.schedule_once(lambda dt: self.prompt_setup_quick_pin(email, self.session_token, self.current_user), 1)
 
             elif response and response.get('requires_verification'):
                 self.pending_user_id = response.get('user_id')
@@ -17139,6 +17430,7 @@ class DashboardApp(MDApp):
         self.theme_cls.primary_hue = "500"
         self.users_file = "users.json"
         self.transactions_file = "transactions.json"
+        self.load_quick_pin()
         self.load_users()
         self.load_transactions()
         self.update_theme_colors()
