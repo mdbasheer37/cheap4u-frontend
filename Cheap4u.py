@@ -364,6 +364,9 @@ class SplashScreen(Screen):
 class PinLoginScreen(Screen):
     pass
 
+class AirtimeToCashScreen(Screen):
+    pass
+
 KV = '''
 
 #:import hex kivy.utils.get_color_from_hex
@@ -445,6 +448,8 @@ MDScreenManager:
     SplashScreen:
 
     PinLoginScreen:
+
+    AirtimeToCashScreen:
 
     LoginScreen:
 
@@ -701,6 +706,318 @@ MDScreenManager:
                 pos_hint: {'center_x': 0.5, 'center_y': 0.37}
 
                 opacity: 0
+
+
+
+<AirtimeToCashScreen>:
+
+    name: "airtime_to_cash"
+
+    MDScreen:
+
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+
+            orientation: 'vertical'
+
+            padding: dp(2)
+
+            spacing: dp(10)
+
+            MDBoxLayout:
+
+                size_hint_y: None
+
+                height: dp(60)
+
+                padding: [dp(10), 0]
+
+                spacing: dp(10)
+
+                md_bg_color: app.theme_cls.primary_color
+
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+
+                    icon: "arrow-left"
+
+                    theme_icon_color: "Custom"
+
+                    icon_color: [1, 1, 1, 1]
+
+                    on_release: app.root.current = "dashboard"
+
+                MDLabel:
+
+                    text: "Airtime to Cash"
+
+                    font_style: "H5"
+
+                    bold: True
+
+                    theme_text_color: "Custom"
+
+                    text_color: [1, 1, 1, 1]
+
+                    halign: "center"
+
+                    size_hint_x: 0.8
+
+            ScrollView:
+
+                bar_width: dp(4)
+
+                bar_color: app.theme_cls.primary_color
+
+                MDBoxLayout:
+
+                    orientation: 'vertical'
+
+                    spacing: dp(15)
+
+                    padding: [dp(15), dp(15), dp(15), dp(30)]
+
+                    size_hint_y: None
+
+                    height: self.minimum_height
+
+                    MDCard:
+
+                        orientation: 'vertical'
+
+                        padding: dp(15)
+
+                        spacing: dp(12)
+
+                        radius: [15]
+
+                        elevation: 3
+
+                        size_hint_y: None
+
+                        height: self.minimum_height
+
+                        md_bg_color: app.theme_cls.bg_light
+
+                        MDLabel:
+
+                            text: "Select Network"
+
+                            font_style: "H6"
+
+                            bold: True
+
+                            size_hint_y: None
+
+                            height: dp(35)
+
+                            color: app.theme_cls.primary_color
+
+                        MDBoxLayout:
+
+                            size_hint_y: None
+
+                            height: dp(45)
+
+                            spacing: dp(8)
+
+                            disabled: app.a2c_step != "input"
+
+                            MDRaisedButton:
+
+                                text: "MTN"
+
+                                md_bg_color: [1, 0.8, 0, 1] if app.a2c_network == "MTN" else [0.5, 0.5, 0.5, 1]
+
+                                on_release: app.a2c_network = "MTN"
+
+                            MDRaisedButton:
+
+                                text: "Airtel"
+
+                                md_bg_color: [0.8, 0.1, 0.1, 1] if app.a2c_network == "AIRTEL" else [0.5, 0.5, 0.5, 1]
+
+                                on_release: app.a2c_network = "AIRTEL"
+
+                            MDRaisedButton:
+
+                                text: "Glo"
+
+                                md_bg_color: [0.1, 0.6, 0.1, 1] if app.a2c_network == "GLO" else [0.5, 0.5, 0.5, 1]
+
+                                on_release: app.a2c_network = "GLO"
+
+                            MDRaisedButton:
+
+                                text: "9Mobile"
+
+                                md_bg_color: [0.1, 0.5, 0.1, 1] if app.a2c_network == "9MOBILE" else [0.5, 0.5, 0.5, 1]
+
+                                on_release: app.a2c_network = "9MOBILE"
+
+                        MDTextField:
+
+                            id: a2c_phone_input
+
+                            hint_text: "Your phone number (the SIM to convert from)"
+
+                            input_filter: "int"
+
+                            max_text_length: 11
+
+                            disabled: app.a2c_step != "input"
+
+                        MDTextField:
+
+                            id: a2c_amount_input
+
+                            hint_text: "Amount of airtime to convert (₦)"
+
+                            input_filter: "int"
+
+                            disabled: app.a2c_step != "input"
+
+                        MDRaisedButton:
+
+                            text: "SEND OTP"
+
+                            size_hint_x: 1
+
+                            height: dp(50)
+
+                            md_bg_color: app.theme_cls.primary_color
+
+                            disabled: app.a2c_step != "input"
+
+                            opacity: 1 if app.a2c_step == "input" else 0.4
+
+                            on_release: app.a2c_send_otp()
+
+                    MDCard:
+
+                        orientation: 'vertical'
+
+                        padding: dp(15)
+
+                        spacing: dp(12)
+
+                        radius: [15]
+
+                        elevation: 3
+
+                        size_hint_y: None
+
+                        height: self.minimum_height if app.a2c_step in ("otp", "confirm") else 0
+
+                        opacity: 1 if app.a2c_step in ("otp", "confirm") else 0
+
+                        md_bg_color: app.theme_cls.bg_light
+
+                        MDLabel:
+
+                            text: "Enter the OTP sent to your phone"
+
+                            font_style: "H6"
+
+                            bold: True
+
+                            size_hint_y: None
+
+                            height: dp(35)
+
+                            color: app.theme_cls.primary_color
+
+                        MDTextField:
+
+                            id: a2c_otp_input
+
+                            hint_text: "6-digit OTP"
+
+                            input_filter: "int"
+
+                            max_text_length: 6
+
+                            disabled: app.a2c_step != "otp"
+
+                        MDRaisedButton:
+
+                            text: "VERIFY OTP"
+
+                            size_hint_x: 1
+
+                            height: dp(50)
+
+                            md_bg_color: app.theme_cls.primary_color
+
+                            disabled: app.a2c_step != "otp"
+
+                            opacity: 1 if app.a2c_step == "otp" else 0.4
+
+                            on_release: app.a2c_verify_otp()
+
+                    MDCard:
+
+                        orientation: 'vertical'
+
+                        padding: dp(15)
+
+                        spacing: dp(12)
+
+                        radius: [15]
+
+                        elevation: 3
+
+                        size_hint_y: None
+
+                        height: self.minimum_height if app.a2c_step == "confirm" else 0
+
+                        opacity: 1 if app.a2c_step == "confirm" else 0
+
+                        md_bg_color: app.theme_cls.bg_light
+
+                        MDLabel:
+
+                            text: f"Airtime balance on this SIM: {app.a2c_airtime_balance}"
+
+                            font_style: "Subtitle1"
+
+                            size_hint_y: None
+
+                            height: dp(30)
+
+                            theme_text_color: "Secondary"
+
+                        MDTextField:
+
+                            id: a2c_sim_pin_input
+
+                            hint_text: "Your SIM's airtime transfer PIN"
+
+                            password: True
+
+                            input_filter: "int"
+
+                            max_text_length: 6
+
+                            disabled: app.a2c_step != "confirm"
+
+                        MDRaisedButton:
+
+                            text: "CONVERT TO CASH"
+
+                            size_hint_x: 1
+
+                            height: dp(50)
+
+                            md_bg_color: [0.2, 0.7, 0.3, 1]
+
+                            disabled: app.a2c_step != "confirm"
+
+                            opacity: 1 if app.a2c_step == "confirm" else 0.4
+
+                            on_release: app.a2c_confirm_transfer()
 
 
 
@@ -5097,7 +5414,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            on_release: app.show_coming_soon("Airtime to Cash")
+                            on_release: app.a2c_reset_flow(); app.root.current = "airtime_to_cash"
 
                             MDBoxLayout:
 
@@ -7343,6 +7660,10 @@ class DashboardApp(MDApp):
     selected_meter_type = StringProperty("")
 
     selected_data_network = StringProperty("")
+    a2c_step = StringProperty("input")
+    a2c_network = StringProperty("")
+    a2c_session_id = StringProperty("")
+    a2c_airtime_balance = StringProperty("")
     terms_text = StringProperty(TERMS_OF_SERVICE_TEXT)
     privacy_text = StringProperty(PRIVACY_POLICY_TEXT)
 
@@ -17354,6 +17675,137 @@ class DashboardApp(MDApp):
         except Exception:
             pass
         self.root.current = "login"
+
+    def a2c_reset_flow(self):
+        """Reset the Airtime-to-Cash screen back to its starting state."""
+        try:
+            screen = self.root.get_screen("airtime_to_cash")
+            screen.ids.a2c_phone_input.text = ""
+            screen.ids.a2c_amount_input.text = ""
+            screen.ids.a2c_otp_input.text = ""
+            screen.ids.a2c_sim_pin_input.text = ""
+        except Exception:
+            pass
+        self.a2c_step = "input"
+        self.a2c_network = ""
+        self.a2c_session_id = ""
+        self.a2c_airtime_balance = ""
+
+    def a2c_send_otp(self):
+        try:
+            screen = self.root.get_screen("airtime_to_cash")
+            phone = screen.ids.a2c_phone_input.text.strip()
+            amount = screen.ids.a2c_amount_input.text.strip()
+
+            if not self.a2c_network:
+                self.show_error_dialog("Please select a network")
+                return
+            if len(phone) != 11 or not phone.isdigit():
+                self.show_error_dialog("Enter a valid 11-digit phone number")
+                return
+            if not amount or not amount.isdigit() or int(amount) < 50:
+                self.show_error_dialog("Enter a valid amount (minimum ₦50)")
+                return
+
+            self.show_loader("Sending OTP...")
+
+            def on_result(success, result):
+                self.hide_loader()
+                if success:
+                    self.a2c_step = "otp"
+                    self.show_success_dialog(result.get("message", "OTP sent!"))
+                else:
+                    self.show_error_dialog(result.get("message", "Failed to send OTP"))
+
+            self.backend_api_request(
+                "airtime-to-cash/generate-otp",
+                "POST",
+                data={"network": self.a2c_network, "phone": phone},
+                callback=on_result,
+            )
+        except Exception as e:
+            self.hide_loader()
+            print(f"a2c_send_otp error: {e}")
+
+    def a2c_verify_otp(self):
+        try:
+            screen = self.root.get_screen("airtime_to_cash")
+            phone = screen.ids.a2c_phone_input.text.strip()
+            otp = screen.ids.a2c_otp_input.text.strip()
+
+            if not otp:
+                self.show_error_dialog("Enter the OTP sent to your phone")
+                return
+
+            self.show_loader("Verifying OTP...")
+
+            def on_result(success, result):
+                self.hide_loader()
+                if success:
+                    data = result.get("data", {})
+                    self.a2c_session_id = data.get("session_id") or ""
+                    self.a2c_airtime_balance = data.get("airtime_balance") or ""
+                    self.a2c_step = "confirm"
+                else:
+                    self.show_error_dialog(result.get("message", "Invalid or expired OTP"))
+
+            self.backend_api_request(
+                "airtime-to-cash/verify-otp",
+                "POST",
+                data={"network": self.a2c_network, "phone": phone, "otp": otp},
+                callback=on_result,
+            )
+        except Exception as e:
+            self.hide_loader()
+            print(f"a2c_verify_otp error: {e}")
+
+    def a2c_confirm_transfer(self):
+        try:
+            screen = self.root.get_screen("airtime_to_cash")
+            phone = screen.ids.a2c_phone_input.text.strip()
+            amount = screen.ids.a2c_amount_input.text.strip()
+            sim_pin = screen.ids.a2c_sim_pin_input.text.strip()
+
+            if not sim_pin:
+                self.show_error_dialog("Enter your SIM's airtime transfer PIN")
+                return
+
+            self.show_loader("Converting airtime to cash...")
+
+            def on_result(success, result):
+                self.hide_loader()
+                if success:
+                    data = result.get("data", {})
+                    credited = data.get("credited_amount")
+                    new_balance = data.get("new_balance")
+                    self.show_success_dialog(
+                        f"₦{credited} credited to your wallet! New balance: ₦{new_balance}"
+                    )
+                    self.a2c_reset_flow()
+                    self.update_dashboard()
+                    self.fetch_virtual_account_details()
+                    self.root.current = "dashboard"
+                else:
+                    message = result.get("message", "Conversion failed")
+                    self.show_error_dialog(message)
+                    if "session" in message.lower():
+                        self.a2c_reset_flow()
+
+            self.backend_api_request(
+                "airtime-to-cash/transfer",
+                "POST",
+                data={
+                    "network": self.a2c_network,
+                    "phone": phone,
+                    "amount": amount,
+                    "sim_pin": sim_pin,
+                    "session_id": self.a2c_session_id,
+                },
+                callback=on_result,
+            )
+        except Exception as e:
+            self.hide_loader()
+            print(f"a2c_confirm_transfer error: {e}")
 
     def login_user(self, email, password):
         if not email or not password:
