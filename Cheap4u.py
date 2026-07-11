@@ -817,45 +817,15 @@ MDScreenManager:
 
                         MDBoxLayout:
 
+                            id: a2c_network_grid
+
                             size_hint_y: None
 
-                            height: dp(45)
+                            height: dp(85)
 
                             spacing: dp(8)
 
                             disabled: app.a2c_step != "input"
-
-                            MDRaisedButton:
-
-                                text: "MTN"
-
-                                md_bg_color: [1, 0.8, 0, 1] if app.a2c_network == "MTN" else [0.5, 0.5, 0.5, 1]
-
-                                on_release: app.a2c_network = "MTN"
-
-                            MDRaisedButton:
-
-                                text: "Airtel"
-
-                                md_bg_color: [0.8, 0.1, 0.1, 1] if app.a2c_network == "AIRTEL" else [0.5, 0.5, 0.5, 1]
-
-                                on_release: app.a2c_network = "AIRTEL"
-
-                            MDRaisedButton:
-
-                                text: "Glo"
-
-                                md_bg_color: [0.1, 0.6, 0.1, 1] if app.a2c_network == "GLO" else [0.5, 0.5, 0.5, 1]
-
-                                on_release: app.a2c_network = "GLO"
-
-                            MDRaisedButton:
-
-                                text: "9Mobile"
-
-                                md_bg_color: [0.1, 0.5, 0.1, 1] if app.a2c_network == "9MOBILE" else [0.5, 0.5, 0.5, 1]
-
-                                on_release: app.a2c_network = "9MOBILE"
 
                         MDTextField:
 
@@ -10277,8 +10247,12 @@ class DashboardApp(MDApp):
                     result = {"status": "error", "message": f"Server error (HTTP {response.status_code})"}
                 
                 print(f"📦 Response (HTTP {response.status_code}): {result}")
-                
+
                 from kivy.clock import Clock
+                if response.status_code == 401:
+                    Clock.schedule_once(lambda dt: self.handle_session_expired(), 0)
+                    Clock.schedule_once(lambda dt, r=result: callback(False, r) if callback else None, 0)
+                    return
                 if response.status_code == 200 and result.get('status') == 'success':
                     Clock.schedule_once(lambda dt, r=result: callback(True, r) if callback else None, 0)
                 else:
@@ -12445,6 +12419,8 @@ class DashboardApp(MDApp):
             self.setup_electricity_screen()
             self.setup_data_purchase_screen()
             self.setup_exam_pin_screen()
+
+            self.setup_a2c_network_screen()
             Clock.schedule_once(lambda dt: self.initialize_services(), 1)
         except Exception as e:
             print(f"on_start error: {e}")
@@ -17231,6 +17207,17 @@ class DashboardApp(MDApp):
         self.root.current = "profile"
 
     
+    def handle_session_expired(self):
+        """Called whenever any backend call comes back 401 (expired/invalid token)."""
+        if getattr(self, '_session_expired_handled', False):
+            return
+        self._session_expired_handled = True
+        self.current_user = None
+        self.session_token = None
+        self.show_error_dialog("Your session expired - please log in again")
+        self.route_to_login_or_pin()
+        Clock.schedule_once(lambda dt: setattr(self, '_session_expired_handled', False), 2)
+
     def route_to_login_or_pin(self):
         """Go to the PIN quick-unlock screen if one is configured, else full login."""
         if self.quick_pin_data and self.quick_pin_data.get('pin_hash'):
@@ -17675,6 +17662,67 @@ class DashboardApp(MDApp):
         except Exception:
             pass
         self.root.current = "login"
+
+    def setup_a2c_network_screen(self):
+        try:
+            screen = self.root.get_screen("airtime_to_cash")
+            grid = screen.ids.a2c_network_grid
+            grid.clear_widgets()
+            self.a2c_network_cards = {}
+
+            networks = [
+                {"name": "MTN", "logo": "assets/mtn.png", "color": self.mtn_color},
+                {"name": "Airtel", "logo": "assets/airtel.png", "color": self.airtel_color},
+                {"name": "Glo", "logo": "assets/glo.png", "color": self.glo_color},
+                {"name": "9Mobile", "logo": "assets/9mobile.png", "color": self.mobile9_color},
+            ]
+
+            for net in networks:
+                card = MDCard(
+                    orientation='vertical',
+                    size_hint=(1, 1),
+                    elevation=2,
+                    on_release=lambda x, n=net["name"]: self.select_a2c_network(n),
+                    md_bg_color=[0.95, 0.95, 0.95, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.2, 1],
+                    radius=[15]
+                )
+                try:
+                    logo = FitImage(
+                        source=net["logo"],
+                        size_hint=(1, 0.7),
+                        radius=[15, 15, 15, 15]
+                    )
+                except Exception:
+                    logo = MDIcon(
+                        icon="network",
+                        size_hint=(1, 0.7),
+                        theme_text_color="Custom",
+                        text_color=net["color"]
+                    )
+                label = MDLabel(
+                    text=net["name"],
+                    halign="center",
+                    font_style="Caption",
+                    size_hint=(1, 0.3),
+                )
+                card.add_widget(logo)
+                card.add_widget(label)
+                grid.add_widget(card)
+                self.a2c_network_cards[net["name"].upper()] = card
+        except Exception as e:
+            print(f"setup_a2c_network_screen error: {e}")
+
+    def select_a2c_network(self, name):
+        network = name.upper()
+        self.a2c_network = network
+        try:
+            for net_key, card in self.a2c_network_cards.items():
+                if net_key == network:
+                    card.md_bg_color = self.theme_cls.primary_color
+                else:
+                    card.md_bg_color = [0.95, 0.95, 0.95, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.2, 1]
+        except Exception as e:
+            print(f"select_a2c_network error: {e}")
 
     def a2c_reset_flow(self):
         """Reset the Airtime-to-Cash screen back to its starting state."""
