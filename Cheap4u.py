@@ -12726,12 +12726,8 @@ class DashboardApp(MDApp):
             video.opacity = 1
             video.source = video_path
             video.state = 'play'
-            self._video_finished = False
 
             def on_finished(*_args):
-                if self._video_finished:
-                    return
-                self._video_finished = True
                 self._finish_splash()
 
             video.bind(on_eos=lambda *a: on_finished())
@@ -12742,6 +12738,19 @@ class DashboardApp(MDApp):
             print(f"splash video error: {e}")
             self._play_splash_fallback(screen)
 
+    def _splash_step(self, fn, *args):
+        """
+        Run one splash animation step safely. If anything inside `fn`
+        throws (a missing property, a platform quirk, whatever) we log it
+        and just skip that visual step instead of letting the exception
+        bubble up into Kivy's Clock loop, where it would otherwise crash
+        the whole app. The rest of the splash timeline keeps running.
+        """
+        try:
+            fn(*args)
+        except Exception as e:
+            print(f"splash step error: {e}")
+
     def _play_splash_fallback(self, screen):
         """
         The animated splash: glow halo blooms in, logo scales 0% -> 100%
@@ -12749,50 +12758,82 @@ class DashboardApp(MDApp):
         icons fade in one after another, and a loading bar fills up -
         all choreographed with Clock.schedule_once so nothing blocks the
         UI thread and everything stays a smooth 60 FPS.
+
+        Every step below is wrapped so a single failure can't crash the
+        app, and a hard failsafe guarantees we still leave the splash
+        screen even if the whole sequence misbehaves.
         """
-        ids = screen.ids
-        halo, logo = ids.logo_halo, ids.splash_logo
-        title, tagline = ids.splash_title, ids.splash_tagline
-        chips = [ids.chip_data, ids.chip_airtime, ids.chip_electricity, ids.chip_cable, ids.chip_exam]
-        track, fill, loading_label = ids.progress_track, ids.progress_fill, ids.splash_loading_label
+        self._splash_finished = False
+
+        # Absolute failsafe: no matter what breaks above, never leave the
+        # user stuck staring at the splash screen.
+        Clock.schedule_once(lambda dt: self._finish_splash(), 6.0)
+
+        try:
+            ids = screen.ids
+            halo, logo = ids.logo_halo, ids.splash_logo
+            title, tagline = ids.splash_title, ids.splash_tagline
+            chips = [ids.chip_data, ids.chip_airtime, ids.chip_electricity, ids.chip_cable, ids.chip_exam]
+            track, fill, loading_label = ids.progress_track, ids.progress_fill, ids.splash_loading_label
+        except Exception as e:
+            print(f"splash id lookup error: {e}")
+            return
 
         # Glow halo blooms in behind the logo ("soft light effects")
-        Animation(size=(dp(220), dp(220)), opacity=1, duration=0.9, transition='out_quad').start(halo)
+        self._splash_step(
+            lambda: Animation(size=(dp(220), dp(220)), opacity=1, duration=0.9, transition='out_quad').start(halo)
+        )
 
         # Logo scales from 0% to 100% with a soft bounce, then pulses gently forever
         def pulse_logo(*_a):
-            pulse = (
-                Animation(size=(dp(162), dp(162)), duration=0.9, transition='in_out_sine')
-                + Animation(size=(dp(150), dp(150)), duration=0.9, transition='in_out_sine')
-            )
-            pulse.repeat = True
-            pulse.start(logo)
+            def do_pulse():
+                pulse = (
+                    Animation(size=(dp(162), dp(162)), duration=0.9, transition='in_out_sine')
+                    + Animation(size=(dp(150), dp(150)), duration=0.9, transition='in_out_sine')
+                )
+                pulse.repeat = True
+                pulse.start(logo)
+            self._splash_step(do_pulse)
 
-        logo_anim = Animation(size=(dp(150), dp(150)), opacity=1, duration=0.9, transition='out_back')
-        logo_anim.bind(on_complete=pulse_logo)
-        logo_anim.start(logo)
+        def pop_logo():
+            logo_anim = Animation(size=(dp(150), dp(150)), opacity=1, duration=0.9, transition='out_back')
+            logo_anim.bind(on_complete=pulse_logo)
+            logo_anim.start(logo)
+        self._splash_step(pop_logo)
 
         # Brand name, then tagline, fade in shortly after
-        Clock.schedule_once(lambda dt: Animation(opacity=1, duration=0.5, transition='out_quad').start(title), 0.9)
-        Clock.schedule_once(lambda dt: Animation(opacity=1, duration=0.5, transition='out_quad').start(tagline), 1.2)
+        Clock.schedule_once(
+            lambda dt: self._splash_step(
+                lambda: Animation(opacity=1, duration=0.5, transition='out_quad').start(title)
+            ), 0.9
+        )
+        Clock.schedule_once(
+            lambda dt: self._splash_step(
+                lambda: Animation(opacity=1, duration=0.5, transition='out_quad').start(tagline)
+            ), 1.2
+        )
 
         # Service icons fade in one by one, left to right
         for i, chip in enumerate(chips):
             Clock.schedule_once(
-                lambda dt, w=chip: Animation(opacity=1, duration=0.4, transition='out_quad').start(w),
+                lambda dt, w=chip: self._splash_step(
+                    lambda: Animation(opacity=1, duration=0.4, transition='out_quad').start(w)
+                ),
                 1.6 + i * 0.12,
             )
 
         # Loading bar appears, then fills up as the splash finishes
         def show_progress(dt):
-            Animation(opacity=1, duration=0.3).start(track)
-            Animation(opacity=1, duration=0.3).start(fill)
-            Animation(opacity=1, duration=0.3).start(loading_label)
-            Animation(width=track.width, duration=1.6, transition='out_quad').start(fill)
+            def do_progress():
+                Animation(opacity=1, duration=0.3).start(track)
+                Animation(opacity=1, duration=0.3).start(fill)
+                Animation(opacity=1, duration=0.3).start(loading_label)
+                Animation(width=track.width, duration=1.6, transition='out_quad').start(fill)
+            self._splash_step(do_progress)
         Clock.schedule_once(show_progress, 2.3)
 
         # Hold for a beat, fade everything out, then move on (~4.3s total)
-        Clock.schedule_once(lambda dt: self._fade_out_splash(screen), 3.9)
+        Clock.schedule_once(lambda dt: self._splash_step(self._fade_out_splash, screen), 3.9)
 
     def _fade_out_splash(self, screen):
         """Smooth fade-out of the whole splash before navigating away."""
@@ -12800,9 +12841,19 @@ class DashboardApp(MDApp):
         Clock.schedule_once(lambda dt: self._finish_splash(), 0.45)
 
     def _finish_splash(self):
-        """Stop splash-only effects and hand control to the login/dashboard flow."""
-        self._stop_splash_particles()
-        self.route_to_login_or_pin()
+        """Stop splash-only effects and hand control to the login/dashboard flow. Safe to call more than once."""
+        if getattr(self, '_splash_finished', False):
+            return
+        self._splash_finished = True
+        try:
+            self._stop_splash_particles()
+        except Exception as e:
+            print(f"splash cleanup error: {e}")
+        try:
+            self.route_to_login_or_pin()
+        except Exception as e:
+            print(f"splash routing error: {e}")
+            self.root.current = "login"
 
 
     def initialize_services(self):
