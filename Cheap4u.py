@@ -16,6 +16,9 @@ from kivy.properties import (
 )
 from kivy.uix.screenmanager import Screen, ScreenManager
 from kivy.factory import Factory
+from kivy.uix.widget import Widget
+from kivy.uix.video import Video
+from kivy.graphics import Color, Ellipse, Rectangle
 
 from kivymd.app import MDApp
 from kivymd.uix.fitimage import FitImage
@@ -167,6 +170,29 @@ from kivy.properties import (
     StringProperty, ObjectProperty, NumericProperty, ListProperty, BooleanProperty, DictProperty
 )
 
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# GlowParticle: a tiny soft-glow dot used to build the ambient "floating
+# particles" background effect on the splash screen. It draws a single
+# translucent circle on its own canvas and keeps that circle glued to its
+# pos/size, so all we have to do elsewhere is animate the widget itself
+# (pos, opacity) with normal Kivy Animations - no manual redraw needed.
+# ─────────────────────────────────────────────────────────────────────────
+class GlowParticle(Widget):
+    def __init__(self, color=(1, 1, 1, 0.5), diameter=dp(6), **kwargs):
+        super().__init__(**kwargs)
+        self.size_hint = (None, None)
+        self.size = (diameter, diameter)
+        with self.canvas:
+            Color(*color)
+            self._dot = Ellipse(pos=self.pos, size=self.size)
+        # Keep the drawn ellipse synced whenever Kivy moves/resizes us
+        self.bind(pos=self._sync, size=self._sync)
+
+    def _sync(self, *args):
+        self._dot.pos = self.pos
+        self._dot.size = self.size
 
 
 class Config:
@@ -637,74 +663,232 @@ MDScreenManager:
 
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Premium animated splash / welcome screen.
+#
+# Layout only lives here - all timing, easing and the video/animation
+# fallback decision are handled in Python (see MDApp.play_splash_animation
+# and its helper methods below). That keeps this KV block simple: every
+# element just starts hidden (opacity: 0 / zero size) and Python brings it
+# to life once the screen is shown.
+# ─────────────────────────────────────────────────────────────────────────
 <SplashScreen>:
 
     name: "splash"
 
     MDScreen:
-
-        md_bg_color: 10/255, 20/255, 100/255, 1
+        id: splash_root
+        # Left black here on purpose: the real blue gradient (deep navy ->
+        # Cheap4U blue #1565C0) is hand-painted onto this screen's canvas
+        # from Python, since Kivy has no built-in gradient shape.
+        md_bg_color: 0, 0, 0, 1
 
         FloatLayout:
+            id: splash_float
 
+            # ── Ambient floating glow particles, spawned from Python ──
+            FloatLayout:
+                id: particle_layer
+                size_hint: 1, 1
+
+            # ── Optional branded intro video (assets/welcome.mp4) ──
+            # Stays invisible/zero-size unless Python finds the file and
+            # switches it on, so it never gets in the way of the fallback.
+            Video:
+                id: splash_video
+                size_hint: None, None
+                size: 0, 0
+                opacity: 0
+
+            # ── Soft glow halo behind the logo ("soft light effects") ──
+            Widget:
+                id: logo_halo
+                size_hint: None, None
+                size: dp(10), dp(10)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.6}
+                opacity: 0
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.16
+                    Ellipse:
+                        pos: self.pos
+                        size: self.size
+
+            # ── Cheap4U logo - Python scales this 0% -> 100%, then pulses it ──
             Image:
-
                 id: splash_logo
-
                 source: "data/icon.png"
-
+                allow_stretch: True
                 size_hint: None, None
-
-                size: dp(160), dp(160)
-
-                pos_hint: {'center_x': 0.5, 'center_y': 0.58}
-
+                size: dp(1), dp(1)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.6}
                 opacity: 0
 
+            # ── Brand name ──
             MDLabel:
-
-                id: splash_welcome
-
-                text: "Welcome to Cheap4U"
-
+                id: splash_title
+                text: "Cheap4U Technology"
                 font_style: "H5"
-
                 bold: True
-
                 halign: "center"
-
                 theme_text_color: "Custom"
-
-                text_color: [1, 1, 1, 1]
-
+                text_color: 1, 1, 1, 1
                 size_hint: None, None
-
-                size: dp(300), dp(40)
-
-                pos_hint: {'center_x': 0.5, 'center_y': 0.42}
-
+                size: dp(320), dp(40)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.4}
                 opacity: 0
 
+            # ── Tagline ──
             MDLabel:
-
-                id: splash_subtext
-
-                text: "Fast. Simple. Reliable."
-
-                font_style: "Body1"
-
+                id: splash_tagline
+                text: "Fast \u2022 Secure \u2022 Affordable"
+                font_style: "Subtitle1"
                 halign: "center"
-
                 theme_text_color: "Custom"
-
-                text_color: [0.8, 0.85, 1, 1]
-
+                text_color: 0.85, 0.92, 1, 1
                 size_hint: None, None
+                size: dp(320), dp(26)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.345}
+                opacity: 0
 
-                size: dp(300), dp(30)
+            # ── Row of animated service icons, faded in one by one ──
+            MDBoxLayout:
+                id: splash_services
+                orientation: "horizontal"
+                size_hint: None, None
+                size: dp(310), dp(72)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.24}
+                spacing: dp(4)
 
-                pos_hint: {'center_x': 0.5, 'center_y': 0.37}
+                MDBoxLayout:
+                    id: chip_data
+                    orientation: "vertical"
+                    spacing: dp(4)
+                    opacity: 0
+                    MDIcon:
+                        icon: "wifi"
+                        font_size: "26sp"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                    MDLabel:
+                        text: "Data"
+                        font_style: "Caption"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.9, 0.95, 1, 1
 
+                MDBoxLayout:
+                    id: chip_airtime
+                    orientation: "vertical"
+                    spacing: dp(4)
+                    opacity: 0
+                    MDIcon:
+                        icon: "phone"
+                        font_size: "26sp"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                    MDLabel:
+                        text: "Airtime"
+                        font_style: "Caption"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.9, 0.95, 1, 1
+
+                MDBoxLayout:
+                    id: chip_electricity
+                    orientation: "vertical"
+                    spacing: dp(4)
+                    opacity: 0
+                    MDIcon:
+                        icon: "flash"
+                        font_size: "26sp"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                    MDLabel:
+                        text: "Electricity"
+                        font_style: "Caption"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.9, 0.95, 1, 1
+
+                MDBoxLayout:
+                    id: chip_cable
+                    orientation: "vertical"
+                    spacing: dp(4)
+                    opacity: 0
+                    MDIcon:
+                        icon: "television"
+                        font_size: "26sp"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                    MDLabel:
+                        text: "Cable TV"
+                        font_style: "Caption"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.9, 0.95, 1, 1
+
+                MDBoxLayout:
+                    id: chip_exam
+                    orientation: "vertical"
+                    spacing: dp(4)
+                    opacity: 0
+                    MDIcon:
+                        icon: "file-document-edit"
+                        font_size: "26sp"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 1, 1, 1, 1
+                    MDLabel:
+                        text: "Exam PIN"
+                        font_style: "Caption"
+                        halign: "center"
+                        theme_text_color: "Custom"
+                        text_color: 0.9, 0.95, 1, 1
+
+            # ── Loading progress bar (hand-drawn: a track + an animated fill) ──
+            Widget:
+                id: progress_track
+                size_hint: None, None
+                size: dp(200), dp(4)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.1}
+                opacity: 0
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.25
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(2)]
+
+            Widget:
+                id: progress_fill
+                size_hint: None, None
+                size: 0, dp(4)
+                pos: progress_track.pos
+                opacity: 0
+                canvas.before:
+                    Color:
+                        rgba: 1, 1, 1, 0.95
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(2)]
+
+            MDLabel:
+                id: splash_loading_label
+                text: "Loading..."
+                font_style: "Caption"
+                halign: "center"
+                theme_text_color: "Custom"
+                text_color: 0.8, 0.88, 1, 1
+                size_hint: None, None
+                size: dp(200), dp(20)
+                pos_hint: {'center_x': 0.5, 'center_y': 0.065}
                 opacity: 0
 
 
@@ -12428,36 +12612,198 @@ class DashboardApp(MDApp):
                 self.root.current = "login"
 
     def play_splash_animation(self):
-        """Animated welcome splash shown once on app launch, then transitions to login."""
+        """
+        Entry point for the splash screen, called once from on_start().
+
+        If assets/welcome.mp4 exists it is played fullscreen; otherwise we
+        fall back to the fully animated Cheap4U splash (gradient + glowing
+        pulsing logo + staggered text/icons + loading bar). Either path
+        ends by calling self._finish_splash(), which routes to the PIN /
+        login screen or dashboard via the existing route_to_login_or_pin().
+        """
         try:
             self.root.current = "splash"
             screen = self.root.get_screen("splash")
-            logo = screen.ids.splash_logo
-            welcome = screen.ids.splash_welcome
-            subtext = screen.ids.splash_subtext
+            self._splash_particles = []
 
-            # Logo pops in with a gentle bounce
-            logo.size = (dp(100), dp(100))
-            logo.opacity = 0
-            (Animation(opacity=1, size=(dp(160), dp(160)), duration=0.8, transition='out_back')).start(logo)
+            # Paint the blue gradient once, and keep it correct if the
+            # window is resized or rotated while the splash is showing.
+            splash_bg = screen.ids.splash_root
+            self._paint_splash_gradient(splash_bg)
+            splash_bg.bind(size=lambda *a: self._paint_splash_gradient(splash_bg))
 
-            # Welcome text fades in shortly after the logo
-            def show_welcome(dt):
-                Animation(opacity=1, duration=0.6, transition='out_quad').start(welcome)
-            Clock.schedule_once(show_welcome, 0.6)
+            # Ambient floating particles drift for as long as we're on
+            # this screen, whether we end up playing the video or not.
+            self._spawn_splash_particles(screen.ids.particle_layer)
 
-            # Subtext fades in last
-            def show_subtext(dt):
-                Animation(opacity=1, duration=0.6, transition='out_quad').start(subtext)
-            Clock.schedule_once(show_subtext, 1.0)
-
-            # Auto-advance to login (or quick PIN screen) once the sequence has played
-            def go_to_login(dt):
-                self.route_to_login_or_pin()
-            Clock.schedule_once(go_to_login, 2.4)
+            video_path = os.path.join("assets", "welcome.mp4")
+            if os.path.exists(video_path):
+                self._play_splash_video(screen, video_path)
+            else:
+                self._play_splash_fallback(screen)
         except Exception as e:
             print(f"play_splash_animation error: {e}")
-            self.root.current = "login"
+            self._finish_splash()
+
+    def _paint_splash_gradient(self, widget, *args):
+        """
+        Hand-paint a soft vertical gradient (deep navy -> Cheap4U blue
+        #1565C0) onto `widget`'s canvas. Plain Kivy has no gradient
+        graphics instruction, so we fake one with a stack of thin,
+        interpolated-color rectangles - a standard, cheap-to-render trick.
+        """
+        try:
+            widget.canvas.before.clear()
+            steps = 40
+            top = (13 / 255, 27 / 255, 74 / 255)       # deep navy
+            bottom = (21 / 255, 101 / 255, 192 / 255)   # Cheap4U blue #1565C0
+            with widget.canvas.before:
+                for i in range(steps):
+                    t = i / steps
+                    Color(
+                        top[0] + (bottom[0] - top[0]) * t,
+                        top[1] + (bottom[1] - top[1]) * t,
+                        top[2] + (bottom[2] - top[2]) * t,
+                        1,
+                    )
+                    Rectangle(
+                        pos=(widget.x, widget.y + widget.height * i / steps),
+                        size=(widget.width + 2, widget.height / steps + 2),
+                    )
+        except Exception as e:
+            print(f"gradient paint error: {e}")
+
+    def _spawn_splash_particles(self, layer, count=14):
+        """Create a handful of small glowing dots for the ambient
+        'floating particles' background effect, and set each one drifting."""
+        for _ in range(count):
+            diameter = dp(random.uniform(4, 10))
+            particle = GlowParticle(color=(1, 1, 1, random.uniform(0.15, 0.45)), diameter=diameter)
+            particle.pos = (random.uniform(0, max(Window.width - diameter, 1)), -diameter)
+            layer.add_widget(particle)
+            self._splash_particles.append(particle)
+            self._drift_particle(particle)
+
+    def _drift_particle(self, particle):
+        """Float one particle upward and fade it, then respawn it at the
+        bottom with a new random path. Runs entirely on Kivy's Animation
+        clock, so it never blocks the UI thread."""
+        if not particle.parent:
+            return
+        drift_x = particle.x + random.uniform(-dp(30), dp(30))
+        duration = random.uniform(4.5, 7.5)
+        anim = Animation(
+            y=Window.height + dp(20),
+            x=drift_x,
+            opacity=random.uniform(0.15, 0.4),
+            duration=duration,
+            transition='linear',
+        )
+
+        def respawn(*_args):
+            if not particle.parent:
+                return
+            particle.x = random.uniform(0, max(Window.width - particle.width, 1))
+            particle.y = -particle.height
+            self._drift_particle(particle)
+
+        anim.bind(on_complete=respawn)
+        anim.start(particle)
+
+    def _stop_splash_particles(self):
+        """Cancel and remove every splash particle once we're leaving the screen."""
+        for particle in getattr(self, '_splash_particles', []):
+            Animation.cancel_all(particle)
+            if particle.parent:
+                particle.parent.remove_widget(particle)
+        self._splash_particles = []
+
+    def _play_splash_video(self, screen, video_path):
+        """Play assets/welcome.mp4 fullscreen, then hand off to _finish_splash()."""
+        try:
+            video = screen.ids.splash_video
+            video.size_hint = (1, 1)
+            video.opacity = 1
+            video.source = video_path
+            video.state = 'play'
+            self._video_finished = False
+
+            def on_finished(*_args):
+                if self._video_finished:
+                    return
+                self._video_finished = True
+                self._finish_splash()
+
+            video.bind(on_eos=lambda *a: on_finished())
+            # Safety net: if eos never fires for some reason (corrupt file,
+            # provider quirk), don't leave the user stuck on the splash.
+            Clock.schedule_once(lambda dt: on_finished(), 6)
+        except Exception as e:
+            print(f"splash video error: {e}")
+            self._play_splash_fallback(screen)
+
+    def _play_splash_fallback(self, screen):
+        """
+        The animated splash: glow halo blooms in, logo scales 0% -> 100%
+        with a bounce and then pulses forever, brand text and service
+        icons fade in one after another, and a loading bar fills up -
+        all choreographed with Clock.schedule_once so nothing blocks the
+        UI thread and everything stays a smooth 60 FPS.
+        """
+        ids = screen.ids
+        halo, logo = ids.logo_halo, ids.splash_logo
+        title, tagline = ids.splash_title, ids.splash_tagline
+        chips = [ids.chip_data, ids.chip_airtime, ids.chip_electricity, ids.chip_cable, ids.chip_exam]
+        track, fill, loading_label = ids.progress_track, ids.progress_fill, ids.splash_loading_label
+
+        # Glow halo blooms in behind the logo ("soft light effects")
+        Animation(size=(dp(220), dp(220)), opacity=1, duration=0.9, transition='out_quad').start(halo)
+
+        # Logo scales from 0% to 100% with a soft bounce, then pulses gently forever
+        def pulse_logo(*_a):
+            pulse = (
+                Animation(size=(dp(162), dp(162)), duration=0.9, transition='in_out_sine')
+                + Animation(size=(dp(150), dp(150)), duration=0.9, transition='in_out_sine')
+            )
+            pulse.repeat = True
+            pulse.start(logo)
+
+        logo_anim = Animation(size=(dp(150), dp(150)), opacity=1, duration=0.9, transition='out_back')
+        logo_anim.bind(on_complete=pulse_logo)
+        logo_anim.start(logo)
+
+        # Brand name, then tagline, fade in shortly after
+        Clock.schedule_once(lambda dt: Animation(opacity=1, duration=0.5, transition='out_quad').start(title), 0.9)
+        Clock.schedule_once(lambda dt: Animation(opacity=1, duration=0.5, transition='out_quad').start(tagline), 1.2)
+
+        # Service icons fade in one by one, left to right
+        for i, chip in enumerate(chips):
+            Clock.schedule_once(
+                lambda dt, w=chip: Animation(opacity=1, duration=0.4, transition='out_quad').start(w),
+                1.6 + i * 0.12,
+            )
+
+        # Loading bar appears, then fills up as the splash finishes
+        def show_progress(dt):
+            Animation(opacity=1, duration=0.3).start(track)
+            Animation(opacity=1, duration=0.3).start(fill)
+            Animation(opacity=1, duration=0.3).start(loading_label)
+            Animation(width=track.width, duration=1.6, transition='out_quad').start(fill)
+        Clock.schedule_once(show_progress, 2.3)
+
+        # Hold for a beat, fade everything out, then move on (~4.3s total)
+        Clock.schedule_once(lambda dt: self._fade_out_splash(screen), 3.9)
+
+    def _fade_out_splash(self, screen):
+        """Smooth fade-out of the whole splash before navigating away."""
+        Animation(opacity=0, duration=0.4, transition='in_quad').start(screen.ids.splash_float)
+        Clock.schedule_once(lambda dt: self._finish_splash(), 0.45)
+
+    def _finish_splash(self):
+        """Stop splash-only effects and hand control to the login/dashboard flow."""
+        self._stop_splash_particles()
+        self.route_to_login_or_pin()
+
 
     def initialize_services(self):
         def ok(req, r): print(f"✅ Backend: {r.get('message','OK')}")
