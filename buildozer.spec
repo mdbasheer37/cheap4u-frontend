@@ -46,7 +46,7 @@ version = 0.1
 # comma separated e.g. requirements = sqlite3,kivy
 # Versions are pinned to known-compatible releases so CI builds are
 # reproducible and don't suddenly break when a new Kivy/KivyMD drops.
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,ffpyplayer
 
 
 # (str) Custom source folders for requirements
