@@ -3459,6 +3459,59 @@ MDScreenManager:
 
                     OneLineIconListItem:
 
+                        text: "🏆 Monthly Challenge"
+
+                        on_release: app.open_monthly_challenge_screen()
+
+                        IconLeftWidget:
+
+                            icon: "trophy"
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
+
+
+
+                    OneLineIconListItem:
+
+                        text: "Winners History"
+
+                        on_release: app.open_winners_history_screen()
+
+                        IconLeftWidget:
+
+                            icon: "medal"
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
+
+
+
+                    OneLineIconListItem:
+
+                        text: "Challenge Admin"
+
+                        opacity: 1 if app.current_user and app.current_user.get('role') == 'admin' else 0
+                        disabled: not (app.current_user and app.current_user.get('role') == 'admin')
+                        size_hint_y: None
+                        height: dp(48) if app.current_user and app.current_user.get('role') == 'admin' else 0
+
+                        on_release: app.open_challenge_admin_screen()
+
+                        IconLeftWidget:
+
+                            icon: "shield-crown"
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
+
+
+
+                    OneLineIconListItem:
+
                         text: "Themes"
 
                         on_release: app.switch_theme()
@@ -4085,6 +4138,8 @@ MDScreenManager:
 
     name: "dashboard"
 
+    on_pre_enter: app.install_challenge_dashboard_card()
+
     MDScreen:
 
         md_bg_color: [0.95, 0.95, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.1, 0.1, 0.15, 1]
@@ -4120,6 +4175,8 @@ MDScreenManager:
                 
 
                 MDBoxLayout:
+
+                    id: dashboard_content_box
 
                     orientation: 'vertical'
 
@@ -7822,7 +7879,10 @@ class LoaderWidget(FloatLayout):
         Animation.cancel_all(self)
             
 
-class DashboardApp(MDApp):
+from monthly_challenge import ChallengeMixin, register_challenge_screens
+
+
+class DashboardApp(ChallengeMixin, MDApp):
 
     selected_payment_method = StringProperty(None)
 
@@ -18289,7 +18349,9 @@ class DashboardApp(MDApp):
         self.load_transactions()
         self.update_theme_colors()
         Window.bind(on_keyboard=self.handle_back_button)
-        return Builder.load_string(KV)
+        root = Builder.load_string(KV)
+        register_challenge_screens(root, self)
+        return root
     
     
     def handle_tvpass_error(self, error_msg):
