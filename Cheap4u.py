@@ -12798,6 +12798,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             container = screen.ids.splash_video_container
             video = Video(source=video_path, state="play")
             video.size_hint = (1, 1)
+            video.allow_stretch = True
+            video.keep_ratio = True
             container.add_widget(video)
             container.opacity = 1
 
@@ -12817,13 +12819,16 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             video.bind(on_eos=finish)
 
-            # If playback never actually starts (e.g. no video provider
-            # compiled into this build), position stays at 0 - bail out
-            # to the animated splash rather than sitting on a blank screen.
+            # If playback never actually starts, or audio is decoding but no
+            # video frame ever arrives (texture stays None - e.g. an
+            # incompatible codec profile), bail out to the animated splash
+            # rather than sitting on a blank/silent-video screen.
             def check_playing(dt):
-                if not self._splash_done and video.position <= 0:
+                if self._splash_done:
+                    return
+                if video.position <= 0 or video.texture is None:
                     fall_back()
-            Clock.schedule_once(check_playing, 1.5)
+            Clock.schedule_once(check_playing, 2.0)
             return True
         except Exception as e:
             print(f"Video splash error: {e}")
