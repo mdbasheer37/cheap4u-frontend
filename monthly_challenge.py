@@ -94,14 +94,17 @@ CHALLENGE_KV = '''
 
     MDBoxLayout:
         size_hint_y: None
-        height: dp(28)
+        height: dp(22)
 
         MDLabel:
             text: "Monthly Champion Challenge"
             bold: True
             theme_text_color: "Custom"
             text_color: 1, 1, 1, 1
-            font_style: "Subtitle1"
+            font_style: "Caption"
+            font_size: "13sp"
+            shorten: True
+            shorten_from: "right"
 
         MDLabel:
             id: countdown_label
@@ -110,7 +113,8 @@ CHALLENGE_KV = '''
             theme_text_color: "Custom"
             text_color: 1, 1, 1, 0.9
             font_style: "Caption"
-            size_hint_x: 0.4
+            font_size: "11sp"
+            size_hint_x: 0.36
 
     MDBoxLayout:
         spacing: dp(20)
