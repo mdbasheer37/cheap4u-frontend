@@ -98,7 +98,7 @@ PRIVACY_POLICY_TEXT = """Privacy Policy
 
 Last updated: July 2026
 
-This Privacy Policy explains how Cheap4U Technology ("we", "us", "our") collects, uses, and protects your information when you use the Cheap4U mobile application ("App").
+This Privacy Policy explains how Cheap4U Technology we collects, uses, and protects your information when you use the Cheap4U mobile application ("App").
 
 1. Information We Collect
 - Account information: your name, email address, phone number, and password (stored securely as a hash, never in plain text).
@@ -1747,7 +1747,7 @@ MDScreenManager:
 
                             height: dp(76)
 
-                            icon_right: "phone"
+                            icon_left: "phone"
 
                             on_text: app.validate_phone_input(self.text, app.selected_data_network)                            
 
@@ -2165,7 +2165,7 @@ MDScreenManager:
 
                                 height: dp(76)
 
-                                icon_right: "flash"
+                                icon_left: "flash"
 
                                 on_text: app.validate_meter_number(self.text)
 
@@ -2235,7 +2235,7 @@ MDScreenManager:
 
                             height: dp(76)
 
-                            icon_right: "phone"
+                            icon_left: "phone"
 
                             on_text: app.validate_phone_input(self.text)
 
@@ -2301,7 +2301,7 @@ MDScreenManager:
 
                                 input_type: 'number'
 
-                                icon_right: "currency-ngn"
+                                icon_left: "currency-ngn"
 
                                 on_text: app.validate_electricity_amount(self.text)
 
@@ -2695,7 +2695,7 @@ MDScreenManager:
 
                             height: dp(76)
 
-                            icon_right: "television"
+                            icon_left: "television"
 
                             on_text: app.validate_smartcard_input(self.text)
 
@@ -3095,7 +3095,7 @@ MDScreenManager:
 
                             height: dp(76)
 
-                            icon_right: "currency-ngn"
+                            icon_left: "currency-ngn"
 
                             on_text: app.validate_custom_amount(self.text)
 
@@ -3129,7 +3129,7 @@ MDScreenManager:
 
                             height: dp(76)
 
-                            icon_right: "phone"
+                            icon_left: "phone"
 
                             on_text: app.validate_phone_input(self.text)
 
@@ -3741,7 +3741,7 @@ MDScreenManager:
                             FitImage:
                                 source: "assets/default_avatar.png" if not app.current_user or not app.current_user.get('avatar') else app.current_user['avatar']
                                 size_hint: (None, 1)
-                                width: dp(180)
+                                width: dp(100)
                                 radius: [dp(40)]
 
                             MDBoxLayout:
@@ -6543,7 +6543,7 @@ MDScreenManager:
                             mode: "rectangle"
                             size_hint_y: None
                             height: dp(76)
-                            icon_right: "numeric"
+                            icon_left: "numeric"
                             on_text: app.validate_quantity_input(self.text)
                             color_active: app.theme_cls.primary_color
                             line_color_focus: app.theme_cls.primary_color
