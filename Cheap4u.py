@@ -1202,6 +1202,10 @@ MDScreenManager:
 
                     mode: "rectangle"
 
+                    size_hint_y: None
+
+                    height: dp(76)
+
                     size_hint_x: 1
 
                     line_color_focus: app.theme_cls.primary_color
@@ -1739,6 +1743,10 @@ MDScreenManager:
 
                             mode: "rectangle"
 
+                            size_hint_y: None
+
+                            height: dp(76)
+
                             icon_right: "phone"
 
                             on_text: app.validate_phone_input(self.text, app.selected_data_network)                            
@@ -2153,6 +2161,10 @@ MDScreenManager:
 
                                 mode: "rectangle"
 
+                                size_hint_y: None
+
+                                height: dp(76)
+
                                 icon_right: "flash"
 
                                 on_text: app.validate_meter_number(self.text)
@@ -2219,6 +2231,10 @@ MDScreenManager:
 
                             mode: "rectangle"
 
+                            size_hint_y: None
+
+                            height: dp(76)
+
                             icon_right: "phone"
 
                             on_text: app.validate_phone_input(self.text)
@@ -2278,6 +2294,10 @@ MDScreenManager:
                                 size_hint_x: 0.7
 
                                 mode: "rectangle"
+
+                                size_hint_y: None
+
+                                height: dp(76)
 
                                 input_type: 'number'
 
@@ -2670,6 +2690,10 @@ MDScreenManager:
                             size_hint_x: 1
 
                             mode: "rectangle"
+
+                            size_hint_y: None
+
+                            height: dp(76)
 
                             icon_right: "television"
 
@@ -3067,6 +3091,10 @@ MDScreenManager:
 
                             mode: "rectangle"
 
+                            size_hint_y: None
+
+                            height: dp(76)
+
                             icon_right: "currency-ngn"
 
                             on_text: app.validate_custom_amount(self.text)
@@ -3096,6 +3124,10 @@ MDScreenManager:
                             max_text_length: 11
 
                             mode: "rectangle"
+
+                            size_hint_y: None
+
+                            height: dp(76)
 
                             icon_right: "phone"
 
@@ -3319,6 +3351,12 @@ MDScreenManager:
 
             ScrollView:
 
+                do_scroll_x: False
+
+                bar_width: dp(4)
+
+                bar_color: app.theme_cls.primary_color
+
                 MDBoxLayout:
 
                     orientation: 'vertical'
@@ -3326,6 +3364,8 @@ MDScreenManager:
                     spacing: dp(15)
 
                     padding: dp(10)
+
+                    size_hint_y: None
 
                     height: self.minimum_height
 
@@ -3459,7 +3499,7 @@ MDScreenManager:
 
                     OneLineIconListItem:
 
-                        text: "🏆 Monthly Challenge"
+                        text: "Monthly Challenge"
 
                         on_release: app.open_monthly_challenge_screen()
 
@@ -5782,6 +5822,10 @@ MDScreenManager:
 
                         mode: "rectangle"
 
+                        size_hint_y: None
+
+                        height: dp(76)
+
                         size_hint_x: 1
 
                         line_color_focus: app.theme_cls.primary_color
@@ -5805,6 +5849,10 @@ MDScreenManager:
                         icon_left: "key"
 
                         mode: "rectangle"
+
+                        size_hint_y: None
+
+                        height: dp(76)
 
                         size_hint_x: 1
 
@@ -6171,6 +6219,8 @@ MDScreenManager:
                                 hint_text: "Full Name"
                                 icon_left: "account"
                                 mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(76)
                                 size_hint_x: 1
                                 line_color_focus: app.theme_cls.primary_color
                                 helper_text_mode: "on_focus"
@@ -6183,6 +6233,8 @@ MDScreenManager:
                                 hint_text: "Email"
                                 icon_left: "email"
                                 mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(76)
                                 size_hint_x: 1
                                 line_color_focus: app.theme_cls.primary_color
                                 helper_text_mode: "on_focus"
@@ -6195,6 +6247,8 @@ MDScreenManager:
                                 hint_text: "Phone Number"
                                 icon_left: "phone"
                                 mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(76)
                                 size_hint_x: 1
                                 input_type: 'number'
                                 max_text_length: 11
@@ -6209,6 +6263,8 @@ MDScreenManager:
                                 hint_text: "Referral Code (Optional)"
                                 icon_left: "account-group"
                                 mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(76)
                                 size_hint_x: 1
                                 line_color_focus: app.theme_cls.primary_color
                                 helper_text_mode: "on_focus"
@@ -6221,6 +6277,8 @@ MDScreenManager:
                                 hint_text: "Password"
                                 icon_left: "key"
                                 mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(76)
                                 size_hint_x: 1
                                 password: True
                                 line_color_focus: app.theme_cls.primary_color
@@ -6234,6 +6292,8 @@ MDScreenManager:
                                 hint_text: "Confirm Password"
                                 icon_left: "key-change"
                                 mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(76)
                                 size_hint_x: 1
                                 password: True
                                 line_color_focus: app.theme_cls.primary_color
@@ -6481,6 +6541,8 @@ MDScreenManager:
                             helper_text_mode: "on_focus"
                             size_hint_x: 1
                             mode: "rectangle"
+                            size_hint_y: None
+                            height: dp(76)
                             icon_right: "numeric"
                             on_text: app.validate_quantity_input(self.text)
                             color_active: app.theme_cls.primary_color

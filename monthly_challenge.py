@@ -97,7 +97,7 @@ CHALLENGE_KV = '''
         height: dp(28)
 
         MDLabel:
-            text: "🏆 Monthly Champion Challenge"
+            text: "Monthly Champion Challenge"
             bold: True
             theme_text_color: "Custom"
             text_color: 1, 1, 1, 1
@@ -270,7 +270,7 @@ CHALLENGE_KV = '''
                     on_release: app.root.current = "dashboard"
 
                 MDLabel:
-                    text: "🏆 Monthly Challenge"
+                    text: "Monthly Challenge"
                     bold: True
                     font_style: "H6"
                     theme_text_color: "Custom"
@@ -289,7 +289,7 @@ CHALLENGE_KV = '''
                 md_bg_color: 1, 1, 1, 1
 
                 MDLabel:
-                    text: "⏳ Ends in:"
+                    text: "Ends in:"
                     theme_text_color: "Secondary"
                     font_style: "Caption"
 
@@ -346,7 +346,7 @@ CHALLENGE_KV = '''
                     on_release: app.root.current = "monthly_challenge"
 
                 MDLabel:
-                    text: "🏅 Winners History"
+                    text: "Winners History"
                     bold: True
                     font_style: "H6"
                     theme_text_color: "Custom"
@@ -387,7 +387,7 @@ CHALLENGE_KV = '''
                     on_release: app.root.current = "dashboard"
 
                 MDLabel:
-                    text: "⚙️ Challenge Admin"
+                    text: "Challenge Admin"
                     bold: True
                     font_style: "H6"
                     theme_text_color: "Custom"
@@ -520,7 +520,7 @@ class LeaderboardRow(MDCard):
 
     def set_data(self, row):
         self.rank = row.get('rank', 0)
-        self.rank_text = f"#{self.rank}" if self.rank > 3 else {1: "🥇", 2: "🥈", 3: "🥉"}.get(self.rank, f"#{self.rank}")
+        self.rank_text = f"#{self.rank}"
         self.user_name = row.get('name', 'Unknown')
         self.avatar_initial = row.get('avatar_initial', '?')
         self.amount_text = _fmt_naira(row.get('total_amount', 0))
@@ -596,7 +596,7 @@ class ChallengeMixin:
             screen = self.root.get_screen('dashboard')
             box = screen.ids.dashboard_content_box
         except Exception as e:
-            print(f"⚠️ Could not find dashboard_content_box: {e}")
+            print(f"Could not find dashboard_content_box: {e}")
             return
         if self._challenge_card is None:
             self._challenge_card = ChallengeDashboardCard()
@@ -628,7 +628,7 @@ class ChallengeMixin:
 
             overtake = data.get('amount_to_overtake_next')
             if rank == 1:
-                card.ids.overtake_label.text = "🥇 You're in the lead — keep it up!"
+                card.ids.overtake_label.text = "You're in the lead — keep it up!"
             elif overtake is not None:
                 card.ids.overtake_label.text = f"Spend {_fmt_naira(overtake)} more to overtake the next rank"
             else:
