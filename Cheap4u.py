@@ -20,7 +20,7 @@ from kivy.factory import Factory
 from kivymd.app import MDApp
 from kivymd.uix.fitimage import FitImage
 from kivymd.uix.dialog import MDDialog
-from kivymd.uix.button import MDFlatButton, MDRaisedButton, MDRectangleFlatButton
+from kivymd.uix.button import MDFlatButton, MDRaisedButton, MDRectangleFlatButton, MDIconButton
 from kivymd.uix.behaviors import BackgroundColorBehavior, RoundedRectangularElevationBehavior
 from kivymd.uix.list import (
     OneLineIconListItem, IconLeftWidget, TwoLineListItem, OneLineAvatarListItem, OneLineListItem
@@ -367,6 +367,12 @@ class PinLoginScreen(Screen):
 class AirtimeToCashScreen(Screen):
     pass
 
+class SupportScreen(Screen):
+    pass
+
+class AIChatScreen(Screen):
+    pass
+
 KV = '''
 
 #:import hex kivy.utils.get_color_from_hex
@@ -494,6 +500,10 @@ MDScreenManager:
     OTPVerificationScreen:
 
         name: "otp_verification"   
+
+    SupportScreen:
+
+    AIChatScreen:
 
 
 
@@ -5650,7 +5660,7 @@ MDScreenManager:
                 MDBoxLayout:
                     orientation: 'vertical'
                     on_touch_down:
-                        if self.collide_point(*args[1].pos): app.open_whatsapp_support()
+                        if self.collide_point(*args[1].pos): app.open_support()
                     Widget:
                         size_hint_y: .20  
                        
@@ -5659,13 +5669,13 @@ MDScreenManager:
                         halign: 'center'
                         pos_hint: {"center_x": .5}
                         theme_text_color: "Custom"
-                        text_color: [0.5, 0.5, 0.5, 1]
+                        text_color: [0.1, 0.6, 1, 1] if app.current_screen_name in ('support', 'ai_chat') else [0.5, 0.5, 0.5, 1]
                     MDLabel:
                         text: 'Support'
                         halign: 'center'
                         font_style: 'Caption'
                         theme_text_color: "Custom"
-                        text_color: [0.5, 0.5, 0.5, 1]
+                        text_color: [0.1, 0.6, 1, 1] if app.current_screen_name in ('support', 'ai_chat') else [0.5, 0.5, 0.5, 1]
 
                 MDBoxLayout:
                     orientation: 'vertical'
@@ -7738,7 +7748,434 @@ MDScreenManager:
                             
                             
                
-                                
+# ══════════════════════════════════════════════════════════════════
+# SUPPORT CENTER
+# Replaces the old WhatsApp redirect button. Tapping "Support" in the
+# bottom nav opens this screen instead of leaving the app.
+# ══════════════════════════════════════════════════════════════════
+
+<ChatBubbleLabel@MDLabel>:
+    # Reusable auto-height, word-wrapping label used inside chat bubbles.
+    size_hint_y: None
+    text_size: self.width, None
+    height: self.texture_size[1]
+    markup: False
+    font_style: "Body1"
+
+<SupportScreen>:
+    name: "support"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+
+            # Hero header - blue gradient, "Need Help?"
+            GradientCard:
+                size_hint_y: None
+                height: dp(150)
+                radius: [0, 0, 28, 28]
+                elevation: 4
+                padding: [dp(8), dp(30), dp(20), dp(16)]
+
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(2)
+
+                    MDIconButton:
+                        icon: "arrow-left"
+                        theme_icon_color: "Custom"
+                        icon_color: [1, 1, 1, 1]
+                        on_release: app.switch_screen('dashboard')
+
+                    Widget:
+                        size_hint_y: None
+                        height: dp(2)
+
+                    MDLabel:
+                        text: "Need Help?"
+                        font_style: "H4"
+                        bold: True
+                        theme_text_color: "Custom"
+                        text_color: [1, 1, 1, 1]
+                        size_hint_y: None
+                        height: dp(42)
+                        padding: [dp(12), 0]
+
+                    MDLabel:
+                        text: "We're here to assist you 24/7."
+                        font_style: "Subtitle1"
+                        theme_text_color: "Custom"
+                        text_color: [1, 1, 1, 0.9]
+                        size_hint_y: None
+                        height: dp(26)
+                        padding: [dp(12), 0]
+
+            ScrollView:
+                do_scroll_x: False
+
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: [dp(16), dp(20), dp(16), dp(30)]
+                    spacing: dp(16)
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    # 1. AI ASSISTANT - main / biggest option
+                    GradientCard:
+                        size_hint_y: None
+                        height: dp(150)
+                        radius: [24]
+                        elevation: 6
+                        padding: dp(18)
+                        on_release: app.open_ai_chat()
+
+                        MDBoxLayout:
+                            spacing: dp(16)
+
+                            MDCard:
+                                size_hint: [None, None]
+                                size: [dp(60), dp(60)]
+                                radius: [18]
+                                md_bg_color: [1, 1, 1, 0.22]
+                                pos_hint: {"center_y": 0.5}
+
+                                MDIcon:
+                                    icon: "robot-happy-outline"
+                                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                    theme_text_color: "Custom"
+                                    text_color: [1, 1, 1, 1]
+                                    font_size: "32sp"
+
+                            MDBoxLayout:
+                                orientation: 'vertical'
+                                spacing: dp(4)
+                                pos_hint: {"center_y": 0.5}
+
+                                MDLabel:
+                                    text: "AI Assistant"
+                                    font_style: "H5"
+                                    bold: True
+                                    theme_text_color: "Custom"
+                                    text_color: [1, 1, 1, 1]
+                                    size_hint_y: None
+                                    height: dp(32)
+
+                                MDLabel:
+                                    text: "Get instant answers, 24/7"
+                                    font_style: "Body2"
+                                    theme_text_color: "Custom"
+                                    text_color: [1, 1, 1, 0.9]
+                                    size_hint_y: None
+                                    height: dp(22)
+
+                                MDBoxLayout:
+                                    size_hint_y: None
+                                    height: dp(20)
+                                    spacing: dp(6)
+
+                                    MDIcon:
+                                        icon: "circle"
+                                        font_size: "10sp"
+                                        theme_text_color: "Custom"
+                                        text_color: [0.3, 1, 0.5, 1]
+                                        size_hint_x: None
+                                        width: dp(14)
+
+                                    MDLabel:
+                                        text: "Online now"
+                                        font_style: "Caption"
+                                        theme_text_color: "Custom"
+                                        text_color: [1, 1, 1, 0.85]
+
+                            MDIcon:
+                                icon: "chevron-right"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 0.9]
+                                pos_hint: {"center_y": 0.5}
+                                size_hint_x: None
+                                width: dp(24)
+
+                    # 2. PHONE SUPPORT
+                    MDCard:
+                        size_hint_y: None
+                        height: dp(88)
+                        radius: [18]
+                        elevation: 2
+                        padding: dp(16)
+                        md_bg_color: app.theme_cls.bg_light
+                        on_release: app.call_phone_support()
+
+                        MDBoxLayout:
+                            spacing: dp(16)
+
+                            MDCard:
+                                size_hint: [None, None]
+                                size: [dp(48), dp(48)]
+                                radius: [14]
+                                md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1]
+                                pos_hint: {"center_y": 0.5}
+
+                                MDIcon:
+                                    icon: "phone"
+                                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                    theme_text_color: "Custom"
+                                    text_color: app.theme_cls.primary_color
+
+                            MDBoxLayout:
+                                orientation: 'vertical'
+                                pos_hint: {"center_y": 0.5}
+
+                                MDLabel:
+                                    text: "Phone Support"
+                                    font_style: "Subtitle1"
+                                    bold: True
+                                    theme_text_color: "Primary"
+                                    size_hint_y: None
+                                    height: dp(26)
+
+                                MDLabel:
+                                    text: "Tap to Call  \u2022  " + app.support_phone
+                                    font_style: "Caption"
+                                    theme_text_color: "Secondary"
+                                    size_hint_y: None
+                                    height: dp(20)
+
+                            MDIcon:
+                                icon: "chevron-right"
+                                theme_text_color: "Secondary"
+                                pos_hint: {"center_y": 0.5}
+                                size_hint_x: None
+                                width: dp(24)
+
+                    # 3. EMAIL SUPPORT
+                    MDCard:
+                        size_hint_y: None
+                        height: dp(88)
+                        radius: [18]
+                        elevation: 2
+                        padding: dp(16)
+                        md_bg_color: app.theme_cls.bg_light
+                        on_release: app.open_email_support()
+
+                        MDBoxLayout:
+                            spacing: dp(16)
+
+                            MDCard:
+                                size_hint: [None, None]
+                                size: [dp(48), dp(48)]
+                                radius: [14]
+                                md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1]
+                                pos_hint: {"center_y": 0.5}
+
+                                MDIcon:
+                                    icon: "email"
+                                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                    theme_text_color: "Custom"
+                                    text_color: app.theme_cls.primary_color
+
+                            MDBoxLayout:
+                                orientation: 'vertical'
+                                pos_hint: {"center_y": 0.5}
+
+                                MDLabel:
+                                    text: "Email Support"
+                                    font_style: "Subtitle1"
+                                    bold: True
+                                    theme_text_color: "Primary"
+                                    size_hint_y: None
+                                    height: dp(26)
+
+                                MDLabel:
+                                    text: app.support_email
+                                    font_style: "Caption"
+                                    theme_text_color: "Secondary"
+                                    size_hint_y: None
+                                    height: dp(20)
+
+                            MDIcon:
+                                icon: "chevron-right"
+                                theme_text_color: "Secondary"
+                                pos_hint: {"center_y": 0.5}
+                                size_hint_x: None
+                                width: dp(24)
+
+                    # Business hours + version
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: dp(110)
+                        padding: [0, dp(14), 0, 0]
+
+                        MDLabel:
+                            text: "Business Hours"
+                            font_style: "Subtitle2"
+                            bold: True
+                            halign: "center"
+                            theme_text_color: "Primary"
+                            size_hint_y: None
+                            height: dp(24)
+
+                        MDLabel:
+                            text: "Monday - Sunday"
+                            font_style: "Caption"
+                            halign: "center"
+                            theme_text_color: "Secondary"
+                            size_hint_y: None
+                            height: dp(18)
+
+                        MDLabel:
+                            text: "24 Hours Support"
+                            font_style: "Caption"
+                            halign: "center"
+                            theme_text_color: "Secondary"
+                            size_hint_y: None
+                            height: dp(18)
+
+                        MDLabel:
+                            text: "Version " + app.app_version
+                            font_style: "Caption"
+                            halign: "center"
+                            theme_text_color: "Hint"
+                            size_hint_y: None
+                            height: dp(20)
+
+
+# ══════════════════════════════════════════════════════════════════
+# AI CHAT ASSISTANT
+# ══════════════════════════════════════════════════════════════════
+
+<AIChatScreen>:
+    name: "ai_chat"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+
+            # Top bar
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(64)
+                padding: [dp(4), 0, dp(10), 0]
+                spacing: dp(2)
+                md_bg_color: app.theme_cls.primary_color
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.switch_screen('support')
+
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    padding: [dp(4), 0]
+
+                    MDLabel:
+                        text: "AI Assistant"
+                        font_style: "Subtitle1"
+                        bold: True
+                        theme_text_color: "Custom"
+                        text_color: [1, 1, 1, 1]
+                        size_hint_y: None
+                        height: dp(26)
+
+                    MDLabel:
+                        text: "Typing..." if app.ai_chat_typing else "Online \u2022 Replies instantly"
+                        font_style: "Caption"
+                        theme_text_color: "Custom"
+                        text_color: [1, 1, 1, 0.85]
+                        size_hint_y: None
+                        height: dp(18)
+
+                MDIconButton:
+                    icon: "magnify"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.toggle_chat_search()
+
+                MDIconButton:
+                    icon: "delete-outline"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.confirm_clear_ai_chat()
+
+            # Search bar - only visible while search is active
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(50) if app.ai_search_active else 0
+                opacity: 1 if app.ai_search_active else 0
+                padding: [dp(10), dp(4)]
+                md_bg_color: app.theme_cls.bg_light
+
+                MDTextField:
+                    id: chat_search_field
+                    hint_text: "Search this conversation"
+                    mode: "round"
+                    disabled: not app.ai_search_active
+                    on_text: app.filter_chat_search(self.text)
+
+            # Chat messages
+            ScrollView:
+                id: chat_scroll
+                do_scroll_x: False
+                bar_width: dp(3)
+
+                MDBoxLayout:
+                    id: chat_list
+                    orientation: 'vertical'
+                    spacing: dp(10)
+                    padding: [dp(10), dp(14), dp(10), dp(14)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+            # Suggested questions strip
+            ScrollView:
+                size_hint_y: None
+                height: dp(44) if not app.ai_chat_messages else 0
+                opacity: 1 if not app.ai_chat_messages else 0
+                do_scroll_y: False
+                bar_width: 0
+
+                MDBoxLayout:
+                    id: suggestions_box
+                    orientation: 'horizontal'
+                    spacing: dp(8)
+                    padding: [dp(12), dp(4)]
+                    size_hint_x: None
+                    width: self.minimum_width
+
+            # Input bar
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(66)
+                padding: [dp(8), dp(8)]
+                spacing: dp(6)
+                md_bg_color: app.theme_cls.bg_light
+
+                MDIconButton:
+                    icon: "microphone"
+                    theme_icon_color: "Custom"
+                    icon_color: app.theme_cls.primary_color
+                    on_release: app.start_voice_input()
+
+                MDTextField:
+                    id: ai_chat_input
+                    hint_text: "Type your question..."
+                    mode: "round"
+                    multiline: False
+                    size_hint_x: 1
+                    on_text_validate: app.send_ai_message()
+
+                MDIconButton:
+                    icon: "send"
+                    theme_icon_color: "Custom"
+                    icon_color: app.theme_cls.primary_color
+                    on_release: app.send_ai_message()
+
 '''
 
 
@@ -7747,7 +8184,7 @@ MDScreenManager:
 from kivy.properties import StringProperty, NumericProperty
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.widget import Widget
-from kivy.graphics import Color, Rectangle, Ellipse
+from kivy.graphics import Color, Rectangle, Ellipse, RoundedRectangle
 from kivy.graphics.texture import Texture
 from kivy.properties import NumericProperty
 from kivymd.uix.progressbar import MDProgressBar
@@ -7804,6 +8241,58 @@ class GradientBackground(Widget):
     def _update_rect(self, *_):
         self._rect.pos = self.pos
         self._rect.size = self.size
+
+
+class GradientCard(MDCard):
+    """MDCard with a real blue gradient background (instead of a flat
+    md_bg_color), used for the Support Center's hero header and its
+    big "AI Assistant" card so the screen matches the requested
+    modern-fintech / blue-gradient design.
+
+    If texture creation ever fails for any reason (e.g. running
+    headless in a build step) it just silently keeps MDCard's normal
+    flat md_bg_color instead of crashing the app.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        try:
+            self._gradient_tex = self._build_gradient_texture()
+            self.md_bg_color = [0, 0, 0, 0]  # let the gradient show through
+            with self.canvas.before:
+                Color(1, 1, 1, 1)
+                self._grad_rect = RoundedRectangle(
+                    texture=self._gradient_tex,
+                    pos=self.pos,
+                    size=self.size,
+                    radius=self.radius or [0],
+                )
+            self.bind(pos=self._update_gradient, size=self._update_gradient,
+                      radius=self._update_gradient)
+        except Exception as e:
+            print(f"GradientCard texture error (non-fatal): {e}")
+
+    def _build_gradient_texture(self, height=128):
+        # Deep brand blue -> bright brand blue, top to bottom
+        stops = [(10, 80, 190), (25, 135, 240)]
+        buf = bytearray(height * 4)
+        for y in range(height):
+            t = y / (height - 1)
+            r = int(stops[0][0] + (stops[1][0] - stops[0][0]) * t)
+            g = int(stops[0][1] + (stops[1][1] - stops[0][1]) * t)
+            b = int(stops[0][2] + (stops[1][2] - stops[0][2]) * t)
+            idx = y * 4
+            buf[idx:idx + 4] = bytes([r, g, b, 255])
+        tex = Texture.create(size=(1, height), colorfmt="rgba")
+        tex.blit_buffer(bytes(buf), colorfmt="rgba", bufferfmt="ubyte")
+        tex.wrap = "clamp_to_edge"
+        return tex
+
+    def _update_gradient(self, *_):
+        if hasattr(self, '_grad_rect'):
+            self._grad_rect.pos = self.pos
+            self._grad_rect.size = self.size
+            self._grad_rect.radius = self.radius or [0]
 
 
 class GlowPulseLogo(FloatLayout):
@@ -8040,6 +8529,26 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     mobile9_color = ListProperty([0.1, 0.6, 1, 1])  # Blue
     current_screen_name = StringProperty("dashboard")
+
+    # ── Support Center / AI Chat Assistant ──────────────────────────
+    support_phone = StringProperty("+2349037663816")
+    support_email = StringProperty("support@cheap4utechnology.com")
+    app_version = StringProperty("1.0.0")
+
+    ai_chat_messages = ListProperty([])       # [{'role': 'user'|'assistant', 'content': str}, ...]
+    ai_chat_typing = BooleanProperty(False)
+    ai_chat_session_id = StringProperty("")
+    ai_search_active = BooleanProperty(False)
+    ai_last_user_message = StringProperty("")
+
+    AI_SUGGESTED_QUESTIONS = [
+        "How do I buy data?",
+        "My payment failed, what do I do?",
+        "How does the referral program work?",
+        "How do I reset my password?",
+        "What is a pending transaction?",
+        "How do I fund my wallet?",
+    ]
     # In DashboardApp class
     virtual_account_number =   StringProperty('')
     virtual_bank_name = StringProperty('')
@@ -19047,13 +19556,392 @@ class DashboardApp(ChallengeMixin, MDApp):
 
 
 
+    # ═════════════════════════════════════════════════════════════════
+    # SUPPORT CENTER
+    # Replaces the old WhatsApp redirect. Tapping "Support" now opens
+    # an in-app screen with three options: AI Assistant, Phone, Email —
+    # instead of leaving the app for WhatsApp.
+    # ═════════════════════════════════════════════════════════════════
+
+    def open_support(self):
+        """Open the in-app Support Center."""
+        self.switch_screen('support')
+
+    # Kept so any old call sites (or saved deep-links) still work -
+    # now opens the in-app Support Center instead of WhatsApp.
     def open_whatsapp_support(self):
+        self.open_support()
 
-           """Open WhatsApp support link"""
+    def call_phone_support(self):
+        """Open the native phone dialer pre-filled with the support number."""
+        try:
+            webbrowser.open(f"tel:{self.support_phone}")
+        except Exception as e:
+            print(f"call_phone_support error: {e}")
+            self.show_error_dialog("Could not open the phone dialer.")
 
-           webbrowser.open("https://wa.me/+2349037663816")
+    def open_email_support(self):
+        """Open the user's email app pre-filled with the support address."""
+        try:
+            subject = "Cheap4U%20Support%20Request"
+            webbrowser.open(f"mailto:{self.support_email}?subject={subject}")
+        except Exception as e:
+            print(f"open_email_support error: {e}")
+            self.show_error_dialog("Could not open your email app.")
 
-           self.show_success_dialog("Opening WhatsApp support...")
+    # ── AI Chat Assistant ────────────────────────────────────────────
+
+    def _get_ai_chat_screen(self):
+        try:
+            return self.root.get_screen('ai_chat')
+        except Exception:
+            return None
+
+    def open_ai_chat(self):
+        """Open the AI Assistant chat screen, restore history, show suggestions."""
+        self.switch_screen('ai_chat')
+        Clock.schedule_once(lambda dt: self._render_suggested_questions(), 0.1)
+        if not self.ai_chat_messages:
+            Clock.schedule_once(lambda dt: self.load_ai_chat_history(), 0.15)
+        else:
+            Clock.schedule_once(lambda dt: self._render_chat_messages(), 0.1)
+
+    def load_ai_chat_history(self):
+        """Fetch saved chat history from the backend for this user/session."""
+        def on_result(success, result):
+            if success and result and result.get('data'):
+                self.ai_chat_session_id = result.get('session_id') or self.ai_chat_session_id
+                self.ai_chat_messages = result['data']
+            self._render_chat_messages()
+
+        endpoint = "ai-chat/history"
+        if self.ai_chat_session_id:
+            endpoint += f"?session_id={self.ai_chat_session_id}"
+        self.backend_api_request(endpoint, method="GET", callback=on_result, on_failure=on_result)
+
+    def _render_suggested_questions(self):
+        screen = self._get_ai_chat_screen()
+        if not screen or 'suggestions_box' not in screen.ids:
+            return
+        box = screen.ids.suggestions_box
+        box.clear_widgets()
+        for question in self.AI_SUGGESTED_QUESTIONS:
+            chip = MDRaisedButton(
+                text=question,
+                size_hint=(None, None),
+                height=dp(36),
+                md_bg_color=[0.9, 0.95, 1, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1],
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                font_size="12sp",
+                on_release=lambda x, q=question: self.send_ai_message(text=q),
+            )
+            chip.width = chip.texture_size[0] + dp(28)
+            box.add_widget(chip)
+
+    def toggle_chat_search(self):
+        """Show/hide the search bar above the chat list."""
+        self.ai_search_active = not self.ai_search_active
+        screen = self._get_ai_chat_screen()
+        if not self.ai_search_active and screen and 'chat_search_field' in screen.ids:
+            screen.ids.chat_search_field.text = ""
+            self._render_chat_messages()
+
+    def filter_chat_search(self, query):
+        """Re-render the chat list showing only messages matching the query."""
+        screen = self._get_ai_chat_screen()
+        if not screen or 'chat_list' not in screen.ids:
+            return
+        query = (query or "").strip().lower()
+        chat_list = screen.ids.chat_list
+        chat_list.clear_widgets()
+
+        messages = self.ai_chat_messages
+        if query:
+            messages = [m for m in messages if query in (m.get('content') or '').lower()]
+
+        if not messages:
+            chat_list.add_widget(MDLabel(
+                text="No matching messages" if query else "No messages yet",
+                halign="center", theme_text_color="Secondary",
+                size_hint_y=None, height=dp(60),
+            ))
+            return
+
+        last_ai_index = None
+        for i, m in enumerate(messages):
+            if m.get('role') == 'assistant':
+                last_ai_index = i
+        for i, m in enumerate(messages):
+            chat_list.add_widget(self._build_chat_bubble(
+                m.get('role'), m.get('content', ''), is_last_ai=(i == last_ai_index)
+            ))
+
+    def confirm_clear_ai_chat(self):
+        dialog = MDDialog(
+            title="Start a new chat?",
+            text="This will clear your current conversation with the AI Assistant.",
+            buttons=[
+                MDFlatButton(
+                    text="CANCEL", theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=lambda x: dialog.dismiss(),
+                ),
+                MDFlatButton(
+                    text="CLEAR", theme_text_color="Custom",
+                    text_color=self.theme_cls.error_color,
+                    on_release=lambda x: (dialog.dismiss(), self.clear_ai_chat()),
+                ),
+            ],
+            radius=[20, 7, 20, 7],
+        )
+        dialog.open()
+
+    def clear_ai_chat(self):
+        """Clear chat history locally (instantly) and on the backend."""
+        self.ai_chat_messages = []
+        self.ai_last_user_message = ""
+        self._render_chat_messages()
+        Clock.schedule_once(lambda dt: self._render_suggested_questions(), 0.1)
+        self.backend_api_request("ai-chat/history", method="DELETE", callback=lambda *a: None)
+
+    def send_ai_message(self, text=None):
+        """Send a message (typed or tapped from suggestions) to the AI assistant."""
+        screen = self._get_ai_chat_screen()
+        if not screen:
+            return
+        if text is None:
+            text = screen.ids.ai_chat_input.text.strip() if 'ai_chat_input' in screen.ids else ""
+        text = (text or "").strip()
+        if not text:
+            return
+        if 'ai_chat_input' in screen.ids:
+            screen.ids.ai_chat_input.text = ""
+
+        self.ai_last_user_message = text
+        self.ai_chat_messages = self.ai_chat_messages + [{'role': 'user', 'content': text}]
+        self._render_chat_messages()
+        self.ai_chat_typing = True
+
+        payload = {'message': text}
+        if self.ai_chat_session_id:
+            payload['session_id'] = self.ai_chat_session_id
+
+        def on_result(success, result):
+            self.ai_chat_typing = False
+            result = result or {}
+            if success and result.get('reply'):
+                self.ai_chat_session_id = result.get('session_id') or self.ai_chat_session_id
+                reply = result['reply']
+            else:
+                reply = result.get('message') or (
+                    f"Sorry, I couldn't process that right now. Please contact support "
+                    f"at {self.support_phone} or {self.support_email}."
+                )
+            self.ai_chat_messages = self.ai_chat_messages + [{'role': 'assistant', 'content': reply}]
+            self._render_chat_messages()
+
+        self.backend_api_request("ai-chat/message", method="POST", data=payload,
+                                  callback=on_result, on_failure=on_result)
+
+    def regenerate_last_ai_response(self):
+        """Re-ask the assistant using the last user message and replace the last reply."""
+        if not self.ai_last_user_message:
+            return
+        if self.ai_chat_messages and self.ai_chat_messages[-1].get('role') == 'assistant':
+            self.ai_chat_messages = self.ai_chat_messages[:-1]
+        self._render_chat_messages()
+        self.ai_chat_typing = True
+
+        payload = {'message': self.ai_last_user_message}
+        if self.ai_chat_session_id:
+            payload['session_id'] = self.ai_chat_session_id
+
+        def on_result(success, result):
+            self.ai_chat_typing = False
+            result = result or {}
+            reply = result.get('reply') if success else None
+            if not reply:
+                reply = "Sorry, I couldn't regenerate a response. Please try again."
+            self.ai_chat_messages = self.ai_chat_messages + [{'role': 'assistant', 'content': reply}]
+            self._render_chat_messages()
+
+        self.backend_api_request("ai-chat/message", method="POST", data=payload,
+                                  callback=on_result, on_failure=on_result)
+
+    def copy_chat_message(self, text):
+        try:
+            Clipboard.copy(text)
+            toast("Copied to clipboard")
+        except Exception as e:
+            print(f"copy_chat_message error: {e}")
+
+    def start_voice_input(self):
+        """
+        Voice-to-text for the chat input box. Uses Android's native
+        speech recognizer via pyjnius when running on Android; shows a
+        friendly message anywhere else (desktop testing, iOS) instead
+        of crashing, since that API isn't available there.
+        """
+        try:
+            from kivy.utils import platform
+            if platform != "android":
+                toast("Voice input is available on Android devices")
+                return
+            self._start_android_voice_input()
+        except Exception as e:
+            print(f"start_voice_input error: {e}")
+            toast("Voice input isn't available right now")
+
+    def _start_android_voice_input(self):
+        try:
+            from jnius import autoclass
+            from android import activity
+
+            RecognizerIntent = autoclass('android.speech.RecognizerIntent')
+            Intent = autoclass('android.content.Intent')
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+
+            intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Ask the AI Assistant...")
+
+            def on_activity_result(request_code, result_code, intent_data):
+                try:
+                    if request_code == 1001 and intent_data:
+                        results = intent_data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                        if results and results.size() > 0:
+                            spoken_text = results.get(0)
+                            Clock.schedule_once(lambda dt: self._on_voice_result(spoken_text), 0)
+                except Exception as e:
+                    print(f"voice result error: {e}")
+                finally:
+                    activity.unbind(on_activity_result=on_activity_result)
+
+            activity.bind(on_activity_result=on_activity_result)
+            PythonActivity.mActivity.startActivityForResult(intent, 1001)
+        except Exception as e:
+            print(f"_start_android_voice_input error: {e}")
+            toast("Couldn't start voice input")
+
+    def _on_voice_result(self, spoken_text):
+        screen = self._get_ai_chat_screen()
+        if screen and 'ai_chat_input' in screen.ids:
+            screen.ids.ai_chat_input.text = spoken_text
+
+    def _render_chat_messages(self):
+        """Redraw every chat bubble from self.ai_chat_messages, then auto-scroll down."""
+        screen = self._get_ai_chat_screen()
+        if not screen or 'chat_list' not in screen.ids:
+            return
+        chat_list = screen.ids.chat_list
+        chat_list.clear_widgets()
+
+        if not self.ai_chat_messages:
+            chat_list.add_widget(self._build_chat_welcome_widget())
+        else:
+            last_ai_index = None
+            for i, m in enumerate(self.ai_chat_messages):
+                if m.get('role') == 'assistant':
+                    last_ai_index = i
+            for i, m in enumerate(self.ai_chat_messages):
+                chat_list.add_widget(self._build_chat_bubble(
+                    m.get('role'), m.get('content', ''), is_last_ai=(i == last_ai_index)
+                ))
+
+        if self.ai_chat_typing:
+            chat_list.add_widget(self._build_typing_bubble())
+
+        Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+
+    def _scroll_chat_to_bottom(self, *_):
+        screen = self._get_ai_chat_screen()
+        if screen and 'chat_scroll' in screen.ids:
+            screen.ids.chat_scroll.scroll_y = 0
+
+    def _build_chat_welcome_widget(self):
+        box = MDBoxLayout(
+            orientation='vertical', spacing=dp(8), size_hint_y=None,
+            padding=[dp(20), dp(30), dp(20), dp(10)],
+        )
+        box.bind(minimum_height=box.setter('height'))
+        icon = MDIcon(
+            icon="robot-happy-outline", halign="center", font_size="48sp",
+            theme_text_color="Custom", text_color=self.theme_cls.primary_color,
+            size_hint_y=None, height=dp(60),
+        )
+        title = MDLabel(
+            text="Hi! I'm your Cheap4U AI Assistant", halign="center",
+            font_style="Subtitle1", bold=True, size_hint_y=None, height=dp(30),
+        )
+        subtitle = MDLabel(
+            text="Ask me about data, airtime, bills, wallet, referrals, or your account.",
+            halign="center", font_style="Caption", theme_text_color="Secondary",
+            size_hint_y=None, height=dp(40),
+        )
+        box.add_widget(icon)
+        box.add_widget(title)
+        box.add_widget(subtitle)
+        return box
+
+    def _build_typing_bubble(self):
+        row = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(50),
+                           padding=[dp(10), 0, dp(48), 0])
+        bubble = MDCard(
+            size_hint=(None, None), size=(dp(64), dp(40)),
+            radius=[16, 16, 16, 4], elevation=1, padding=dp(10),
+            md_bg_color=self._get_card_bg_color(),
+        )
+        label = MDLabel(text="\u25cf \u25cf \u25cf", halign="center", theme_text_color="Secondary")
+        bubble.add_widget(label)
+        row.add_widget(bubble)
+        anim = Animation(opacity=0.3, duration=0.4) + Animation(opacity=1, duration=0.4)
+        anim.repeat = True
+        anim.start(label)
+        return row
+
+    def _build_chat_bubble(self, role, text, is_last_ai=False):
+        is_user = (role == 'user')
+
+        row = MDBoxLayout(
+            orientation='vertical', size_hint_y=None,
+            padding=[dp(48), 0, dp(10), 0] if is_user else [dp(10), 0, dp(48), 0],
+        )
+        row.bind(minimum_height=row.setter('height'))
+
+        bubble = MDCard(
+            orientation='vertical', size_hint_x=1, size_hint_y=None,
+            radius=[16, 16, 4, 16] if is_user else [16, 16, 16, 4],
+            elevation=1, padding=dp(12), spacing=dp(6),
+            md_bg_color=self.theme_cls.primary_color if is_user else self._get_card_bg_color(),
+        )
+        bubble.bind(minimum_height=bubble.setter('height'))
+
+        label = Factory.ChatBubbleLabel(
+            text=text,
+            theme_text_color="Custom",
+            text_color=[1, 1, 1, 1] if is_user else self._get_text_color(),
+        )
+        bubble.add_widget(label)
+
+        if not is_user:
+            actions = MDBoxLayout(size_hint_y=None, height=dp(26), spacing=dp(4))
+            actions.add_widget(MDIconButton(
+                icon="content-copy",
+                theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                on_release=lambda x, t=text: self.copy_chat_message(t),
+            ))
+            if is_last_ai:
+                actions.add_widget(MDIconButton(
+                    icon="refresh",
+                    theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                    on_release=lambda x: self.regenerate_last_ai_response(),
+                ))
+            actions.add_widget(Widget())
+            bubble.add_widget(actions)
+
+        row.add_widget(bubble)
+        return row
 
 
 
