@@ -11086,6 +11086,10 @@ class DashboardApp(ChallengeMixin, MDApp):
                 # Extended timeout for Render free tier (60 seconds)
                 if method.upper() == "GET":
                     response = requests.get(url, headers=headers, timeout=60)
+                elif method.upper() == "DELETE":
+                    response = requests.delete(url, headers=headers, timeout=60)
+                elif method.upper() == "PUT":
+                    response = requests.put(url, json=data, headers=headers, timeout=60)
                 else:
                     response = requests.post(url, json=data, headers=headers, timeout=60)
 
@@ -19614,7 +19618,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self.ai_chat_messages = result['data']
             self._render_chat_messages()
 
-        endpoint = "ai-chat/history"
+        endpoint = "chat/history"
         if self.ai_chat_session_id:
             endpoint += f"?session_id={self.ai_chat_session_id}"
         self.backend_api_request(endpoint, method="GET", callback=on_result, on_failure=on_result)
@@ -19673,9 +19677,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             if m.get('role') == 'assistant':
                 last_ai_index = i
         for i, m in enumerate(messages):
-            chat_list.add_widget(self._build_chat_bubble(
-                m.get('role'), m.get('content', ''), is_last_ai=(i == last_ai_index)
-            ))
+            chat_list.add_widget(self._build_chat_bubble(m, is_last_ai=(i == last_ai_index)))
 
     def confirm_clear_ai_chat(self):
         dialog = MDDialog(
@@ -19703,7 +19705,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.ai_last_user_message = ""
         self._render_chat_messages()
         Clock.schedule_once(lambda dt: self._render_suggested_questions(), 0.1)
-        self.backend_api_request("ai-chat/history", method="DELETE", callback=lambda *a: None)
+        self.backend_api_request("chat/history", method="DELETE", callback=lambda *a: None)
 
     def send_ai_message(self, text=None):
         """Send a message (typed or tapped from suggestions) to the AI assistant."""
@@ -19727,22 +19729,162 @@ class DashboardApp(ChallengeMixin, MDApp):
         if self.ai_chat_session_id:
             payload['session_id'] = self.ai_chat_session_id
 
+        self._send_chat_streaming(payload)
+
+    def _send_chat_json(self, payload):
+        """Non-streaming fallback: one request, one full reply."""
         def on_result(success, result):
             self.ai_chat_typing = False
             result = result or {}
+            action = None
+            message_id = None
             if success and result.get('reply'):
                 self.ai_chat_session_id = result.get('session_id') or self.ai_chat_session_id
                 reply = result['reply']
+                action = result.get('action')
+                message_id = result.get('message_id')
             else:
                 reply = result.get('message') or (
                     f"Sorry, I couldn't process that right now. Please contact support "
                     f"at {self.support_phone} or {self.support_email}."
                 )
-            self.ai_chat_messages = self.ai_chat_messages + [{'role': 'assistant', 'content': reply}]
+            self.ai_chat_messages = self.ai_chat_messages + [
+                {'role': 'assistant', 'content': reply, 'action': action, 'id': message_id}
+            ]
             self._render_chat_messages()
+            if action:
+                self._offer_smart_action(action)
 
-        self.backend_api_request("ai-chat/message", method="POST", data=payload,
+        self.backend_api_request("chat", method="POST", data=payload,
                                   callback=on_result, on_failure=on_result)
+
+    def _send_chat_streaming(self, payload):
+        """
+        Streams the AI reply token-by-token (Server-Sent Events from
+        POST /api/chat with stream=true) so replies appear progressively
+        instead of all at once, like ChatGPT. Falls back to a single
+        JSON request if the backend URL isn't set or streaming fails
+        before any text arrives.
+        """
+        if not self.backend_url:
+            self._send_chat_json(payload)
+            return
+
+        payload = dict(payload)
+        payload['stream'] = True
+        url = f"{self.backend_url}/api/chat"
+        headers = {'Content-Type': 'application/json'}
+        if getattr(self, 'session_token', None):
+            headers['Authorization'] = f'Bearer {self.session_token}'
+
+        # Placeholder bubble that gets filled in as chunks arrive
+        self.ai_chat_messages = self.ai_chat_messages + [
+            {'role': 'assistant', 'content': '', 'action': None, 'id': None}
+        ]
+
+        def worker():
+            accumulated = ''
+            got_any_chunk = False
+            try:
+                resp = requests.post(url, json=payload, headers=headers, timeout=60, stream=True)
+                for raw_line in resp.iter_lines(decode_unicode=True):
+                    if not raw_line or not raw_line.startswith('data:'):
+                        continue
+                    try:
+                        chunk = json.loads(raw_line[len('data:'):].strip())
+                    except Exception:
+                        continue
+                    if chunk.get('delta'):
+                        got_any_chunk = True
+                        accumulated += chunk['delta']
+                        Clock.schedule_once(lambda dt, t=accumulated: self._update_streaming_bubble(t), 0)
+                    if chunk.get('done'):
+                        Clock.schedule_once(
+                            lambda dt, a=chunk.get('action'), mid=chunk.get('message_id'):
+                                self._finish_streaming_bubble(a, mid), 0
+                        )
+                        return
+                # Stream ended with no explicit "done" (dropped connection etc.)
+                Clock.schedule_once(lambda dt: self._finish_streaming_bubble(None, None), 0)
+            except Exception as e:
+                print(f"stream chat error: {e}")
+                if not got_any_chunk:
+                    fallback = (
+                        f"Sorry, I couldn't process that right now. Please contact support "
+                        f"at {self.support_phone} or {self.support_email}."
+                    )
+                    Clock.schedule_once(lambda dt: self._update_streaming_bubble(fallback), 0)
+                Clock.schedule_once(lambda dt: self._finish_streaming_bubble(None, None), 0)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _update_streaming_bubble(self, accumulated_text):
+        """Update the last (still-streaming) assistant bubble's text as chunks arrive."""
+        if not self.ai_chat_messages or self.ai_chat_messages[-1].get('role') != 'assistant':
+            return
+        updated = dict(self.ai_chat_messages[-1])
+        updated['content'] = accumulated_text
+        self.ai_chat_messages = self.ai_chat_messages[:-1] + [updated]
+        self.ai_chat_typing = False  # first chunk arrived - hide the typing dots
+        self._render_chat_messages()
+
+    def _finish_streaming_bubble(self, action, message_id):
+        """Called when the stream reports done=true (or the connection ends)."""
+        self.ai_chat_typing = False
+        if self.ai_chat_messages and self.ai_chat_messages[-1].get('role') == 'assistant':
+            updated = dict(self.ai_chat_messages[-1])
+            updated['action'] = action
+            updated['id'] = message_id
+            self.ai_chat_messages = self.ai_chat_messages[:-1] + [updated]
+        self._render_chat_messages()
+        if action:
+            self._offer_smart_action(action)
+
+    # ── Smart Actions ────────────────────────────────────────────────
+    # Maps an action code returned by the backend to something the app
+    # actually does. e.g. user says "I want MTN data" -> backend detects
+    # 'data_purchase' -> we take them straight to the Data screen.
+    SMART_ACTION_MAP = {
+        'data_purchase': lambda app: app.switch_screen('data_purchase'),
+        'airtime_topup': lambda app: app.switch_screen('airtime_topup'),
+        'wallet_funding': lambda app: app.switch_screen('funding'),
+        'transaction_history': lambda app: app.switch_screen('history'),
+        'password_reset': lambda app: app.show_forgot_password(),
+    }
+
+    SMART_ACTION_LABELS = {
+        'data_purchase': 'Buy Data',
+        'airtime_topup': 'Buy Airtime',
+        'wallet_funding': 'Fund Wallet',
+        'transaction_history': 'View Transactions',
+        'password_reset': 'Reset Password',
+    }
+
+    def _offer_smart_action(self, action):
+        """Show a quick-action snackbar/toast-style prompt after a matching reply."""
+        label = self.SMART_ACTION_LABELS.get(action)
+        if not label:
+            return
+        toast(f"Tip: tap the '{label}' button below to go there directly")
+        screen = self._get_ai_chat_screen()
+        if screen and 'chat_list' in screen.ids:
+            btn = MDRaisedButton(
+                text=label, size_hint=(None, None), height=dp(38),
+                md_bg_color=self.theme_cls.primary_color,
+                on_release=lambda x, a=action: self.run_smart_action(a),
+            )
+            btn.width = btn.texture_size[0] + dp(32)
+            row = MDBoxLayout(orientation='vertical', size_hint_y=None,
+                               padding=[dp(10), dp(2), dp(48), dp(4)])
+            row.bind(minimum_height=row.setter('height'))
+            row.add_widget(btn)
+            screen.ids.chat_list.add_widget(row)
+            Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+
+    def run_smart_action(self, action):
+        handler = self.SMART_ACTION_MAP.get(action)
+        if handler:
+            handler(self)
 
     def regenerate_last_ai_response(self):
         """Re-ask the assistant using the last user message and replace the last reply."""
@@ -19757,17 +19899,18 @@ class DashboardApp(ChallengeMixin, MDApp):
         if self.ai_chat_session_id:
             payload['session_id'] = self.ai_chat_session_id
 
-        def on_result(success, result):
-            self.ai_chat_typing = False
-            result = result or {}
-            reply = result.get('reply') if success else None
-            if not reply:
-                reply = "Sorry, I couldn't regenerate a response. Please try again."
-            self.ai_chat_messages = self.ai_chat_messages + [{'role': 'assistant', 'content': reply}]
-            self._render_chat_messages()
+        self._send_chat_streaming(payload)
 
-        self.backend_api_request("ai-chat/message", method="POST", data=payload,
-                                  callback=on_result, on_failure=on_result)
+    def send_chat_feedback(self, message_id, rating):
+        """Thumbs up/down on a specific AI reply."""
+        if not message_id:
+            toast("Thanks for the feedback!")
+            return
+        self.backend_api_request(
+            "chat/feedback", method="POST",
+            data={'message_id': message_id, 'rating': rating},
+            callback=lambda success, result: toast("Thanks for the feedback!" if success else "Could not send feedback"),
+        )
 
     def copy_chat_message(self, text):
         try:
@@ -19845,14 +19988,30 @@ class DashboardApp(ChallengeMixin, MDApp):
                 if m.get('role') == 'assistant':
                     last_ai_index = i
             for i, m in enumerate(self.ai_chat_messages):
-                chat_list.add_widget(self._build_chat_bubble(
-                    m.get('role'), m.get('content', ''), is_last_ai=(i == last_ai_index)
-                ))
+                chat_list.add_widget(self._build_chat_bubble(m, is_last_ai=(i == last_ai_index)))
 
         if self.ai_chat_typing:
             chat_list.add_widget(self._build_typing_bubble())
 
         Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+
+    @staticmethod
+    def _markdown_lite_to_markup(text):
+        """
+        Converts the small subset of Markdown the AI is allowed to use
+        (see SYSTEM_PROMPT on the backend: **bold** and "- " bullets
+        only) into KivyMD's BBCode-style markup, since MDLabel doesn't
+        render raw Markdown. Kept deliberately simple/safe — no
+        headings, tables, links, or code blocks are expected or handled.
+        """
+        if not text:
+            return text
+        # **bold** -> [b]bold[/b]
+        text = re.sub(r'\*\*(.+?)\*\*', r'[b]\1[/b]', text)
+        # Turn "- item" bullet lines into "  •  item"
+        lines = text.split('\n')
+        lines = [re.sub(r'^\s*[-*]\s+', '  \u2022  ', ln) for ln in lines]
+        return '\n'.join(lines)
 
     def _scroll_chat_to_bottom(self, *_):
         screen = self._get_ai_chat_screen()
@@ -19900,14 +20059,33 @@ class DashboardApp(ChallengeMixin, MDApp):
         anim.start(label)
         return row
 
-    def _build_chat_bubble(self, role, text, is_last_ai=False):
+    def _build_chat_bubble(self, message, is_last_ai=False):
+        role = message.get('role')
+        text = message.get('content', '')
+        message_id = message.get('id')
         is_user = (role == 'user')
 
-        row = MDBoxLayout(
-            orientation='vertical', size_hint_y=None,
-            padding=[dp(48), 0, dp(10), 0] if is_user else [dp(10), 0, dp(48), 0],
+        outer = MDBoxLayout(
+            orientation='horizontal', size_hint_y=None, spacing=dp(6),
+            padding=[dp(36), 0, dp(6), 0] if is_user else [dp(6), 0, dp(36), 0],
         )
-        row.bind(minimum_height=row.setter('height'))
+        outer.bind(minimum_height=outer.setter('height'))
+
+        # Avatar (robot for AI, person for the user) - only on the
+        # outer side of the bubble, ChatGPT-style.
+        avatar = MDIcon(
+            icon="account-circle" if is_user else "robot-happy-outline",
+            theme_text_color="Custom",
+            text_color=self.theme_cls.primary_color if is_user else [1, 1, 1, 1],
+            size_hint=(None, None), size=(dp(28), dp(28)),
+            pos_hint={"top": 1},
+        )
+        avatar_bg = MDCard(
+            size_hint=(None, None), size=(dp(30), dp(30)), radius=[15],
+            md_bg_color=[0.9, 0.95, 1, 1] if is_user else self.theme_cls.primary_color,
+            pos_hint={"top": 1},
+        )
+        avatar_bg.add_widget(avatar)
 
         bubble = MDCard(
             orientation='vertical', size_hint_x=1, size_hint_y=None,
@@ -19918,18 +20096,29 @@ class DashboardApp(ChallengeMixin, MDApp):
         bubble.bind(minimum_height=bubble.setter('height'))
 
         label = Factory.ChatBubbleLabel(
-            text=text,
+            text=self._markdown_lite_to_markup(text) if not is_user else text,
+            markup=(not is_user),
             theme_text_color="Custom",
             text_color=[1, 1, 1, 1] if is_user else self._get_text_color(),
         )
         bubble.add_widget(label)
 
         if not is_user:
-            actions = MDBoxLayout(size_hint_y=None, height=dp(26), spacing=dp(4))
+            actions = MDBoxLayout(size_hint_y=None, height=dp(26), spacing=dp(2))
             actions.add_widget(MDIconButton(
                 icon="content-copy",
                 theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
                 on_release=lambda x, t=text: self.copy_chat_message(t),
+            ))
+            actions.add_widget(MDIconButton(
+                icon="thumb-up-outline",
+                theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                on_release=lambda x, mid=message_id: self.send_chat_feedback(mid, 'up'),
+            ))
+            actions.add_widget(MDIconButton(
+                icon="thumb-down-outline",
+                theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                on_release=lambda x, mid=message_id: self.send_chat_feedback(mid, 'down'),
             ))
             if is_last_ai:
                 actions.add_widget(MDIconButton(
@@ -19940,8 +20129,14 @@ class DashboardApp(ChallengeMixin, MDApp):
             actions.add_widget(Widget())
             bubble.add_widget(actions)
 
-        row.add_widget(bubble)
-        return row
+        if is_user:
+            outer.add_widget(bubble)
+            outer.add_widget(avatar_bg)
+        else:
+            outer.add_widget(avatar_bg)
+            outer.add_widget(bubble)
+
+        return outer
 
 
 
