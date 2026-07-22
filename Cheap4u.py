@@ -19787,8 +19787,32 @@ class DashboardApp(ChallengeMixin, MDApp):
         def worker():
             accumulated = ''
             got_any_chunk = False
+            fallback = (
+                f"Sorry, I couldn't process that right now. Please contact support "
+                f"at {self.support_phone} or {self.support_email}."
+            )
             try:
                 resp = requests.post(url, json=payload, headers=headers, timeout=60, stream=True)
+                content_type = resp.headers.get('Content-Type', '')
+
+                if 'text/event-stream' not in content_type:
+                    # Backend didn't stream (e.g. an error before the
+                    # stream started, or a proxy that buffers/rewrites
+                    # the response) - it's likely one JSON body instead.
+                    # Parse it so the bubble still shows a real message
+                    # instead of staying blank.
+                    try:
+                        body = resp.json()
+                    except Exception:
+                        body = {}
+                    text = body.get('reply') or body.get('message') or fallback
+                    Clock.schedule_once(lambda dt, t=text: self._update_streaming_bubble(t), 0)
+                    Clock.schedule_once(
+                        lambda dt, a=body.get('action'), mid=body.get('message_id'):
+                            self._finish_streaming_bubble(a, mid), 0
+                    )
+                    return
+
                 for raw_line in resp.iter_lines(decode_unicode=True):
                     if not raw_line or not raw_line.startswith('data:'):
                         continue
@@ -19801,20 +19825,21 @@ class DashboardApp(ChallengeMixin, MDApp):
                         accumulated += chunk['delta']
                         Clock.schedule_once(lambda dt, t=accumulated: self._update_streaming_bubble(t), 0)
                     if chunk.get('done'):
+                        if not got_any_chunk:
+                            # done=true arrived but no delta was ever sent
+                            Clock.schedule_once(lambda dt: self._update_streaming_bubble(fallback), 0)
                         Clock.schedule_once(
                             lambda dt, a=chunk.get('action'), mid=chunk.get('message_id'):
                                 self._finish_streaming_bubble(a, mid), 0
                         )
                         return
                 # Stream ended with no explicit "done" (dropped connection etc.)
+                if not got_any_chunk:
+                    Clock.schedule_once(lambda dt: self._update_streaming_bubble(fallback), 0)
                 Clock.schedule_once(lambda dt: self._finish_streaming_bubble(None, None), 0)
             except Exception as e:
                 print(f"stream chat error: {e}")
                 if not got_any_chunk:
-                    fallback = (
-                        f"Sorry, I couldn't process that right now. Please contact support "
-                        f"at {self.support_phone} or {self.support_email}."
-                    )
                     Clock.schedule_once(lambda dt: self._update_streaming_bubble(fallback), 0)
                 Clock.schedule_once(lambda dt: self._finish_streaming_bubble(None, None), 0)
 
