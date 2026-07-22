@@ -19630,9 +19630,12 @@ class DashboardApp(ChallengeMixin, MDApp):
         box = screen.ids.suggestions_box
         box.clear_widgets()
         for question in self.AI_SUGGESTED_QUESTIONS:
+            # NOTE: MDRaisedButton (unlike MDLabel) has no .texture_size
+            # attribute — don't read it. KivyMD auto-sizes button width
+            # to fit the text on its own; we only need to fix the height.
             chip = MDRaisedButton(
                 text=question,
-                size_hint=(None, None),
+                size_hint_y=None,
                 height=dp(36),
                 md_bg_color=[0.9, 0.95, 1, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1],
                 theme_text_color="Custom",
@@ -19640,7 +19643,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 font_size="12sp",
                 on_release=lambda x, q=question: self.send_ai_message(text=q),
             )
-            chip.width = chip.texture_size[0] + dp(28)
             box.add_widget(chip)
 
     def toggle_chat_search(self):
@@ -19868,12 +19870,13 @@ class DashboardApp(ChallengeMixin, MDApp):
         toast(f"Tip: tap the '{label}' button below to go there directly")
         screen = self._get_ai_chat_screen()
         if screen and 'chat_list' in screen.ids:
+            # NOTE: MDRaisedButton has no .texture_size attribute (that's
+            # a Label/MDLabel-only property) — don't read it here.
             btn = MDRaisedButton(
-                text=label, size_hint=(None, None), height=dp(38),
+                text=label, size_hint_y=None, height=dp(38),
                 md_bg_color=self.theme_cls.primary_color,
                 on_release=lambda x, a=action: self.run_smart_action(a),
             )
-            btn.width = btn.texture_size[0] + dp(32)
             row = MDBoxLayout(orientation='vertical', size_hint_y=None,
                                padding=[dp(10), dp(2), dp(48), dp(4)])
             row.bind(minimum_height=row.setter('height'))
