@@ -7840,7 +7840,7 @@ MDScreenManager:
                         size_hint_y: None
                         height: dp(152)
                         radius: [dp(22)]
-                        elevation: 8
+                        elevation: 6
                         padding: dp(20)
                         on_release: app.open_ai_chat()
 
@@ -8216,17 +8216,21 @@ MDScreenManager:
                 spacing: dp(10)
                 md_bg_color: [1, 1, 1, 1]
 
-                MDFloatingActionButton:
-                    icon: "microphone"
-                    md_bg_color: [0.9608, 0.9686, 0.9804, 1]
-                    theme_icon_color: "Custom"
-                    icon_color: [0.1294, 0.5882, 0.9529, 1]
-                    user_font_size: "22sp"
-                    elevation: 0
+                MDCard:
                     size_hint: None, None
                     size: dp(46), dp(46)
+                    radius: [dp(23)]
+                    elevation: 0
+                    md_bg_color: [0.9608, 0.9686, 0.9804, 1]
                     pos_hint: {"center_y": 0.5}
-                    on_release: app.start_voice_input()
+
+                    FloatLayout:
+                        MDIconButton:
+                            icon: "microphone"
+                            theme_icon_color: "Custom"
+                            icon_color: [0.1294, 0.5882, 0.9529, 1]
+                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                            on_release: app.start_voice_input()
 
                 MDTextField:
                     id: ai_chat_input
@@ -8237,17 +8241,21 @@ MDScreenManager:
                     pos_hint: {"center_y": 0.5}
                     on_text_validate: app.send_ai_message()
 
-                MDFloatingActionButton:
-                    icon: "send"
-                    md_bg_color: [0.1294, 0.5882, 0.9529, 1]
-                    theme_icon_color: "Custom"
-                    icon_color: [1, 1, 1, 1]
-                    user_font_size: "22sp"
-                    elevation: 3
+                MDCard:
                     size_hint: None, None
                     size: dp(48), dp(48)
+                    radius: [dp(24)]
+                    elevation: 0
+                    md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                     pos_hint: {"center_y": 0.5}
-                    on_release: app.send_ai_message()
+
+                    FloatLayout:
+                        MDIconButton:
+                            icon: "send"
+                            theme_icon_color: "Custom"
+                            icon_color: [1, 1, 1, 1]
+                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                            on_release: app.send_ai_message()
 
 '''
 
@@ -9757,7 +9765,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                             padding=dp(8),
                             spacing=dp(4),
                             radius=[8],
-                            elevation=1,
+                            elevation=0,  # avoid shadow-shader crash on some Android GPUs
                         )
 
                         # Info row
@@ -19677,11 +19685,25 @@ class DashboardApp(ChallengeMixin, MDApp):
     def open_ai_chat(self):
         """Open the AI Assistant chat screen, restore history, show suggestions."""
         self.switch_screen('ai_chat')
-        Clock.schedule_once(lambda dt: self._render_suggested_questions(), 0.1)
+        Clock.schedule_once(lambda dt: self._safe_call(self._render_suggested_questions), 0.1)
         if not self.ai_chat_messages:
-            Clock.schedule_once(lambda dt: self.load_ai_chat_history(), 0.15)
+            Clock.schedule_once(lambda dt: self._safe_call(self.load_ai_chat_history), 0.15)
         else:
-            Clock.schedule_once(lambda dt: self._render_chat_messages(), 0.1)
+            Clock.schedule_once(lambda dt: self._safe_call(self._render_chat_messages), 0.1)
+
+    @staticmethod
+    def _safe_call(fn, *args, **kwargs):
+        """
+        Runs a UI-building callback and swallows any exception instead of
+        letting it propagate into Kivy's Clock/event loop — an uncaught
+        exception there crashes the whole app with no on-screen error.
+        Used as a safety net around the chat screen's widget builders.
+        """
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            print(f"[AI Chat] safe_call caught an error in {getattr(fn, '__name__', fn)}: {e}")
+            return None
 
     def load_ai_chat_history(self):
         """Fetch saved chat history from the backend for this user/session."""
@@ -19689,7 +19711,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             if success and result and result.get('data'):
                 self.ai_chat_session_id = result.get('session_id') or self.ai_chat_session_id
                 self.ai_chat_messages = result['data']
-            self._render_chat_messages()
+            self._safe_call(self._render_chat_messages)
 
         endpoint = "chat/history"
         if self.ai_chat_session_id:
@@ -19711,7 +19733,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 size_hint_y=None,
                 height=dp(38),
                 radius=[dp(19)],
-                elevation=1,
+                elevation=0,  # avoid shadow-shader crash on some Android GPUs
                 md_bg_color=[0.898, 0.945, 1, 1],
                 theme_text_color="Custom",
                 text_color=[0.1294, 0.5882, 0.9529, 1],
@@ -19730,31 +19752,34 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def filter_chat_search(self, query):
         """Re-render the chat list showing only messages matching the query."""
-        screen = self._get_ai_chat_screen()
-        if not screen or 'chat_list' not in screen.ids:
-            return
-        query = (query or "").strip().lower()
-        chat_list = screen.ids.chat_list
-        chat_list.clear_widgets()
+        try:
+            screen = self._get_ai_chat_screen()
+            if not screen or 'chat_list' not in screen.ids:
+                return
+            query = (query or "").strip().lower()
+            chat_list = screen.ids.chat_list
+            chat_list.clear_widgets()
 
-        messages = self.ai_chat_messages
-        if query:
-            messages = [m for m in messages if query in (m.get('content') or '').lower()]
+            messages = self.ai_chat_messages
+            if query:
+                messages = [m for m in messages if query in (m.get('content') or '').lower()]
 
-        if not messages:
-            chat_list.add_widget(MDLabel(
-                text="No matching messages" if query else "No messages yet",
-                halign="center", theme_text_color="Secondary",
-                size_hint_y=None, height=dp(60),
-            ))
-            return
+            if not messages:
+                chat_list.add_widget(MDLabel(
+                    text="No matching messages" if query else "No messages yet",
+                    halign="center", theme_text_color="Secondary",
+                    size_hint_y=None, height=dp(60),
+                ))
+                return
 
-        last_ai_index = None
-        for i, m in enumerate(messages):
-            if m.get('role') == 'assistant':
-                last_ai_index = i
-        for i, m in enumerate(messages):
-            chat_list.add_widget(self._build_chat_bubble(m, is_last_ai=(i == last_ai_index)))
+            last_ai_index = None
+            for i, m in enumerate(messages):
+                if m.get('role') == 'assistant':
+                    last_ai_index = i
+            for i, m in enumerate(messages):
+                chat_list.add_widget(self._safe_build(self._build_chat_bubble, m, is_last_ai=(i == last_ai_index)))
+        except Exception as e:
+            print(f"filter_chat_search error: {e}")
 
     def confirm_clear_ai_chat(self):
         dialog = MDDialog(
@@ -19964,27 +19989,30 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def _offer_smart_action(self, action):
         """Show a quick-action snackbar/toast-style prompt after a matching reply."""
-        label = self.SMART_ACTION_LABELS.get(action)
-        if not label:
-            return
-        toast(f"Tip: tap the '{label}' button below to go there directly")
-        screen = self._get_ai_chat_screen()
-        if screen and 'chat_list' in screen.ids:
-            # NOTE: MDRaisedButton has no .texture_size attribute (that's
-            # a Label/MDLabel-only property) — don't read it here.
-            btn = MDRaisedButton(
-                text=label, size_hint_y=None, height=dp(40),
-                radius=[dp(20)], elevation=2,
-                md_bg_color=[0.1294, 0.5882, 0.9529, 1],
-                theme_text_color="Custom", text_color=[1, 1, 1, 1],
-                on_release=lambda x, a=action: self.run_smart_action(a),
-            )
-            row = MDBoxLayout(orientation='vertical', size_hint_y=None,
-                               padding=[dp(58), dp(2), dp(12), dp(4)])
-            row.bind(minimum_height=row.setter('height'))
-            row.add_widget(btn)
-            screen.ids.chat_list.add_widget(row)
-            Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+        try:
+            label = self.SMART_ACTION_LABELS.get(action)
+            if not label:
+                return
+            toast(f"Tip: tap the '{label}' button below to go there directly")
+            screen = self._get_ai_chat_screen()
+            if screen and 'chat_list' in screen.ids:
+                # NOTE: MDRaisedButton has no .texture_size attribute (that's
+                # a Label/MDLabel-only property) — don't read it here.
+                btn = MDRaisedButton(
+                    text=label, size_hint_y=None, height=dp(40),
+                    radius=[dp(20)], elevation=0,  # avoid shadow-shader crash on some Android GPUs
+                    md_bg_color=[0.1294, 0.5882, 0.9529, 1],
+                    theme_text_color="Custom", text_color=[1, 1, 1, 1],
+                    on_release=lambda x, a=action: self.run_smart_action(a),
+                )
+                row = MDBoxLayout(orientation='vertical', size_hint_y=None,
+                                   padding=[dp(58), dp(2), dp(12), dp(4)])
+                row.bind(minimum_height=row.setter('height'))
+                row.add_widget(btn)
+                screen.ids.chat_list.add_widget(row)
+                Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+        except Exception as e:
+            print(f"_offer_smart_action error: {e}")
 
     def run_smart_action(self, action):
         handler = self.SMART_ACTION_MAP.get(action)
@@ -20079,37 +20107,63 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def _render_chat_messages(self):
         """Redraw every chat bubble from self.ai_chat_messages, then auto-scroll down."""
-        screen = self._get_ai_chat_screen()
-        if not screen or 'chat_list' not in screen.ids:
-            return
-        chat_list = screen.ids.chat_list
-        chat_list.clear_widgets()
+        try:
+            screen = self._get_ai_chat_screen()
+            if not screen or 'chat_list' not in screen.ids:
+                return
+            chat_list = screen.ids.chat_list
+            chat_list.clear_widgets()
 
-        newest_widget = None
-        if not self.ai_chat_messages:
-            chat_list.add_widget(self._build_chat_welcome_widget())
-        else:
-            last_ai_index = None
-            for i, m in enumerate(self.ai_chat_messages):
-                if m.get('role') == 'assistant':
-                    last_ai_index = i
-            for i, m in enumerate(self.ai_chat_messages):
-                widget = self._build_chat_bubble(m, is_last_ai=(i == last_ai_index))
-                chat_list.add_widget(widget)
-                newest_widget = widget
+            newest_widget = None
+            if not self.ai_chat_messages:
+                chat_list.add_widget(self._safe_build(self._build_chat_welcome_widget))
+            else:
+                last_ai_index = None
+                for i, m in enumerate(self.ai_chat_messages):
+                    if m.get('role') == 'assistant':
+                        last_ai_index = i
+                for i, m in enumerate(self.ai_chat_messages):
+                    widget = self._safe_build(self._build_chat_bubble, m, is_last_ai=(i == last_ai_index))
+                    chat_list.add_widget(widget)
+                    newest_widget = widget
 
-        if self.ai_chat_typing:
-            newest_widget = self._build_typing_bubble()
-            chat_list.add_widget(newest_widget)
+            if self.ai_chat_typing:
+                newest_widget = self._safe_build(self._build_typing_bubble)
+                chat_list.add_widget(newest_widget)
 
-        # Subtle fade-in for whichever bubble just appeared (the newest
-        # message, or the typing indicator). We only animate the newest
-        # widget — animating every bubble on every re-render would
-        # replay the fade for old messages too, which looks jarring.
-        if newest_widget is not None:
-            self._animate_bubble_in(newest_widget)
+            # Subtle fade-in for whichever bubble just appeared (the newest
+            # message, or the typing indicator). We only animate the newest
+            # widget — animating every bubble on every re-render would
+            # replay the fade for old messages too, which looks jarring.
+            if newest_widget is not None:
+                self._animate_bubble_in(newest_widget)
 
-        Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+            Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+        except Exception as e:
+            print(f"_render_chat_messages error: {e}")
+
+    def _safe_build(self, builder_fn, *args, **kwargs):
+        """
+        Builds a chat widget (bubble/typing indicator/welcome card) and
+        falls back to a plain MDLabel if the fancy version raises for
+        any reason — keeps one bad widget from taking down the whole
+        chat screen (or the app, since an uncaught exception inside a
+        widget-building call can crash Kivy's event loop entirely).
+        """
+        try:
+            return builder_fn(*args, **kwargs)
+        except Exception as e:
+            print(f"[AI Chat] widget build failed in {getattr(builder_fn, '__name__', builder_fn)}: {e}")
+            text = ''
+            if args and isinstance(args[0], dict):
+                text = args[0].get('content', '')
+            fallback = MDBoxLayout(orientation='vertical', size_hint_y=None, padding=[dp(12), dp(6)])
+            fallback.bind(minimum_height=fallback.setter('height'))
+            fallback.add_widget(Factory.ChatBubbleLabel(
+                text=text or " ", theme_text_color="Custom",
+                text_color=[0.1216, 0.1608, 0.2157, 1],
+            ))
+            return fallback
 
     @staticmethod
     def _animate_bubble_in(widget):
@@ -20176,7 +20230,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                            padding=[dp(4), 0, dp(40), 0])
         bubble = GradientCard(
             size_hint=(None, None), size=(dp(72), dp(42)),
-            radius=[18, 18, 18, 4], elevation=2, padding=[dp(16), dp(12)],
+            radius=[18, 18, 18, 4], elevation=0, padding=[dp(16), dp(12)],  # elevation=0 avoids a known shadow-shader crash on some Android GPUs
         )
         dots_row = MDBoxLayout(spacing=dp(6))
         dots = []
@@ -20237,13 +20291,13 @@ class DashboardApp(ChallengeMixin, MDApp):
         if is_user:
             bubble = MDCard(
                 orientation='vertical', size_hint_x=1, size_hint_y=None,
-                radius=[18, 18, 4, 18], elevation=1, padding=dp(14), spacing=dp(6),
+                radius=[18, 18, 4, 18], elevation=0, padding=dp(14), spacing=dp(6),  # elevation=0 avoids a known shadow-shader crash on some Android GPUs
                 md_bg_color=[0.898, 0.945, 1, 1],
             )
         else:
             bubble = GradientCard(
                 orientation='vertical', size_hint_x=1, size_hint_y=None,
-                radius=[18, 18, 18, 4], elevation=2, padding=dp(14), spacing=dp(6),
+                radius=[18, 18, 18, 4], elevation=0, padding=dp(14), spacing=dp(6),  # elevation=0 avoids a known shadow-shader crash on some Android GPUs
             )
         bubble.bind(minimum_height=bubble.setter('height'))
 
