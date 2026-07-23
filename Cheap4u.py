@@ -7766,91 +7766,108 @@ MDScreenManager:
     name: "support"
 
     MDScreen:
-        md_bg_color: app.theme_cls.bg_normal
+        md_bg_color: [0.9608, 0.9686, 0.9804, 1]
 
         MDBoxLayout:
             orientation: 'vertical'
 
-            # Hero header - blue gradient, "Need Help?"
+            # ── Header: standard AppBar row (matches every other screen)
+            # plus the "Need Help?" hero, all on one continuous blue
+            # gradient panel (primary -> accent, per the design spec).
             GradientCard:
                 size_hint_y: None
-                height: dp(150)
-                radius: [0, 0, 28, 28]
-                elevation: 4
-                padding: [dp(8), dp(30), dp(20), dp(16)]
+                height: dp(172)
+                radius: [0, 0, dp(24), dp(24)]
+                elevation: 6
+                padding: 0
 
                 MDBoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(2)
 
-                    MDIconButton:
-                        icon: "arrow-left"
-                        theme_icon_color: "Custom"
-                        icon_color: [1, 1, 1, 1]
-                        on_release: app.switch_screen('dashboard')
-
-                    Widget:
+                    MDBoxLayout:
                         size_hint_y: None
-                        height: dp(2)
+                        height: dp(56)
+                        padding: [dp(4), 0, dp(16), 0]
 
-                    MDLabel:
-                        text: "Need Help?"
-                        font_style: "H4"
-                        bold: True
-                        theme_text_color: "Custom"
-                        text_color: [1, 1, 1, 1]
-                        size_hint_y: None
-                        height: dp(42)
-                        padding: [dp(12), 0]
+                        MDIconButton:
+                            icon: "arrow-left"
+                            theme_icon_color: "Custom"
+                            icon_color: [1, 1, 1, 1]
+                            on_release: app.switch_screen('dashboard')
 
-                    MDLabel:
-                        text: "We're here to assist you 24/7."
-                        font_style: "Subtitle1"
-                        theme_text_color: "Custom"
-                        text_color: [1, 1, 1, 0.9]
-                        size_hint_y: None
-                        height: dp(26)
-                        padding: [dp(12), 0]
+                        MDLabel:
+                            text: "Support Center"
+                            font_style: "H6"
+                            bold: True
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 1]
+                            valign: "middle"
+
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        spacing: dp(6)
+                        padding: [dp(24), dp(4), dp(24), dp(24)]
+
+                        MDLabel:
+                            text: "Need Help?"
+                            font_style: "H4"
+                            bold: True
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 1]
+                            size_hint_y: None
+                            height: dp(44)
+
+                        MDLabel:
+                            text: "We're here to assist you 24/7."
+                            font_style: "Subtitle1"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.92]
+                            size_hint_y: None
+                            height: dp(24)
 
             ScrollView:
                 do_scroll_x: False
 
                 MDBoxLayout:
                     orientation: 'vertical'
-                    padding: [dp(16), dp(20), dp(16), dp(30)]
+                    padding: [dp(16), dp(24), dp(16), dp(32)]
                     spacing: dp(16)
                     size_hint_y: None
                     height: self.minimum_height
 
-                    # 1. AI ASSISTANT - main / biggest option
+                    # 1. AI ASSISTANT — main / biggest option
                     GradientCard:
                         size_hint_y: None
-                        height: dp(150)
-                        radius: [24]
-                        elevation: 6
-                        padding: dp(18)
+                        height: dp(152)
+                        radius: [dp(22)]
+                        elevation: 8
+                        padding: dp(20)
                         on_release: app.open_ai_chat()
 
                         MDBoxLayout:
-                            spacing: dp(16)
+                            spacing: dp(18)
 
+                            # Icon square — a FloatLayout guarantees the
+                            # icon is perfectly centered no matter what
+                            # (MDCard alone does not honor pos_hint).
                             MDCard:
-                                size_hint: [None, None]
-                                size: [dp(60), dp(60)]
-                                radius: [18]
+                                size_hint: None, None
+                                size: dp(64), dp(64)
+                                radius: [dp(18)]
                                 md_bg_color: [1, 1, 1, 0.22]
                                 pos_hint: {"center_y": 0.5}
 
-                                MDIcon:
-                                    icon: "robot-happy-outline"
-                                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                                    theme_text_color: "Custom"
-                                    text_color: [1, 1, 1, 1]
-                                    font_size: "32sp"
+                                FloatLayout:
+                                    MDIcon:
+                                        icon: "robot-happy-outline"
+                                        font_size: "42sp"
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                        theme_text_color: "Custom"
+                                        text_color: [1, 1, 1, 1]
 
                             MDBoxLayout:
                                 orientation: 'vertical'
-                                spacing: dp(4)
+                                spacing: dp(6)
                                 pos_hint: {"center_y": 0.5}
 
                                 MDLabel:
@@ -7861,6 +7878,7 @@ MDScreenManager:
                                     text_color: [1, 1, 1, 1]
                                     size_hint_y: None
                                     height: dp(32)
+                                    valign: "middle"
 
                                 MDLabel:
                                     text: "Get instant answers, 24/7"
@@ -7869,168 +7887,189 @@ MDScreenManager:
                                     text_color: [1, 1, 1, 0.9]
                                     size_hint_y: None
                                     height: dp(22)
+                                    valign: "middle"
 
                                 MDBoxLayout:
                                     size_hint_y: None
                                     height: dp(20)
-                                    spacing: dp(6)
+                                    spacing: dp(8)
 
                                     MDIcon:
                                         icon: "circle"
                                         font_size: "10sp"
                                         theme_text_color: "Custom"
-                                        text_color: [0.3, 1, 0.5, 1]
-                                        size_hint_x: None
-                                        width: dp(14)
+                                        text_color: [0.1333, 0.7725, 0.3686, 1]
+                                        size_hint: None, None
+                                        size: dp(16), dp(20)
+                                        pos_hint: {"center_y": 0.5}
+                                        halign: "center"
+                                        valign: "middle"
 
                                     MDLabel:
                                         text: "Online now"
                                         font_style: "Caption"
                                         theme_text_color: "Custom"
-                                        text_color: [1, 1, 1, 0.85]
+                                        text_color: [1, 1, 1, 0.88]
+                                        valign: "middle"
 
                             MDIcon:
                                 icon: "chevron-right"
                                 theme_text_color: "Custom"
                                 text_color: [1, 1, 1, 0.9]
+                                size_hint: None, None
+                                size: dp(24), dp(24)
                                 pos_hint: {"center_y": 0.5}
-                                size_hint_x: None
-                                width: dp(24)
+                                halign: "center"
+                                valign: "middle"
 
                     # 2. PHONE SUPPORT
                     MDCard:
                         size_hint_y: None
-                        height: dp(88)
-                        radius: [18]
-                        elevation: 2
-                        padding: dp(16)
-                        md_bg_color: app.theme_cls.bg_light
+                        height: dp(92)
+                        radius: [dp(22)]
+                        elevation: 3
+                        padding: [dp(22), dp(14), dp(18), dp(14)]
+                        md_bg_color: [1, 1, 1, 1]
                         on_release: app.call_phone_support()
 
                         MDBoxLayout:
-                            spacing: dp(16)
+                            spacing: dp(18)
 
                             MDCard:
-                                size_hint: [None, None]
-                                size: [dp(48), dp(48)]
-                                radius: [14]
-                                md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1]
+                                size_hint: None, None
+                                size: dp(56), dp(56)
+                                radius: [dp(16)]
+                                md_bg_color: [0.898, 0.945, 1, 1]
                                 pos_hint: {"center_y": 0.5}
 
-                                MDIcon:
-                                    icon: "phone"
-                                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                                    theme_text_color: "Custom"
-                                    text_color: app.theme_cls.primary_color
+                                FloatLayout:
+                                    MDIcon:
+                                        icon: "phone"
+                                        font_size: "26sp"
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                        theme_text_color: "Custom"
+                                        text_color: [0.1294, 0.5882, 0.9529, 1]
 
                             MDBoxLayout:
                                 orientation: 'vertical'
+                                spacing: dp(4)
                                 pos_hint: {"center_y": 0.5}
 
                                 MDLabel:
                                     text: "Phone Support"
                                     font_style: "Subtitle1"
                                     bold: True
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.1216, 0.1608, 0.2157, 1]
                                     size_hint_y: None
                                     height: dp(26)
+                                    valign: "middle"
 
                                 MDLabel:
                                     text: "Tap to Call  \u2022  " + app.support_phone
                                     font_style: "Caption"
-                                    theme_text_color: "Secondary"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.4196, 0.4471, 0.5020, 1]
                                     size_hint_y: None
                                     height: dp(20)
+                                    valign: "middle"
 
                             MDIcon:
                                 icon: "chevron-right"
-                                theme_text_color: "Secondary"
+                                theme_text_color: "Custom"
+                                text_color: [0.4196, 0.4471, 0.5020, 1]
+                                size_hint: None, None
+                                size: dp(24), dp(24)
                                 pos_hint: {"center_y": 0.5}
-                                size_hint_x: None
-                                width: dp(24)
+                                halign: "center"
+                                valign: "middle"
 
                     # 3. EMAIL SUPPORT
                     MDCard:
                         size_hint_y: None
-                        height: dp(88)
-                        radius: [18]
-                        elevation: 2
-                        padding: dp(16)
-                        md_bg_color: app.theme_cls.bg_light
+                        height: dp(92)
+                        radius: [dp(22)]
+                        elevation: 3
+                        padding: [dp(22), dp(14), dp(18), dp(14)]
+                        md_bg_color: [1, 1, 1, 1]
                         on_release: app.open_email_support()
 
                         MDBoxLayout:
-                            spacing: dp(16)
+                            spacing: dp(18)
 
                             MDCard:
-                                size_hint: [None, None]
-                                size: [dp(48), dp(48)]
-                                radius: [14]
-                                md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1]
+                                size_hint: None, None
+                                size: dp(56), dp(56)
+                                radius: [dp(16)]
+                                md_bg_color: [0.898, 0.945, 1, 1]
                                 pos_hint: {"center_y": 0.5}
 
-                                MDIcon:
-                                    icon: "email"
-                                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-                                    theme_text_color: "Custom"
-                                    text_color: app.theme_cls.primary_color
+                                FloatLayout:
+                                    MDIcon:
+                                        icon: "email"
+                                        font_size: "26sp"
+                                        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                                        theme_text_color: "Custom"
+                                        text_color: [0.1294, 0.5882, 0.9529, 1]
 
                             MDBoxLayout:
                                 orientation: 'vertical'
+                                spacing: dp(4)
                                 pos_hint: {"center_y": 0.5}
 
                                 MDLabel:
                                     text: "Email Support"
                                     font_style: "Subtitle1"
                                     bold: True
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.1216, 0.1608, 0.2157, 1]
                                     size_hint_y: None
                                     height: dp(26)
+                                    valign: "middle"
 
                                 MDLabel:
                                     text: app.support_email
                                     font_style: "Caption"
-                                    theme_text_color: "Secondary"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.4196, 0.4471, 0.5020, 1]
                                     size_hint_y: None
                                     height: dp(20)
+                                    valign: "middle"
 
                             MDIcon:
                                 icon: "chevron-right"
-                                theme_text_color: "Secondary"
+                                theme_text_color: "Custom"
+                                text_color: [0.4196, 0.4471, 0.5020, 1]
+                                size_hint: None, None
+                                size: dp(24), dp(24)
                                 pos_hint: {"center_y": 0.5}
-                                size_hint_x: None
-                                width: dp(24)
+                                halign: "center"
+                                valign: "middle"
 
-                    # Business hours + version
+                    # Business hours + version — centered, compact
                     MDBoxLayout:
                         orientation: 'vertical'
-                        spacing: dp(4)
+                        spacing: dp(6)
                         size_hint_y: None
-                        height: dp(110)
-                        padding: [0, dp(14), 0, 0]
+                        height: dp(76)
+                        padding: [0, dp(10), 0, 0]
 
                         MDLabel:
                             text: "Business Hours"
-                            font_style: "Subtitle2"
+                            font_style: "Caption"
                             bold: True
                             halign: "center"
-                            theme_text_color: "Primary"
-                            size_hint_y: None
-                            height: dp(24)
-
-                        MDLabel:
-                            text: "Monday - Sunday"
-                            font_style: "Caption"
-                            halign: "center"
-                            theme_text_color: "Secondary"
+                            theme_text_color: "Custom"
+                            text_color: [0.4196, 0.4471, 0.5020, 1]
                             size_hint_y: None
                             height: dp(18)
 
                         MDLabel:
-                            text: "24 Hours Support"
+                            text: "Monday - Sunday  \u2022  24 Hours Support"
                             font_style: "Caption"
                             halign: "center"
-                            theme_text_color: "Secondary"
+                            theme_text_color: "Custom"
+                            text_color: [0.4196, 0.4471, 0.5020, 1]
                             size_hint_y: None
                             height: dp(18)
 
@@ -8038,37 +8077,54 @@ MDScreenManager:
                             text: "Version " + app.app_version
                             font_style: "Caption"
                             halign: "center"
-                            theme_text_color: "Hint"
+                            theme_text_color: "Custom"
+                            text_color: [0.62, 0.64, 0.67, 1]
                             size_hint_y: None
-                            height: dp(20)
+                            height: dp(18)
 
 
 # ══════════════════════════════════════════════════════════════════
-# AI CHAT ASSISTANT
+# AI CHAT ASSISTANT — ChatGPT/Claude/Gemini-style mobile chat UI
 # ══════════════════════════════════════════════════════════════════
 
 <AIChatScreen>:
     name: "ai_chat"
 
     MDScreen:
-        md_bg_color: app.theme_cls.bg_normal
+        md_bg_color: [0.9608, 0.9686, 0.9804, 1]
 
         MDBoxLayout:
             orientation: 'vertical'
 
-            # Top bar
+            # Top bar — same AppBar convention as every other screen
             MDBoxLayout:
                 size_hint_y: None
                 height: dp(64)
-                padding: [dp(4), 0, dp(10), 0]
-                spacing: dp(2)
-                md_bg_color: app.theme_cls.primary_color
+                padding: [dp(4), 0, dp(14), 0]
+                spacing: dp(10)
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
+                radius: [0, 0, dp(18), dp(18)]
 
                 MDIconButton:
                     icon: "arrow-left"
                     theme_icon_color: "Custom"
                     icon_color: [1, 1, 1, 1]
                     on_release: app.switch_screen('support')
+
+                MDCard:
+                    size_hint: None, None
+                    size: dp(38), dp(38)
+                    radius: [dp(12)]
+                    md_bg_color: [1, 1, 1, 0.2]
+                    pos_hint: {"center_y": 0.5}
+
+                    FloatLayout:
+                        MDIcon:
+                            icon: "robot-happy-outline"
+                            font_size: "22sp"
+                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 1]
 
                 MDBoxLayout:
                     orientation: 'vertical'
@@ -8081,7 +8137,8 @@ MDScreenManager:
                         theme_text_color: "Custom"
                         text_color: [1, 1, 1, 1]
                         size_hint_y: None
-                        height: dp(26)
+                        height: dp(24)
+                        valign: "middle"
 
                     MDLabel:
                         text: "Typing..." if app.ai_chat_typing else "Online \u2022 Replies instantly"
@@ -8090,6 +8147,7 @@ MDScreenManager:
                         text_color: [1, 1, 1, 0.85]
                         size_hint_y: None
                         height: dp(18)
+                        valign: "middle"
 
                 MDIconButton:
                     icon: "magnify"
@@ -8103,17 +8161,18 @@ MDScreenManager:
                     icon_color: [1, 1, 1, 1]
                     on_release: app.confirm_clear_ai_chat()
 
-            # Search bar - only visible while search is active
+            # Rounded search bar — only visible while search is active
             MDBoxLayout:
                 size_hint_y: None
-                height: dp(50) if app.ai_search_active else 0
+                height: dp(58) if app.ai_search_active else 0
                 opacity: 1 if app.ai_search_active else 0
-                padding: [dp(10), dp(4)]
-                md_bg_color: app.theme_cls.bg_light
+                padding: [dp(14), dp(8)]
+                md_bg_color: [0.9608, 0.9686, 0.9804, 1]
 
                 MDTextField:
                     id: chat_search_field
                     hint_text: "Search this conversation"
+                    icon_left: "magnify"
                     mode: "round"
                     disabled: not app.ai_search_active
                     on_text: app.filter_chat_search(self.text)
@@ -8123,19 +8182,20 @@ MDScreenManager:
                 id: chat_scroll
                 do_scroll_x: False
                 bar_width: dp(3)
+                bar_color: [0.1294, 0.5882, 0.9529, 0.35]
 
                 MDBoxLayout:
                     id: chat_list
                     orientation: 'vertical'
-                    spacing: dp(10)
-                    padding: [dp(10), dp(14), dp(10), dp(14)]
+                    spacing: dp(16)
+                    padding: [dp(12), dp(18), dp(12), dp(18)]
                     size_hint_y: None
                     height: self.minimum_height
 
-            # Suggested questions strip
+            # Suggested question chips
             ScrollView:
                 size_hint_y: None
-                height: dp(44) if not app.ai_chat_messages else 0
+                height: dp(48) if not app.ai_chat_messages else 0
                 opacity: 1 if not app.ai_chat_messages else 0
                 do_scroll_y: False
                 bar_width: 0
@@ -8143,23 +8203,29 @@ MDScreenManager:
                 MDBoxLayout:
                     id: suggestions_box
                     orientation: 'horizontal'
-                    spacing: dp(8)
-                    padding: [dp(12), dp(4)]
+                    spacing: dp(10)
+                    padding: [dp(14), dp(4)]
                     size_hint_x: None
                     width: self.minimum_width
 
-            # Input bar
+            # Input bar — rounded field + circular mic + circular send
             MDBoxLayout:
                 size_hint_y: None
-                height: dp(66)
-                padding: [dp(8), dp(8)]
-                spacing: dp(6)
-                md_bg_color: app.theme_cls.bg_light
+                height: dp(78)
+                padding: [dp(14), dp(14)]
+                spacing: dp(10)
+                md_bg_color: [1, 1, 1, 1]
 
-                MDIconButton:
+                MDFloatingActionButton:
                     icon: "microphone"
+                    md_bg_color: [0.9608, 0.9686, 0.9804, 1]
                     theme_icon_color: "Custom"
-                    icon_color: app.theme_cls.primary_color
+                    icon_color: [0.1294, 0.5882, 0.9529, 1]
+                    user_font_size: "22sp"
+                    elevation: 0
+                    size_hint: None, None
+                    size: dp(46), dp(46)
+                    pos_hint: {"center_y": 0.5}
                     on_release: app.start_voice_input()
 
                 MDTextField:
@@ -8168,12 +8234,19 @@ MDScreenManager:
                     mode: "round"
                     multiline: False
                     size_hint_x: 1
+                    pos_hint: {"center_y": 0.5}
                     on_text_validate: app.send_ai_message()
 
-                MDIconButton:
+                MDFloatingActionButton:
                     icon: "send"
+                    md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                     theme_icon_color: "Custom"
-                    icon_color: app.theme_cls.primary_color
+                    icon_color: [1, 1, 1, 1]
+                    user_font_size: "22sp"
+                    elevation: 3
+                    size_hint: None, None
+                    size: dp(48), dp(48)
+                    pos_hint: {"center_y": 0.5}
                     on_release: app.send_ai_message()
 
 '''
@@ -8273,8 +8346,8 @@ class GradientCard(MDCard):
             print(f"GradientCard texture error (non-fatal): {e}")
 
     def _build_gradient_texture(self, height=128):
-        # Deep brand blue -> bright brand blue, top to bottom
-        stops = [(10, 80, 190), (25, 135, 240)]
+        # Cheap4U primary blue (#2196F3) -> accent blue (#42A5F5), top to bottom
+        stops = [(33, 150, 243), (66, 165, 245)]
         buf = bytearray(height * 4)
         for y in range(height):
             t = y / (height - 1)
@@ -19636,10 +19709,12 @@ class DashboardApp(ChallengeMixin, MDApp):
             chip = MDRaisedButton(
                 text=question,
                 size_hint_y=None,
-                height=dp(36),
-                md_bg_color=[0.9, 0.95, 1, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.25, 0.35, 1],
+                height=dp(38),
+                radius=[dp(19)],
+                elevation=1,
+                md_bg_color=[0.898, 0.945, 1, 1],
                 theme_text_color="Custom",
-                text_color=self.theme_cls.primary_color,
+                text_color=[0.1294, 0.5882, 0.9529, 1],
                 font_size="12sp",
                 on_release=lambda x, q=question: self.send_ai_message(text=q),
             )
@@ -19898,12 +19973,14 @@ class DashboardApp(ChallengeMixin, MDApp):
             # NOTE: MDRaisedButton has no .texture_size attribute (that's
             # a Label/MDLabel-only property) — don't read it here.
             btn = MDRaisedButton(
-                text=label, size_hint_y=None, height=dp(38),
-                md_bg_color=self.theme_cls.primary_color,
+                text=label, size_hint_y=None, height=dp(40),
+                radius=[dp(20)], elevation=2,
+                md_bg_color=[0.1294, 0.5882, 0.9529, 1],
+                theme_text_color="Custom", text_color=[1, 1, 1, 1],
                 on_release=lambda x, a=action: self.run_smart_action(a),
             )
             row = MDBoxLayout(orientation='vertical', size_hint_y=None,
-                               padding=[dp(10), dp(2), dp(48), dp(4)])
+                               padding=[dp(58), dp(2), dp(12), dp(4)])
             row.bind(minimum_height=row.setter('height'))
             row.add_widget(btn)
             screen.ids.chat_list.add_widget(row)
@@ -20008,6 +20085,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         chat_list = screen.ids.chat_list
         chat_list.clear_widgets()
 
+        newest_widget = None
         if not self.ai_chat_messages:
             chat_list.add_widget(self._build_chat_welcome_widget())
         else:
@@ -20016,12 +20094,30 @@ class DashboardApp(ChallengeMixin, MDApp):
                 if m.get('role') == 'assistant':
                     last_ai_index = i
             for i, m in enumerate(self.ai_chat_messages):
-                chat_list.add_widget(self._build_chat_bubble(m, is_last_ai=(i == last_ai_index)))
+                widget = self._build_chat_bubble(m, is_last_ai=(i == last_ai_index))
+                chat_list.add_widget(widget)
+                newest_widget = widget
 
         if self.ai_chat_typing:
-            chat_list.add_widget(self._build_typing_bubble())
+            newest_widget = self._build_typing_bubble()
+            chat_list.add_widget(newest_widget)
+
+        # Subtle fade-in for whichever bubble just appeared (the newest
+        # message, or the typing indicator). We only animate the newest
+        # widget — animating every bubble on every re-render would
+        # replay the fade for old messages too, which looks jarring.
+        if newest_widget is not None:
+            self._animate_bubble_in(newest_widget)
 
         Clock.schedule_once(self._scroll_chat_to_bottom, 0.05)
+
+    @staticmethod
+    def _animate_bubble_in(widget):
+        try:
+            widget.opacity = 0
+            Animation(opacity=1, duration=0.22, t='out_quad').start(widget)
+        except Exception as e:
+            print(f"_animate_bubble_in error: {e}")
 
     @staticmethod
     def _markdown_lite_to_markup(text):
@@ -20054,16 +20150,19 @@ class DashboardApp(ChallengeMixin, MDApp):
         box.bind(minimum_height=box.setter('height'))
         icon = MDIcon(
             icon="robot-happy-outline", halign="center", font_size="48sp",
-            theme_text_color="Custom", text_color=self.theme_cls.primary_color,
+            theme_text_color="Custom", text_color=[0.1294, 0.5882, 0.9529, 1],
             size_hint_y=None, height=dp(60),
         )
         title = MDLabel(
             text="Hi! I'm your Cheap4U AI Assistant", halign="center",
-            font_style="Subtitle1", bold=True, size_hint_y=None, height=dp(30),
+            font_style="Subtitle1", bold=True,
+            theme_text_color="Custom", text_color=[0.1216, 0.1608, 0.2157, 1],
+            size_hint_y=None, height=dp(30),
         )
         subtitle = MDLabel(
             text="Ask me about data, airtime, bills, wallet, referrals, or your account.",
-            halign="center", font_style="Caption", theme_text_color="Secondary",
+            halign="center", font_style="Caption",
+            theme_text_color="Custom", text_color=[0.4196, 0.4471, 0.5020, 1],
             size_hint_y=None, height=dp(40),
         )
         box.add_widget(icon)
@@ -20072,19 +20171,34 @@ class DashboardApp(ChallengeMixin, MDApp):
         return box
 
     def _build_typing_bubble(self):
-        row = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(50),
-                           padding=[dp(10), 0, dp(48), 0])
-        bubble = MDCard(
-            size_hint=(None, None), size=(dp(64), dp(40)),
-            radius=[16, 16, 16, 4], elevation=1, padding=dp(10),
-            md_bg_color=self._get_card_bg_color(),
+        """Classic three-dot typing indicator, each dot pulsing in sequence."""
+        row = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(52),
+                           padding=[dp(4), 0, dp(40), 0])
+        bubble = GradientCard(
+            size_hint=(None, None), size=(dp(72), dp(42)),
+            radius=[18, 18, 18, 4], elevation=2, padding=[dp(16), dp(12)],
         )
-        label = MDLabel(text="\u25cf \u25cf \u25cf", halign="center", theme_text_color="Secondary")
-        bubble.add_widget(label)
+        dots_row = MDBoxLayout(spacing=dp(6))
+        dots = []
+        for _ in range(3):
+            dot = MDIcon(
+                icon="circle", font_size="10sp",
+                theme_text_color="Custom", text_color=[1, 1, 1, 1],
+                size_hint=(None, None), size=(dp(10), dp(10)),
+            )
+            dots.append(dot)
+            dots_row.add_widget(dot)
+        bubble.add_widget(dots_row)
         row.add_widget(bubble)
-        anim = Animation(opacity=0.3, duration=0.4) + Animation(opacity=1, duration=0.4)
-        anim.repeat = True
-        anim.start(label)
+
+        # Stagger each dot's pulse start by 0.15s so they animate one
+        # after another, like ChatGPT/Claude's typing indicator.
+        for i, dot in enumerate(dots):
+            def start_pulse(dt, d=dot):
+                anim = Animation(opacity=0.3, duration=0.35) + Animation(opacity=1, duration=0.35)
+                anim.repeat = True
+                anim.start(d)
+            Clock.schedule_once(start_pulse, i * 0.15)
         return row
 
     def _build_chat_bubble(self, message, is_last_ai=False):
@@ -20094,64 +20208,77 @@ class DashboardApp(ChallengeMixin, MDApp):
         is_user = (role == 'user')
 
         outer = MDBoxLayout(
-            orientation='horizontal', size_hint_y=None, spacing=dp(6),
-            padding=[dp(36), 0, dp(6), 0] if is_user else [dp(6), 0, dp(36), 0],
+            orientation='horizontal', size_hint_y=None, spacing=dp(8),
+            padding=[dp(40), 0, dp(4), 0] if is_user else [dp(4), 0, dp(40), 0],
         )
         outer.bind(minimum_height=outer.setter('height'))
 
-        # Avatar (robot for AI, person for the user) - only on the
-        # outer side of the bubble, ChatGPT-style.
-        avatar = MDIcon(
-            icon="account-circle" if is_user else "robot-happy-outline",
-            theme_text_color="Custom",
-            text_color=self.theme_cls.primary_color if is_user else [1, 1, 1, 1],
-            size_hint=(None, None), size=(dp(28), dp(28)),
-            pos_hint={"top": 1},
-        )
+        # Avatar — wrapped in a FloatLayout so the icon glyph is always
+        # perfectly centered in its circular badge (MDCard alone does
+        # not reliably honor pos_hint for a single child, which is why
+        # the robot icon looked off-center before).
         avatar_bg = MDCard(
-            size_hint=(None, None), size=(dp(30), dp(30)), radius=[15],
-            md_bg_color=[0.9, 0.95, 1, 1] if is_user else self.theme_cls.primary_color,
+            size_hint=(None, None), size=(dp(32), dp(32)), radius=[dp(16)],
+            md_bg_color=[0.898, 0.945, 1, 1] if is_user else [0.1294, 0.5882, 0.9529, 1],
             pos_hint={"top": 1},
         )
-        avatar_bg.add_widget(avatar)
+        avatar_float = FloatLayout()
+        avatar_float.add_widget(MDIcon(
+            icon="account-circle" if is_user else "robot-happy-outline",
+            font_size="20sp",
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            theme_text_color="Custom",
+            text_color=[0.1294, 0.5882, 0.9529, 1] if is_user else [1, 1, 1, 1],
+        ))
+        avatar_bg.add_widget(avatar_float)
 
-        bubble = MDCard(
-            orientation='vertical', size_hint_x=1, size_hint_y=None,
-            radius=[16, 16, 4, 16] if is_user else [16, 16, 16, 4],
-            elevation=1, padding=dp(12), spacing=dp(6),
-            md_bg_color=self.theme_cls.primary_color if is_user else self._get_card_bg_color(),
-        )
+        # Bot bubble = blue gradient, user bubble = light blue flat,
+        # per the Cheap4U Support Center design spec.
+        if is_user:
+            bubble = MDCard(
+                orientation='vertical', size_hint_x=1, size_hint_y=None,
+                radius=[18, 18, 4, 18], elevation=1, padding=dp(14), spacing=dp(6),
+                md_bg_color=[0.898, 0.945, 1, 1],
+            )
+        else:
+            bubble = GradientCard(
+                orientation='vertical', size_hint_x=1, size_hint_y=None,
+                radius=[18, 18, 18, 4], elevation=2, padding=dp(14), spacing=dp(6),
+            )
         bubble.bind(minimum_height=bubble.setter('height'))
 
         label = Factory.ChatBubbleLabel(
             text=self._markdown_lite_to_markup(text) if not is_user else text,
             markup=(not is_user),
             theme_text_color="Custom",
-            text_color=[1, 1, 1, 1] if is_user else self._get_text_color(),
+            text_color=[0.1216, 0.1608, 0.2157, 1] if is_user else [1, 1, 1, 1],
         )
         bubble.add_widget(label)
 
         if not is_user:
-            actions = MDBoxLayout(size_hint_y=None, height=dp(26), spacing=dp(2))
+            # Evenly spaced action row: copy / like / dislike / regenerate.
+            # Icons are light (not grey) since they sit on the blue
+            # gradient bubble, where grey would be nearly invisible.
+            actions = MDBoxLayout(size_hint_y=None, height=dp(30), spacing=dp(14))
             actions.add_widget(MDIconButton(
-                icon="content-copy",
-                theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                icon="content-copy", user_font_size="18sp",
+                theme_icon_color="Custom", icon_color=[1, 1, 1, 0.85],
                 on_release=lambda x, t=text: self.copy_chat_message(t),
             ))
             actions.add_widget(MDIconButton(
-                icon="thumb-up-outline",
-                theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                icon="thumb-up-outline", user_font_size="18sp",
+                theme_icon_color="Custom", icon_color=[1, 1, 1, 0.85],
                 on_release=lambda x, mid=message_id: self.send_chat_feedback(mid, 'up'),
             ))
             actions.add_widget(MDIconButton(
-                icon="thumb-down-outline",
-                theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                icon="thumb-down-outline", user_font_size="18sp",
+                theme_icon_color="Custom", icon_color=[1, 1, 1, 0.85],
                 on_release=lambda x, mid=message_id: self.send_chat_feedback(mid, 'down'),
             ))
             if is_last_ai:
                 actions.add_widget(MDIconButton(
-                    icon="refresh",
-                    theme_icon_color="Custom", icon_color=[0.5, 0.5, 0.5, 1],
+                    icon="refresh", user_font_size="18sp",
+                    theme_icon_color="Custom", icon_color=[1, 1, 1, 0.85],
                     on_release=lambda x: self.regenerate_last_ai_response(),
                 ))
             actions.add_widget(Widget())
