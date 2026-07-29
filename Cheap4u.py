@@ -39,7 +39,7 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.toast import toast
 
 # Standard libs
-import os, re, json, hashlib, random, traceback, webbrowser, threading
+import os, re, json, hashlib, random, traceback, webbrowser, threading, time
 from datetime import datetime
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -658,7 +658,8 @@ MDScreenManager:
             id: splash_root
 
             # Smooth diagonal blue gradient background (see GradientBackground
-            # class - built once as a small texture, cheap to render).
+            # class - built once as a small texture, cheap to render). This
+            # is the only "graphic" on the splash screen besides the logo.
             GradientBackground:
 
                 id: splash_gradient
@@ -667,58 +668,26 @@ MDScreenManager:
 
                 pos: splash_root.pos
 
-            # Soft floating glowing particles drifting upward (purely
-            # decorative - see ParticleField class).
-            ParticleField:
+            # Centered app logo.
+            Image:
 
-                id: splash_particles
+                id: splash_logo
 
-                size: splash_root.size
-
-                pos: splash_root.pos
-
-            # Video container - only becomes visible if assets/welcome.mp4
-            # exists AND plays successfully (see check_and_play_intro_video).
-            # Otherwise it stays empty/invisible and the animated content
-            # below is what the user actually sees.
-            FloatLayout:
-
-                id: splash_video_container
-
-                size_hint: 1, 1
-
-                opacity: 0
-
-            # Centered logo with a soft breathing glow halo behind it.
-            GlowPulseLogo:
-
-                id: splash_glow_logo
+                source: "data/icon.png"
 
                 size_hint: None, None
 
-                size: dp(200), dp(200)
+                size: dp(150), dp(150)
 
-                pos_hint: {'center_x': 0.5, 'center_y': 0.62}
+                pos_hint: {'center_x': 0.5, 'center_y': 0.58}
 
-                Image:
-
-                    id: splash_logo
-
-                    source: "data/icon.png"
-
-                    size_hint: None, None
-
-                    size: dp(150) * splash_glow_logo.logo_scale, dp(150) * splash_glow_logo.logo_scale
-
-                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-
-                    opacity: 0
+                opacity: 0
 
             MDLabel:
 
                 id: splash_welcome
 
-                text: "Cheap4U Technology"
+                text: "Welcome to Cheap4U"
 
                 font_style: "H5"
 
@@ -734,7 +703,7 @@ MDScreenManager:
 
                 size: dp(320), dp(40)
 
-                pos_hint: {'center_x': 0.5, 'center_y': 0.40}
+                pos_hint: {'center_x': 0.5, 'center_y': 0.42}
 
                 opacity: 0
 
@@ -742,7 +711,7 @@ MDScreenManager:
 
                 id: splash_subtext
 
-                text: "Fast \u2022 Secure \u2022 Affordable"
+                text: "Fast \u2022 Secure \u2022 Reliable"
 
                 font_style: "Body1"
 
@@ -756,44 +725,31 @@ MDScreenManager:
 
                 size: dp(320), dp(30)
 
-                pos_hint: {'center_x': 0.5, 'center_y': 0.345}
+                pos_hint: {'center_x': 0.5, 'center_y': 0.36}
 
                 opacity: 0
 
-            # Service icons row - populated from Python (setup_splash_icons)
-            # so each icon can fade/slide in with its own staggered timing.
-            MDBoxLayout:
+            # Small, lightweight loading indicator - just text, no spinner
+            # graphics or progress-bar fill animation to wait on.
+            MDLabel:
 
-                id: splash_icons_row
+                id: splash_loading
 
-                size_hint: None, None
+                text: "Loading..."
 
-                size: dp(300), dp(60)
+                font_style: "Caption"
 
-                pos_hint: {'center_x': 0.5, 'center_y': 0.24}
+                halign: "center"
 
-                spacing: dp(12)
+                theme_text_color: "Custom"
 
-            # Modern loading progress bar at the bottom.
-            MDProgressBar:
-
-                id: splash_progress
-
-                type: "determinate"
-
-                min: 0
-
-                max: 100
-
-                value: 0
+                text_color: [1, 1, 1, 0.75]
 
                 size_hint: None, None
 
-                size: dp(220), dp(4)
+                size: dp(200), dp(24)
 
-                pos_hint: {'center_x': 0.5, 'center_y': 0.12}
-
-                color: 1, 1, 1, 1
+                pos_hint: {'center_x': 0.5, 'center_y': 0.18}
 
                 opacity: 0
 
@@ -8268,17 +8224,6 @@ from kivy.uix.widget import Widget
 from kivy.graphics import Color, Rectangle, Ellipse, RoundedRectangle
 from kivy.graphics.texture import Texture
 from kivy.properties import NumericProperty
-from kivymd.uix.progressbar import MDProgressBar
-
-# Video is optional - only used if assets/welcome.mp4 exists. Import is
-# guarded so a missing video provider (ffpyplayer/gstreamer) on some
-# builds can never crash the app; splash falls back to the animated
-# version automatically if Video is unavailable or fails to play.
-try:
-    from kivy.uix.video import Video
-    VIDEO_AVAILABLE = True
-except Exception:
-    VIDEO_AVAILABLE = False
 
 
 class GradientBackground(Widget):
@@ -8374,88 +8319,6 @@ class GradientCard(MDCard):
             self._grad_rect.pos = self.pos
             self._grad_rect.size = self.size
             self._grad_rect.radius = self.radius or [0]
-
-
-class GlowPulseLogo(FloatLayout):
-    """The centered Cheap4U logo with a soft glow halo behind it that
-    breathes in and out, plus the logo itself gently scaling (pulsing)."""
-
-    glow_radius = NumericProperty(90)
-    glow_alpha = NumericProperty(0.35)
-    logo_scale = NumericProperty(1.0)
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        with self.canvas.before:
-            self._glow_color = Color(1, 1, 1, self.glow_alpha)
-            self._glow = Ellipse(size=(self.glow_radius * 2, self.glow_radius * 2))
-        self.bind(pos=self._redraw, size=self._redraw,
-                  glow_radius=self._redraw, glow_alpha=self._redraw)
-
-    def _redraw(self, *_):
-        cx, cy = self.center
-        self._glow.size = (self.glow_radius * 2, self.glow_radius * 2)
-        self._glow.pos = (cx - self.glow_radius, cy - self.glow_radius)
-        self._glow_color.rgba = (1, 1, 1, self.glow_alpha)
-
-    def start_pulse(self):
-        def loop(*_):
-            grow = Animation(glow_radius=dp(105), glow_alpha=0.5, logo_scale=1.06, duration=1.0, t="in_out_sine")
-            shrink = Animation(glow_radius=dp(85), glow_alpha=0.3, logo_scale=1.0, duration=1.0, t="in_out_sine")
-            grow.bind(on_complete=lambda *a: shrink.start(self))
-            shrink.bind(on_complete=loop)
-            grow.start(self)
-        loop()
-
-    def stop_pulse(self):
-        Animation.cancel_all(self)
-
-
-class ParticleField(Widget):
-    """Soft floating glowing particles drifting upward in the splash
-    background - purely decorative, self-contained, and cheap to run
-    (one widget managing N particles instead of N separate widgets)."""
-
-    def __init__(self, count=14, **kwargs):
-        super().__init__(**kwargs)
-        self.particles = []
-        for _ in range(count):
-            self.particles.append(self._make_particle())
-        with self.canvas:
-            self._color_instr = []
-            self._ellipse_instr = []
-            for p in self.particles:
-                c = Color(1, 1, 1, p["alpha"])
-                e = Ellipse(pos=(p["x"], p["y"]), size=(p["size"], p["size"]))
-                self._color_instr.append(c)
-                self._ellipse_instr.append(e)
-        self._event = Clock.schedule_interval(self._update, 1 / 30)
-
-    def _make_particle(self):
-        return {
-            "x": random.uniform(0, 300),
-            "y": random.uniform(-50, 50),
-            "size": random.uniform(dp(3), dp(8)),
-            "speed": random.uniform(dp(8), dp(22)),
-            "alpha": random.uniform(0.15, 0.45),
-            "drift": random.uniform(-6, 6),
-        }
-
-    def _update(self, dt):
-        if not self.width or not self.height:
-            return
-        for i, p in enumerate(self.particles):
-            p["y"] += p["speed"] * dt
-            p["x"] += p["drift"] * dt
-            if p["y"] > self.height + 20:
-                p["y"] = -20
-                p["x"] = random.uniform(0, self.width)
-            self._ellipse_instr[i].pos = (self.x + p["x"], self.y + p["y"])
-            self._ellipse_instr[i].size = (p["size"], p["size"])
-
-    def stop(self):
-        if self._event:
-            self._event.cancel()
 
 
 class LoaderWidget(FloatLayout):
@@ -13345,182 +13208,84 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     
  
+    # Splash timing: a short minimum so the brand mark doesn't just flash
+    # (feels broken, not "fast"), and a hard maximum failsafe so a slow
+    # device/network can never hold the user on the splash screen.
+    SPLASH_MIN_DURATION = 0.6
+    SPLASH_MAX_DURATION = 2.0
+
     def on_start(self):
+        """Show the splash instantly, then do all real startup work
+        (screen setup, login-status/session check, API warm-up) in the
+        background while it's on screen, and navigate away the moment
+        that work is done - never waiting on animation timers."""
         try:
-            self.play_splash_animation()
+            self._splash_routed = False
+            self._splash_start_time = time.time()
+            self.root.current = "splash"
+            self.animate_splash_in()
+
+            # Hard failsafe: guarantees we never sit on the splash screen
+            # longer than SPLASH_MAX_DURATION even if something below hangs.
+            Clock.schedule_once(lambda dt: self.finish_splash(), self.SPLASH_MAX_DURATION)
+
+            # Let the splash screen paint its first frame before running
+            # setup, so there's never a blank/frozen frame before it.
+            Clock.schedule_once(lambda dt: self.run_startup_tasks(), 0)
+        except Exception as e:
+            print(f"on_start error: {e}")
+            self.route_to_login_or_pin()
+
+    def animate_splash_in(self):
+        """Single, fast, subtle fade-in for the logo/text/loading label.
+        No staggered multi-second timeline - everything appears together."""
+        try:
+            screen = self.root.get_screen("splash")
+            widgets = [
+                screen.ids.splash_logo,
+                screen.ids.splash_welcome,
+                screen.ids.splash_subtext,
+                screen.ids.splash_loading,
+            ]
+            for w in widgets:
+                w.opacity = 0
+                Animation(opacity=1, duration=0.3, transition="out_quad").start(w)
+        except Exception as e:
+            print(f"animate_splash_in error: {e}")
+
+    def run_startup_tasks(self):
+        """Prepares everything the app needs (screen widgets, login/session
+        status already loaded in build(), API connection warm-up), then
+        routes to the correct screen. Login status was already determined
+        in build() via load_quick_pin()/load_users(), so routing just reads
+        that state - no extra wait here."""
+        try:
             self.load_networks()
             self.setup_airtime_topup_screen()
             self.setup_cable_tv_screen()
             self.setup_electricity_screen()
             self.setup_data_purchase_screen()
             self.setup_exam_pin_screen()
-
             self.setup_a2c_network_screen()
-            Clock.schedule_once(lambda dt: self.initialize_services(), 1)
+            # Fire-and-forget backend warm-up; does not block navigation.
+            self.initialize_services()
         except Exception as e:
-            print(f"on_start error: {e}")
-            if hasattr(self, 'root'):
-                self.root.current = "login"
+            print(f"run_startup_tasks error: {e}")
+        finally:
+            elapsed = time.time() - self._splash_start_time
+            remaining = max(self.SPLASH_MIN_DURATION - elapsed, 0)
+            Clock.schedule_once(lambda dt: self.finish_splash(), remaining)
 
-    def play_splash_animation(self):
-        """Plays the splash sequence once on app launch, then transitions
-        to the PIN screen (if quick-login is set up) or full login.
-        Tries assets/welcome.mp4 first if present; falls back to the full
-        animated splash (gradient, glowing logo, service icons, particles,
-        progress bar) if no video exists or it fails to play."""
-        try:
-            self.root.current = "splash"
-            self._splash_done = False
-            if self.check_and_play_intro_video():
-                return  # video path handles its own routing
-            self.play_splash_fallback_animation()
-        except Exception as e:
-            print(f"play_splash_animation error: {e}")
-            self.route_to_login_or_pin()
-
-    def check_and_play_intro_video(self):
-        """Returns True if assets/welcome.mp4 exists and playback started.
-        Falls back to the animated splash automatically on any failure
-        (missing file, missing video provider/codec, playback error)."""
-        if not VIDEO_AVAILABLE:
-            return False
-        video_path = "assets/welcome.mp4"
-        if not os.path.exists(video_path):
-            return False
-        try:
-            screen = self.root.get_screen("splash")
-            container = screen.ids.splash_video_container
-            video = Video(source=video_path, state="play")
-            video.size_hint = (1, 1)
-            video.allow_stretch = True
-            video.keep_ratio = True
-            container.add_widget(video)
-            container.opacity = 1
-
-            def finish(*a):
-                if self._splash_done:
-                    return
-                self._splash_done = True
-                self.route_to_login_or_pin()
-
-            def fall_back(*a):
-                if self._splash_done:
-                    return
-                print("Splash video unavailable/failed - using animated splash instead")
-                container.opacity = 0
-                container.clear_widgets()
-                self.play_splash_fallback_animation()
-
-            video.bind(on_eos=finish)
-
-            # If playback never actually starts, or audio is decoding but no
-            # video frame ever arrives (texture stays None - e.g. an
-            # incompatible codec profile), bail out to the animated splash
-            # rather than sitting on a blank/silent-video screen.
-            def check_playing(dt):
-                if self._splash_done:
-                    return
-                if video.position <= 0 or video.texture is None:
-                    fall_back()
-            Clock.schedule_once(check_playing, 2.0)
-            return True
-        except Exception as e:
-            print(f"Video splash error: {e}")
-            return False
-
-    def play_splash_fallback_animation(self):
-        """The full animated splash timeline. Gradient background and
-        floating particles are already running on their own (see
-        GradientBackground/ParticleField) - this drives the logo, text,
-        service icons, and progress bar, then routes to login/PIN."""
-        try:
-            screen = self.root.get_screen("splash")
-            glow_logo = screen.ids.splash_glow_logo
-            logo = screen.ids.splash_logo
-            welcome = screen.ids.splash_welcome
-            subtext = screen.ids.splash_subtext
-            icons_row = screen.ids.splash_icons_row
-            progress = screen.ids.splash_progress
-
-            # Continuous soft breathing glow behind the logo
-            glow_logo.start_pulse()
-
-            # Logo scales from 0 -> 100% (fades + the container's own
-            # scale animation gives the "grow in" feel)
-            logo.opacity = 0
-            Animation(opacity=1, duration=0.6, transition="out_quad").start(logo)
-
-            def show_welcome(dt):
-                Animation(opacity=1, duration=0.6, transition="out_quad").start(welcome)
-            Clock.schedule_once(show_welcome, 0.5)
-
-            def show_subtext(dt):
-                Animation(opacity=1, duration=0.6, transition="out_quad").start(subtext)
-            Clock.schedule_once(show_subtext, 0.8)
-
-            def show_icons(dt):
-                self.setup_splash_icons(icons_row)
-            Clock.schedule_once(show_icons, 1.1)
-
-            def show_progress(dt):
-                progress.opacity = 1
-                Animation(value=100, duration=2.0, transition="out_quad").start(progress)
-            Clock.schedule_once(show_progress, 1.2)
-
-            def finish(dt):
-                if self._splash_done:
-                    return
-                self._splash_done = True
-                glow_logo.stop_pulse()
-                try:
-                    screen.ids.splash_particles.stop()
-                except Exception:
-                    pass
-                self.route_to_login_or_pin()
-            Clock.schedule_once(finish, 3.6)
-        except Exception as e:
-            print(f"play_splash_fallback_animation error: {e}")
-            self.route_to_login_or_pin()
-
-    def setup_splash_icons(self, container):
-        """Fades in the row of service icons (Data/Airtime/Electricity/
-        Cable TV/Exam PIN), staggered so they appear one after another."""
-        try:
-            container.clear_widgets()
-            services = [
-                ("wifi", "Data"),
-                ("cellphone", "Airtime"),
-                ("flash", "Electricity"),
-                ("television-classic", "Cable TV"),
-                ("school", "Exam PIN"),
-            ]
-            for i, (icon_name, label) in enumerate(services):
-                box = MDBoxLayout(orientation="vertical", spacing=dp(2))
-                icon_widget = MDIcon(
-                    icon=icon_name,
-                    theme_text_color="Custom",
-                    text_color=[1, 1, 1, 0],
-                    halign="center",
-                )
-                text_widget = MDLabel(
-                    text=label,
-                    font_style="Caption",
-                    theme_text_color="Custom",
-                    text_color=[1, 1, 1, 0],
-                    halign="center",
-                )
-                box.add_widget(icon_widget)
-                box.add_widget(text_widget)
-                container.add_widget(box)
-
-                def reveal(dt, iw=icon_widget, tw=text_widget):
-                    Animation(text_color=[1, 1, 1, 1], duration=0.5, transition="out_quad").start(iw)
-                    Animation(text_color=[0.9, 0.95, 1, 1], duration=0.5, transition="out_quad").start(tw)
-                Clock.schedule_once(reveal, i * 0.15)
-        except Exception as e:
-            print(f"setup_splash_icons error: {e}")
+    def finish_splash(self):
+        """Routes away from the splash screen exactly once."""
+        if self._splash_routed:
+            return
+        self._splash_routed = True
+        self.route_to_login_or_pin()
 
     def initialize_services(self):
+        """Warms up the API connection in the background. Non-blocking:
+        UrlRequest runs on its own thread and never delays navigation."""
         def ok(req, r): print(f"✅ Backend: {r.get('message','OK')}")
         def fail(req, e): print(f"⚠️ Backend not ready: {e}")
         try:
