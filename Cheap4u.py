@@ -8476,7 +8476,7 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     # ── Support Center / AI Chat Assistant ──────────────────────────
     support_phone = StringProperty("+2349037663816")
-    support_email = StringProperty("support@cheap4utechnology.com")
+    support_email = StringProperty("supportcheap4u@gmail.com")
     app_version = StringProperty("1.0.0")
 
     ai_chat_messages = ListProperty([])       # [{'role': 'user'|'assistant', 'content': str}, ...]
