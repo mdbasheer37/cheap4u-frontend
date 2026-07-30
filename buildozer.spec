@@ -10,7 +10,7 @@ title = Cheap4U
 
 
 # (str) Package name
-package.name = Cheap4U 
+package.name = cheap4u
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = com
