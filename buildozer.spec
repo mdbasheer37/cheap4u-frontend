@@ -10,10 +10,10 @@ title = Cheap4U
 
 
 # (str) Package name
-package.name = Cheap4u
+package.name = Cheap4U 
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = com.cheap4u
+package.domain = com
 
 
 # (str) Source code where the main.py live
