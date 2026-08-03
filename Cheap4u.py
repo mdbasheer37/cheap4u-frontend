@@ -4,6 +4,7 @@ from kivymd.uix.list import (
     OneLineIconListItem, IconLeftWidget, TwoLineListItem, OneLineAvatarListItem, OneLineListItem, MDList
 )
 from datetime import datetime, timedelta
+import random
 from kivy.lang import Builder
 from kivy.animation import Animation
 from kivy.clock import Clock
@@ -352,6 +353,12 @@ class ProfitScreen(Screen):
 class ReferralScreen(Screen):
     pass
 
+class CashbackScreen(Screen):
+    pass
+
+class SpinScreen(Screen):
+    pass
+
 class TermsScreen(Screen):
     pass
 
@@ -492,6 +499,10 @@ MDScreenManager:
     WithdrawScreen:   
     
     ReferralScreen:
+
+    CashbackScreen:
+
+    SpinScreen:
 
     TermsScreen:
 
@@ -4710,6 +4721,122 @@ MDScreenManager:
 
                                     height: self.texture_size[1]
 
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
+
+                            on_release: app.show_cashback_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "cash-refund"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.75, 0.35, 1]
+
+                                MDLabel:
+
+                                    text: "Cashback"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [1, 0.95, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.3, 0.22, 0.15, 1]
+
+                            on_release: app.show_spin_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "dharmachakra"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.95, 0.55, 0.1, 1]
+
+                                MDLabel:
+
+                                    text: "Spin & Win"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
 
 
                     # Services section
@@ -7421,6 +7548,360 @@ MDScreenManager:
                     
                           
     
+<CashbackScreen>:
+    name: "cashback"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.1, 0.75, 0.35, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Cashback"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_cashback_data()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    # Balance Card
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(20)
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: dp(160)
+                        elevation: 2
+                        radius: [15]
+                        md_bg_color: [0.1, 0.75, 0.35, 1]
+
+                        MDLabel:
+                            text: "Available Cashback"
+                            font_style: "Subtitle1"
+                            halign: "center"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.9]
+                            size_hint_y: None
+                            height: dp(25)
+
+                        MDLabel:
+                            id: cashback_balance_label
+                            text: "₦0.00"
+                            font_style: "H3"
+                            bold: True
+                            halign: "center"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 1]
+                            size_hint_y: None
+                            height: dp(50)
+
+                        MDLabel:
+                            id: cashback_expiring_label
+                            text: ""
+                            font_style: "Caption"
+                            halign: "center"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.85]
+                            size_hint_y: None
+                            height: dp(20)
+
+                        MDRaisedButton:
+                            id: cashback_redeem_btn
+                            text: "MOVE TO MAIN WALLET"
+                            md_bg_color: [1, 1, 1, 1]
+                            theme_text_color: "Custom"
+                            text_color: [0.1, 0.75, 0.35, 1]
+                            on_release: app.redeem_cashback()
+                            pos_hint: {"center_x": 0.5}
+                            size_hint_x: 0.85
+                            disabled: True
+                            opacity: 0.6
+
+                    # Statistics Card
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(20)
+                        spacing: dp(12)
+                        size_hint_y: None
+                        height: dp(180)
+                        elevation: 2
+                        radius: [15]
+
+                        MDLabel:
+                            text: "Cashback Statistics"
+                            font_style: "H6"
+                            bold: True
+                            halign: "center"
+                            size_hint_y: None
+                            height: dp(30)
+
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: dp(10)
+                            size_hint_y: None
+                            height: dp(35)
+
+                            MDLabel:
+                                text: "Total Earned:"
+                                bold: True
+                                size_hint_x: 0.6
+
+                            MDLabel:
+                                id: cashback_total_earned_label
+                                text: "₦0.00"
+                                halign: "right"
+                                theme_text_color: "Primary"
+
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: dp(10)
+                            size_hint_y: None
+                            height: dp(35)
+
+                            MDLabel:
+                                text: "Total Redeemed:"
+                                bold: True
+                                size_hint_x: 0.6
+
+                            MDLabel:
+                                id: cashback_total_redeemed_label
+                                text: "₦0.00"
+                                halign: "right"
+                                theme_text_color: "Secondary"
+
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            spacing: dp(10)
+                            size_hint_y: None
+                            height: dp(35)
+
+                            MDLabel:
+                                text: "Total Expired:"
+                                bold: True
+                                size_hint_x: 0.6
+
+                            MDLabel:
+                                id: cashback_total_expired_label
+                                text: "₦0.00"
+                                halign: "right"
+                                theme_text_color: "Secondary"
+
+                    # Earn Rates Card
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(20)
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: dp(150)
+                        elevation: 2
+                        radius: [15]
+                        md_bg_color: app.theme_cls.primary_light
+
+                        MDLabel:
+                            text: "How It Works"
+                            font_style: "H6"
+                            bold: True
+                            halign: "center"
+                            size_hint_y: None
+                            height: dp(30)
+
+                        MDLabel:
+                            id: cashback_rates_label
+                            text: "Earn automatic cashback every time you buy airtime, data, cable TV, electricity, or exam pins. Cashback lands in this wallet and can be moved to your main wallet at any time."
+                            halign: "left"
+                            text_size: self.width, None
+                            theme_text_color: "Secondary"
+
+                    # History
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(35)
+
+                        MDLabel:
+                            text: "Recent Activity"
+                            font_style: "H6"
+                            bold: True
+                            size_hint_x: 0.7
+
+                        MDLabel:
+                            id: cashback_history_empty_label
+                            text: ""
+                            font_style: "Caption"
+                            halign: "right"
+                            theme_text_color: "Secondary"
+
+                    MDList:
+                        id: cashback_history_list
+                        spacing: dp(4)
+
+<SpinScreen>:
+    name: "spin"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.95, 0.55, 0.1, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Spin & Win"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "history"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.show_spin_history()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    MDLabel:
+                        id: spin_status_label
+                        text: "Loading..."
+                        halign: "center"
+                        font_style: "Subtitle1"
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: dp(30)
+
+                    # Wheel + fixed pointer
+                    FloatLayout:
+                        id: spin_wheel_container
+                        size_hint_y: None
+                        height: dp(300)
+
+                        SpinWheelWidget:
+                            id: spin_wheel
+                            size_hint: [None, None]
+                            size: [dp(280), dp(280)]
+                            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+                        MDIcon:
+                            icon: "menu-down"
+                            size_hint: [None, None]
+                            size: [dp(40), dp(40)]
+                            pos_hint: {"center_x": 0.5, "top": 1.05}
+                            theme_text_color: "Custom"
+                            text_color: [0.95, 0.55, 0.1, 1]
+
+                    MDRaisedButton:
+                        id: spin_button
+                        text: "SPIN NOW"
+                        md_bg_color: [0.95, 0.55, 0.1, 1]
+                        pos_hint: {"center_x": 0.5}
+                        size_hint_x: 0.7
+                        size_hint_y: None
+                        height: dp(50)
+                        on_release: app.perform_spin()
+
+                    MDLabel:
+                        id: spin_cost_label
+                        text: ""
+                        halign: "center"
+                        font_style: "Caption"
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: dp(20)
+
+                    # Prize legend
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(15)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+                        elevation: 2
+                        radius: [15]
+
+                        MDLabel:
+                            text: "Possible Prizes"
+                            font_style: "H6"
+                            bold: True
+                            size_hint_y: None
+                            height: dp(30)
+
+                        MDBoxLayout:
+                            id: spin_legend_box
+                            orientation: 'vertical'
+                            spacing: dp(6)
+                            size_hint_y: None
+                            height: self.minimum_height
+
+                    MDLabel:
+                        text: "Recent Wins"
+                        font_style: "H6"
+                        bold: True
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDList:
+                        id: spin_history_list
+                        spacing: dp(4)
+
 <ProfitScreen>:
     name: "profit"
     
@@ -8221,7 +8702,8 @@ MDScreenManager:
 from kivy.properties import StringProperty, NumericProperty
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.widget import Widget
-from kivy.graphics import Color, Rectangle, Ellipse, RoundedRectangle
+from kivy.graphics import Color, Rectangle, Ellipse, RoundedRectangle, PushMatrix, PopMatrix, Rotate, Line
+import math
 from kivy.graphics.texture import Texture
 from kivy.properties import NumericProperty
 
@@ -8267,6 +8749,87 @@ class GradientBackground(Widget):
     def _update_rect(self, *_):
         self._rect.pos = self.pos
         self._rect.size = self.size
+
+
+class SpinWheelWidget(Widget):
+    """Custom-drawn prize wheel for the Spin & Win screen.
+
+    Segments (label/color) come from the backend so the wheel always
+    matches whatever the admin has configured. Slices are drawn once with
+    kivy.graphics.Ellipse's angle_start/angle_end (a true pie-slice, not an
+    image), wrapped in a Rotate transform; spinning is just animating the
+    `rotation` NumericProperty — cheap, no per-frame redraw of the slices.
+    """
+
+    rotation = NumericProperty(0)
+
+    def __init__(self, **kwargs):
+        self.segments = kwargs.pop('segments', []) or []
+        super().__init__(**kwargs)
+        self._rot_instr = None
+        self.bind(pos=self._redraw, size=self._redraw)
+        self.bind(rotation=self._apply_rotation)
+        self._redraw()
+
+    def set_segments(self, segments):
+        self.segments = segments or []
+        self._redraw()
+
+    @staticmethod
+    def _hex_to_rgba(hex_color, alpha=1.0):
+        try:
+            h = (hex_color or '#2196F3').lstrip('#')
+            r = int(h[0:2], 16) / 255.0
+            g = int(h[2:4], 16) / 255.0
+            b = int(h[4:6], 16) / 255.0
+            return (r, g, b, alpha)
+        except Exception:
+            return (0.2, 0.6, 1.0, alpha)
+
+    def _redraw(self, *_):
+        self.canvas.clear()
+        segs = self.segments
+        n = len(segs)
+        cx, cy = self.center
+        radius = max(0, min(self.width, self.height) / 2 - dp(4))
+
+        with self.canvas:
+            PushMatrix()
+            self._rot_instr = Rotate(angle=self.rotation, origin=(cx, cy))
+
+            if n > 0 and radius > 0:
+                sweep = 360.0 / n
+                for i, seg in enumerate(segs):
+                    Color(*self._hex_to_rgba(seg.get('color', '#2196F3')))
+                    start = i * sweep
+                    end = start + sweep
+                    Ellipse(
+                        pos=(cx - radius, cy - radius),
+                        size=(radius * 2, radius * 2),
+                        angle_start=start, angle_end=end,
+                    )
+                # divider lines between slices
+                Color(1, 1, 1, 0.9)
+                for i in range(n):
+                    ang = math.radians(i * sweep)
+                    Line(points=[cx, cy, cx + radius * math.cos(ang), cy + radius * math.sin(ang)],
+                         width=dp(1))
+
+            # outer rim
+            Color(1, 1, 1, 1)
+            Line(circle=(cx, cy, radius), width=dp(3))
+
+            PopMatrix()
+
+            # hub (drawn outside the rotate block so it stays fixed/on top)
+            Color(1, 1, 1, 1)
+            Ellipse(pos=(cx - dp(14), cy - dp(14)), size=(dp(28), dp(28)))
+            Color(0.1, 0.75, 0.35, 1)
+            Line(circle=(cx, cy, dp(14)), width=dp(2))
+
+    def _apply_rotation(self, *_):
+        if self._rot_instr is not None:
+            self._rot_instr.angle = self.rotation
 
 
 class GradientCard(MDCard):
@@ -9067,6 +9630,566 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.root.current = "referral"
         Clock.schedule_once(lambda dt: self.load_referral_data(), 0.3)             
     
+
+
+    # ── Cashback System ──────────────────────────────────────────────
+
+    def show_cashback_screen(self):
+        """Navigate to the cashback screen and load fresh data."""
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to view your cashback")
+            self.root.current = "login"
+            return
+        self.root.current = "cashback"
+        Clock.schedule_once(lambda dt: self.load_cashback_data(), 0.3)
+
+    def load_cashback_data(self):
+        """Load cashback wallet summary + recent history from backend."""
+        if not self.current_user or not self.session_token:
+            return
+
+        self.cashback_wallet = getattr(self, 'cashback_wallet', {}) or {}
+
+        def on_wallet_success(req, result):
+            if result.get('status') == 'success':
+                self.cashback_wallet = result.get('data', {})
+                try:
+                    screen = self.root.get_screen('cashback')
+                    self.update_cashback_ui(screen, self.cashback_wallet)
+                except Exception as e:
+                    print(f"Cashback screen update error: {e}")
+
+        def on_failure(req, error):
+            print(f"load_cashback_data failed: {error}")
+
+        def on_error(req, error):
+            print(f"load_cashback_data error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cashback/wallet",
+            on_success=on_wallet_success,
+            on_failure=on_failure,
+            on_error=on_error,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+        def on_history_success(req, result):
+            if result.get('status') == 'success':
+                entries = result.get('data', {}).get('entries', [])
+                try:
+                    screen = self.root.get_screen('cashback')
+                    self.update_cashback_history_ui(screen, entries)
+                except Exception as e:
+                    print(f"Cashback history render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cashback/history?per_page=20",
+            on_success=on_history_success,
+            on_failure=lambda req, error: print(f"cashback history failed: {error}"),
+            on_error=lambda req, error: print(f"cashback history error: {error}"),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+    def update_cashback_ui(self, screen, data):
+        """Update the cashback screen's balance/stats/redeem-button state."""
+        try:
+            ids = screen.ids
+
+            balance = data.get('balance', 0)
+            if hasattr(ids, 'cashback_balance_label'):
+                ids.cashback_balance_label.text = self.format_currency(balance)
+
+            expiring_soon = data.get('expiring_soon', 0)
+            next_expiry = data.get('next_expiry_date')
+            if hasattr(ids, 'cashback_expiring_label'):
+                if expiring_soon and expiring_soon > 0:
+                    when = ""
+                    if next_expiry:
+                        try:
+                            dt = datetime.fromisoformat(next_expiry.replace('Z', ''))
+                            when = f" by {dt.strftime('%b %d')}"
+                        except Exception:
+                            pass
+                    ids.cashback_expiring_label.text = (
+                        f"₦{expiring_soon:,.2f} expiring soon{when}"
+                    )
+                else:
+                    ids.cashback_expiring_label.text = "Cashback earned on every purchase"
+
+            if hasattr(ids, 'cashback_total_earned_label'):
+                ids.cashback_total_earned_label.text = self.format_currency(data.get('total_earned', 0))
+            if hasattr(ids, 'cashback_total_redeemed_label'):
+                ids.cashback_total_redeemed_label.text = self.format_currency(data.get('total_redeemed', 0))
+            if hasattr(ids, 'cashback_total_expired_label'):
+                ids.cashback_total_expired_label.text = self.format_currency(data.get('total_expired', 0))
+
+            can_redeem = data.get('can_redeem', False)
+            if hasattr(ids, 'cashback_redeem_btn'):
+                ids.cashback_redeem_btn.disabled = not can_redeem
+                ids.cashback_redeem_btn.opacity = 1.0 if can_redeem else 0.6
+
+        except Exception as e:
+            print(f"update_cashback_ui error: {e}")
+
+    def update_cashback_history_ui(self, screen, entries):
+        """Populate the cashback screen's recent-activity list."""
+        try:
+            ids = screen.ids
+            if not hasattr(ids, 'cashback_history_list'):
+                return
+
+            history_list = ids.cashback_history_list
+            history_list.clear_widgets()
+
+            if not entries:
+                if hasattr(ids, 'cashback_history_empty_label'):
+                    ids.cashback_history_empty_label.text = "No activity yet"
+                return
+
+            if hasattr(ids, 'cashback_history_empty_label'):
+                ids.cashback_history_empty_label.text = ""
+
+            type_labels = {
+                'earned':       ('Cashback earned', [0.1, 0.75, 0.35, 1], '+'),
+                'redeemed':     ('Moved to wallet', [0.9, 0.5, 0.1, 1], '-'),
+                'expired':      ('Cashback expired', [0.8, 0.2, 0.2, 1], '-'),
+                'admin_credit': ('Bonus credit', [0.1, 0.75, 0.35, 1], '+'),
+                'admin_debit':  ('Adjustment', [0.8, 0.2, 0.2, 1], '-'),
+            }
+
+            for entry in entries:
+                etype = entry.get('type', '')
+                label, color, sign = type_labels.get(etype, (etype.title(), [0.4, 0.4, 0.4, 1], ''))
+                category = entry.get('category')
+                subtitle = category.replace('_', ' ').title() if category else (entry.get('note') or '')
+
+                created_at = entry.get('created_at') or ''
+                date_str = ''
+                if created_at:
+                    try:
+                        dt = datetime.fromisoformat(created_at.replace('Z', ''))
+                        date_str = dt.strftime('%b %d, %Y %I:%M %p')
+                    except Exception:
+                        date_str = created_at
+
+                item = TwoLineListItem(
+                    text=f"{label}   {sign}{self.format_currency(entry.get('amount', 0))}",
+                    secondary_text=f"{subtitle} • {date_str}" if subtitle else date_str,
+                    theme_text_color="Custom",
+                    text_color=color,
+                    secondary_text_color=[0.5, 0.5, 0.5, 1],
+                )
+                history_list.add_widget(item)
+
+        except Exception as e:
+            print(f"update_cashback_history_ui error: {e}")
+
+    def redeem_cashback(self):
+        """Show a confirm dialog and move the cashback balance into the main wallet."""
+        wallet = getattr(self, 'cashback_wallet', {}) or {}
+        balance = wallet.get('balance', 0)
+
+        if not balance or balance <= 0:
+            self.show_error_dialog("You have no cashback balance to redeem.")
+            return
+
+        content = MDBoxLayout(
+            orientation='vertical',
+            spacing=dp(15),
+            size_hint_y=None,
+            height=dp(120),
+            padding=dp(10),
+        )
+        amount_input = MDTextField(
+            hint_text=f"Amount (max {self.format_currency(balance)})",
+            input_type='number',
+            text=f"{balance:.2f}",
+            helper_text=f"Available: {self.format_currency(balance)}",
+            helper_text_mode="persistent",
+            mode="rectangle",
+        )
+        content.add_widget(amount_input)
+
+        dialog = MDDialog(
+            title="Move Cashback to Wallet",
+            type="custom",
+            content_cls=content,
+            buttons=[
+                MDFlatButton(
+                    text="CANCEL",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=lambda x: dialog.dismiss()
+                ),
+                MDRaisedButton(
+                    text="REDEEM",
+                    md_bg_color=self.theme_cls.primary_color,
+                    on_release=lambda x: self._process_cashback_redeem(dialog, amount_input.text)
+                )
+            ],
+            radius=[20, 7, 20, 7]
+        )
+        dialog.open()
+
+    def _process_cashback_redeem(self, dialog, amount_text):
+        """Send the redeem request after the user confirms the amount."""
+        dialog.dismiss()
+
+        try:
+            amount = float(str(amount_text).replace('₦', '').replace(',', '').strip())
+        except (ValueError, AttributeError):
+            self.show_error_dialog("Invalid amount entered")
+            return
+
+        if amount <= 0:
+            self.show_error_dialog("Amount must be greater than zero")
+            return
+
+        self.show_loader("Moving cashback to wallet...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                data = result.get('data', {})
+                if self.current_user:
+                    self.current_user['wallet_balance'] = data.get('wallet_balance', 0)
+                self.update_dashboard()
+                self.load_cashback_data()
+                self.show_success_dialog(result.get('message', 'Cashback moved to your wallet!'))
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to redeem cashback'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        def on_error(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Connection error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cashback/redeem",
+            on_success=on_success,
+            on_failure=on_failure,
+            on_error=on_error,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            req_body=json.dumps({'amount': amount}),
+            timeout=15,
+        )
+
+
+    # ── Spin & Win ────────────────────────────────────────────────────
+
+    def show_spin_screen(self):
+        """Navigate to the Spin & Win screen and load fresh data."""
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to play Spin & Win")
+            self.root.current = "login"
+            return
+        self.root.current = "spin"
+        self.spin_in_progress = False
+        Clock.schedule_once(lambda dt: self.load_spin_data(), 0.3)
+
+    def load_spin_data(self):
+        """Load the wheel layout, today's spin status, and recent history."""
+        if not self.current_user or not self.session_token:
+            return
+
+        self.spin_segments = getattr(self, 'spin_segments', []) or []
+
+        def on_segments_success(req, result):
+            if result.get('status') == 'success':
+                self.spin_segments = result.get('data', [])
+                try:
+                    screen = self.root.get_screen('spin')
+                    if hasattr(screen.ids, 'spin_wheel'):
+                        screen.ids.spin_wheel.set_segments(self.spin_segments)
+                    self.update_spin_legend(screen, self.spin_segments)
+                except Exception as e:
+                    print(f"Spin wheel render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/spin/segments",
+            on_success=on_segments_success,
+            on_failure=lambda req, error: print(f"spin segments failed: {error}"),
+            on_error=lambda req, error: print(f"spin segments error: {error}"),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+        def on_status_success(req, result):
+            if result.get('status') == 'success':
+                self.spin_status = result.get('data', {})
+                try:
+                    screen = self.root.get_screen('spin')
+                    self.update_spin_status_ui(screen, self.spin_status)
+                except Exception as e:
+                    print(f"Spin status render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/spin/status",
+            on_success=on_status_success,
+            on_failure=lambda req, error: print(f"spin status failed: {error}"),
+            on_error=lambda req, error: print(f"spin status error: {error}"),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+        self._load_spin_history()
+
+    def _load_spin_history(self):
+        def on_success(req, result):
+            if result.get('status') == 'success':
+                entries = result.get('data', {}).get('entries', [])
+                try:
+                    screen = self.root.get_screen('spin')
+                    self.update_spin_history_ui(screen, entries)
+                except Exception as e:
+                    print(f"Spin history render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/spin/history?per_page=15",
+            on_success=on_success,
+            on_failure=lambda req, error: print(f"spin history failed: {error}"),
+            on_error=lambda req, error: print(f"spin history error: {error}"),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+    def update_spin_status_ui(self, screen, status_data):
+        """Update the free-spins/cost label and enable/disable the button."""
+        try:
+            ids = screen.ids
+            can_spin = status_data.get('can_spin', False)
+            free_remaining = status_data.get('free_spins_remaining', 0)
+            can_spin_paid = status_data.get('can_spin_paid', False)
+            cost = status_data.get('extra_spin_cost', 0)
+
+            if hasattr(ids, 'spin_status_label'):
+                if not status_data.get('spin_enabled', True):
+                    ids.spin_status_label.text = "Spin & Win is currently unavailable"
+                elif free_remaining > 0:
+                    ids.spin_status_label.text = f"{free_remaining} free spin(s) left today"
+                elif can_spin_paid:
+                    ids.spin_status_label.text = "No free spins left — spin again for a fee"
+                else:
+                    ids.spin_status_label.text = "You've used all your spins today. Come back tomorrow!"
+
+            if hasattr(ids, 'spin_cost_label'):
+                if free_remaining <= 0 and can_spin_paid:
+                    ids.spin_cost_label.text = f"Extra spin costs {self.format_currency(cost)}"
+                else:
+                    ids.spin_cost_label.text = ""
+
+            if hasattr(ids, 'spin_button'):
+                ids.spin_button.disabled = not can_spin or getattr(self, 'spin_in_progress', False)
+                ids.spin_button.opacity = 1.0 if (can_spin and not getattr(self, 'spin_in_progress', False)) else 0.6
+
+        except Exception as e:
+            print(f"update_spin_status_ui error: {e}")
+
+    def update_spin_legend(self, screen, segments):
+        """Show a colored-dot legend of possible prizes below the wheel."""
+        try:
+            ids = screen.ids
+            if not hasattr(ids, 'spin_legend_box'):
+                return
+            box = ids.spin_legend_box
+            box.clear_widgets()
+
+            for seg in segments:
+                row = MDBoxLayout(orientation='horizontal', spacing=dp(10),
+                                   size_hint_y=None, height=dp(24))
+                dot = MDIcon(icon="circle", size_hint=(None, None), size=(dp(20), dp(20)))
+                try:
+                    hexc = (seg.get('color') or '#2196F3').lstrip('#')
+                    r = int(hexc[0:2], 16) / 255.0
+                    g = int(hexc[2:4], 16) / 255.0
+                    b = int(hexc[4:6], 16) / 255.0
+                    dot.theme_text_color = "Custom"
+                    dot.text_color = [r, g, b, 1]
+                except Exception:
+                    pass
+                label = MDLabel(text=seg.get('label', ''), font_style="Body2")
+                row.add_widget(dot)
+                row.add_widget(label)
+                box.add_widget(row)
+        except Exception as e:
+            print(f"update_spin_legend error: {e}")
+
+    def update_spin_history_ui(self, screen, entries):
+        """Populate the Spin & Win screen's recent-wins list."""
+        try:
+            ids = screen.ids
+            if not hasattr(ids, 'spin_history_list'):
+                return
+            history_list = ids.spin_history_list
+            history_list.clear_widgets()
+
+            if not entries:
+                history_list.add_widget(TwoLineListItem(
+                    text="No spins yet", secondary_text="Spin the wheel to see your wins here",
+                ))
+                return
+
+            for entry in entries:
+                created_at = entry.get('created_at') or ''
+                date_str = created_at
+                try:
+                    dt = datetime.fromisoformat(created_at.replace('Z', ''))
+                    date_str = dt.strftime('%b %d, %Y %I:%M %p')
+                except Exception:
+                    pass
+
+                kind = "Free spin" if entry.get('is_free_spin') else f"Paid spin ({self.format_currency(entry.get('cost_paid', 0))})"
+                item = TwoLineListItem(
+                    text=entry.get('label', ''),
+                    secondary_text=f"{kind} • {date_str}",
+                )
+                history_list.add_widget(item)
+        except Exception as e:
+            print(f"update_spin_history_ui error: {e}")
+
+    def show_spin_history(self):
+        """Refresh recent wins (the list already lives on the spin screen)."""
+        self._load_spin_history()
+
+    def perform_spin(self):
+        """Call the backend to resolve a spin, then animate the wheel to
+        land on the winning segment before showing the reward dialog."""
+        if getattr(self, 'spin_in_progress', False):
+            return
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to play Spin & Win")
+            return
+
+        self.spin_in_progress = True
+        try:
+            screen = self.root.get_screen('spin')
+            if hasattr(screen.ids, 'spin_button'):
+                screen.ids.spin_button.disabled = True
+                screen.ids.spin_button.opacity = 0.6
+        except Exception:
+            pass
+
+        def on_success(req, result):
+            if result.get('status') == 'success':
+                self._animate_spin_result(result.get('data', {}))
+            else:
+                self.spin_in_progress = False
+                self._restore_spin_button()
+                self.show_error_dialog(result.get('message', 'Unable to spin right now'))
+
+        def on_failure(req, error):
+            self.spin_in_progress = False
+            self._restore_spin_button()
+            self.show_error_dialog(f"Network error: {error}")
+
+        def on_error(req, error):
+            self.spin_in_progress = False
+            self._restore_spin_button()
+            self.show_error_dialog(f"Connection error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/spin/spin",
+            on_success=on_success,
+            on_failure=on_failure,
+            on_error=on_error,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            req_body=json.dumps({}),
+            timeout=20,
+        )
+
+    def _restore_spin_button(self):
+        try:
+            screen = self.root.get_screen('spin')
+            if hasattr(screen.ids, 'spin_button'):
+                screen.ids.spin_button.disabled = False
+                screen.ids.spin_button.opacity = 1.0
+        except Exception:
+            pass
+
+    def _animate_spin_result(self, data):
+        """Spins the wheel widget several full rotations and lands exactly
+        on the winning segment under the fixed top pointer, then shows the
+        reward once the animation finishes."""
+        try:
+            screen = self.root.get_screen('spin')
+            wheel = screen.ids.spin_wheel
+        except Exception as e:
+            print(f"spin wheel lookup failed: {e}")
+            self.spin_in_progress = False
+            self._on_spin_animation_done(data)
+            return
+
+        segments = data.get('wheel_segments') or self.spin_segments or []
+        winning_id = data.get('segment_id')
+        index = 0
+        for i, seg in enumerate(segments):
+            if seg.get('id') == winning_id:
+                index = i
+                break
+        n = max(1, len(segments))
+        sweep = 360.0 / n
+
+        # Pointer is fixed at the top (90°). After rotating by R degrees,
+        # segment `index`'s center sits at (index*sweep + sweep/2 + R) mod 360.
+        # Solve for R so that lands on 90°, then add extra full turns for effect.
+        target_offset = (90 - (index * sweep + sweep / 2)) % 360
+        current = wheel.rotation % 360
+        extra_turns = random.randint(4, 6) * 360
+        target_rotation = wheel.rotation - current + extra_turns + target_offset
+        if target_rotation <= wheel.rotation:
+            target_rotation += 360
+
+        anim = Animation(rotation=target_rotation, duration=3.5, transition='out_quart')
+        anim.bind(on_complete=lambda *_: self._on_spin_animation_done(data))
+        anim.start(wheel)
+
+    def _on_spin_animation_done(self, data):
+        self.spin_in_progress = False
+        self._restore_spin_button()
+
+        if self.current_user:
+            self.current_user['wallet_balance'] = data.get('wallet_balance', 0)
+        self.update_dashboard()
+        self.load_spin_data()
+
+        label = data.get('label', 'Prize')
+        value = data.get('reward_value', 0)
+        reward_type = data.get('reward_type', '')
+
+        if value and value > 0:
+            if reward_type == 'coupon' and data.get('coupon_code'):
+                message = f"You won {label}!\nCoupon code: {data.get('coupon_code')}"
+            else:
+                message = f"You won {label}!"
+            self.show_success_dialog(message)
+        else:
+            self.show_success_dialog("Better luck next time! Come back for your next spin.")
 
 
     def load_airtime_networks(self):
@@ -10279,6 +11402,12 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.total_referrals = 0
         self.referral_code = ""
         self.can_use_bonus = False
+
+        self.cashback_wallet = {}
+
+        self.spin_segments = []
+        self.spin_status = {}
+        self.spin_in_progress = False
         
         self.users = {}
         self.transactions = {}
