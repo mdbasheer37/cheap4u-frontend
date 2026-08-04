@@ -365,6 +365,12 @@ class CouponScreen(Screen):
 class MerchantScreen(Screen):
     pass
 
+class CardScreen(Screen):
+    pass
+
+class BillReminderScreen(Screen):
+    pass
+
 class TermsScreen(Screen):
     pass
 
@@ -513,6 +519,10 @@ MDScreenManager:
     CouponScreen:
 
     MerchantScreen:
+
+    CardScreen:
+
+    BillReminderScreen:
 
     TermsScreen:
 
@@ -4963,6 +4973,122 @@ MDScreenManager:
 
                                     height: self.texture_size[1]
 
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [0.92, 0.92, 0.97, 1] if app.theme_cls.theme_style == "Light" else [0.18, 0.18, 0.28, 1]
+
+                            on_release: app.show_card_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "credit-card-outline"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.3, 0.25, 0.7, 1]
+
+                                MDLabel:
+
+                                    text: "Dollar Card"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [0.95, 0.93, 0.85, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.24, 0.15, 1]
+
+                            on_release: app.show_reminder_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "bell-ring-outline"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.75, 0.55, 0.1, 1]
+
+                                MDLabel:
+
+                                    text: "Reminders"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
 
 
                     # Services section
@@ -8429,6 +8555,159 @@ MDScreenManager:
                             id: merchant_job_list
                             spacing: dp(4)
 
+<CardScreen>:
+    name: "cards"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.3, 0.25, 0.7, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Virtual Dollar Cards"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_card_data()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    MDLabel:
+                        id: card_rate_label
+                        text: ""
+                        font_style: "Caption"
+                        halign: "center"
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: dp(20)
+
+                    MDRaisedButton:
+                        text: "+ CREATE NEW CARD"
+                        md_bg_color: [0.3, 0.25, 0.7, 1]
+                        pos_hint: {"center_x": 0.5}
+                        size_hint_x: 0.9
+                        on_release: app.show_create_card_dialog()
+
+                    MDLabel:
+                        id: card_empty_label
+                        text: ""
+                        halign: "center"
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDBoxLayout:
+                        id: card_list_box
+                        orientation: 'vertical'
+                        spacing: dp(15)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+<BillReminderScreen>:
+    name: "reminders"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.75, 0.55, 0.1, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Bill Reminders"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_reminder_data()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    MDRaisedButton:
+                        text: "+ ADD BILL REMINDER"
+                        md_bg_color: [0.75, 0.55, 0.1, 1]
+                        pos_hint: {"center_x": 0.5}
+                        size_hint_x: 0.9
+                        on_release: app.show_add_reminder_dialog()
+
+                    MDLabel:
+                        id: reminder_empty_label
+                        text: ""
+                        halign: "center"
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDBoxLayout:
+                        id: reminder_list_box
+                        orientation: 'vertical'
+                        spacing: dp(12)
+                        size_hint_y: None
+                        height: self.minimum_height
+
 <ProfitScreen>:
     name: "profit"
     
@@ -11296,6 +11575,679 @@ class DashboardApp(ChallengeMixin, MDApp):
             timeout=15,
         )
 
+    # ── Virtual Dollar Card ──────────────────────────────────────────
+
+    def show_card_screen(self):
+        """Navigate to the Virtual Dollar Card screen and load fresh data."""
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to access Virtual Dollar Cards")
+            self.root.current = "login"
+            return
+        self.root.current = "cards"
+        Clock.schedule_once(lambda dt: self.load_card_data(), 0.3)
+
+    def load_card_data(self):
+        """Loads the FX/fee config and the user's cards."""
+        if not self.current_user or not self.session_token:
+            return
+
+        def on_config_success(req, result):
+            if result.get('status') == 'success':
+                self.card_config = result.get('data', {})
+                try:
+                    screen = self.root.get_screen('cards')
+                    rate = self.card_config.get('usd_to_ngn_rate', 0)
+                    fee = self.card_config.get('card_creation_fee_usd', 0)
+                    if hasattr(screen.ids, 'card_rate_label'):
+                        screen.ids.card_rate_label.text = f"Rate: ₦{rate:,.0f}/$ • Card fee: ${fee:,.2f}"
+                except Exception as e:
+                    print(f"card config render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards/config",
+            on_success=on_config_success,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+        def on_cards_success(req, result):
+            if result.get('status') == 'success':
+                self.user_cards = result.get('data', [])
+                try:
+                    screen = self.root.get_screen('cards')
+                    self._render_card_list(screen, self.user_cards)
+                except Exception as e:
+                    print(f"card list render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards",
+            on_success=on_cards_success,
+            on_failure=lambda req, error: print(f"load cards failed: {error}"),
+            on_error=lambda req, error: print(f"load cards error: {error}"),
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+    def _render_card_list(self, screen, cards):
+        try:
+            ids = screen.ids
+            box = ids.card_list_box
+            box.clear_widgets()
+
+            if not cards:
+                if hasattr(ids, 'card_empty_label'):
+                    ids.card_empty_label.text = "No cards yet — create one above"
+                return
+            if hasattr(ids, 'card_empty_label'):
+                ids.card_empty_label.text = ""
+
+            for c in cards:
+                box.add_widget(self._build_card_widget(c))
+        except Exception as e:
+            print(f"_render_card_list error: {e}")
+
+    def _build_card_widget(self, card_data):
+        """Builds one bank-card-styled widget with its action buttons."""
+        status = card_data.get('status', 'active')
+        status_colors = {
+            'active': [0.25, 0.2, 0.65, 1],
+            'frozen': [0.4, 0.4, 0.45, 1],
+            'terminated': [0.6, 0.15, 0.15, 1],
+        }
+        card_color = status_colors.get(status, [0.25, 0.2, 0.65, 1])
+
+        outer = MDCard(
+            orientation='vertical', padding=dp(18), spacing=dp(8),
+            size_hint_y=None, height=dp(230), radius=[18], elevation=3,
+            md_bg_color=card_color,
+        )
+
+        brand_row = MDBoxLayout(size_hint_y=None, height=dp(25))
+        brand_row.add_widget(MDLabel(text=card_data.get('card_brand', 'Visa'), bold=True,
+                                      theme_text_color="Custom", text_color=[1, 1, 1, 1]))
+        brand_row.add_widget(MDLabel(text=status.upper(), halign="right",
+                                      theme_text_color="Custom", text_color=[1, 1, 1, 0.85],
+                                      font_style="Caption"))
+        outer.add_widget(brand_row)
+
+        outer.add_widget(MDLabel(
+            text=card_data.get('card_number_masked', '**** **** **** ****'),
+            font_style="H6", theme_text_color="Custom", text_color=[1, 1, 1, 1],
+            size_hint_y=None, height=dp(35),
+        ))
+
+        info_row = MDBoxLayout(size_hint_y=None, height=dp(30))
+        info_row.add_widget(MDLabel(
+            text=f"Exp {card_data.get('expiry_month', '--')}/{card_data.get('expiry_year', '----')[-2:]}",
+            theme_text_color="Custom", text_color=[1, 1, 1, 0.85], font_style="Caption"))
+        info_row.add_widget(MDLabel(
+            text=f"${card_data.get('balance', 0):,.2f}", halign="right", bold=True,
+            theme_text_color="Custom", text_color=[1, 1, 1, 1]))
+        outer.add_widget(info_row)
+
+        outer.add_widget(MDLabel(
+            text=card_data.get('cardholder_name', ''), font_style="Caption",
+            theme_text_color="Custom", text_color=[1, 1, 1, 0.7],
+            size_hint_y=None, height=dp(20),
+        ))
+
+        card_id = card_data.get('id')
+        actions = MDBoxLayout(spacing=dp(8), size_hint_y=None, height=dp(40))
+
+        if status != 'terminated':
+            actions.add_widget(MDIconButton(
+                icon="cash-plus", theme_icon_color="Custom", icon_color=[1, 1, 1, 1],
+                on_release=lambda x, cid=card_id: self.show_fund_card_dialog(cid),
+            ))
+            freeze_icon = "lock-open-variant" if status == 'frozen' else "lock"
+            actions.add_widget(MDIconButton(
+                icon=freeze_icon, theme_icon_color="Custom", icon_color=[1, 1, 1, 1],
+                on_release=lambda x, cid=card_id, st=status: self.toggle_card_freeze(cid, st),
+            ))
+            actions.add_widget(MDIconButton(
+                icon="delete-outline", theme_icon_color="Custom", icon_color=[1, 1, 1, 1],
+                on_release=lambda x, cid=card_id: self.confirm_delete_card(cid),
+            ))
+        actions.add_widget(MDIconButton(
+            icon="history", theme_icon_color="Custom", icon_color=[1, 1, 1, 1],
+            on_release=lambda x, cid=card_id: self.show_card_transactions(cid),
+        ))
+        outer.add_widget(actions)
+
+        return outer
+
+    def show_create_card_dialog(self):
+        cfg = getattr(self, 'card_config', {}) or {}
+        min_funding = cfg.get('min_funding_usd', 5)
+        fee = cfg.get('card_creation_fee_usd', 2)
+        rate = cfg.get('usd_to_ngn_rate', 1600)
+
+        content = MDBoxLayout(orientation='vertical', spacing=dp(10),
+                               size_hint_y=None, height=dp(120), padding=dp(10))
+        amount_input = MDTextField(
+            hint_text=f"Funding amount in USD (min ${min_funding:,.2f})",
+            input_type='number', mode="rectangle",
+            helper_text=f"+ ${fee:,.2f} card fee, charged at ₦{rate:,.0f}/$ from your wallet",
+            helper_text_mode="persistent",
+        )
+        content.add_widget(amount_input)
+
+        dialog = MDDialog(
+            title="Create Virtual Dollar Card",
+            type="custom", content_cls=content,
+            buttons=[
+                MDFlatButton(text="CANCEL", theme_text_color="Custom",
+                              text_color=self.theme_cls.primary_color,
+                              on_release=lambda x: dialog.dismiss()),
+                MDRaisedButton(text="CREATE", md_bg_color=self.theme_cls.primary_color,
+                                on_release=lambda x: self._process_create_card(dialog, amount_input.text)),
+            ],
+            radius=[20, 7, 20, 7],
+        )
+        dialog.open()
+
+    def _process_create_card(self, dialog, amount_text):
+        dialog.dismiss()
+        try:
+            amount = float(str(amount_text).strip())
+        except (ValueError, AttributeError):
+            self.show_error_dialog("Enter a valid USD amount")
+            return
+        if amount <= 0:
+            self.show_error_dialog("Amount must be greater than zero")
+            return
+
+        self.show_loader("Creating your card...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.show_success_dialog("Virtual dollar card created!")
+                self.update_dashboard()
+                self.load_card_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to create card'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_body=json.dumps({'funding_amount_usd': amount}),
+            timeout=20,
+        )
+
+    def show_fund_card_dialog(self, card_id):
+        content = MDBoxLayout(orientation='vertical', spacing=dp(10),
+                               size_hint_y=None, height=dp(90), padding=dp(10))
+        amount_input = MDTextField(hint_text="Amount in USD", input_type='number', mode="rectangle")
+        content.add_widget(amount_input)
+
+        dialog = MDDialog(
+            title="Fund Card", type="custom", content_cls=content,
+            buttons=[
+                MDFlatButton(text="CANCEL", theme_text_color="Custom",
+                              text_color=self.theme_cls.primary_color,
+                              on_release=lambda x: dialog.dismiss()),
+                MDRaisedButton(text="FUND", md_bg_color=self.theme_cls.primary_color,
+                                on_release=lambda x: self._process_fund_card(dialog, card_id, amount_input.text)),
+            ],
+            radius=[20, 7, 20, 7],
+        )
+        dialog.open()
+
+    def _process_fund_card(self, dialog, card_id, amount_text):
+        dialog.dismiss()
+        try:
+            amount = float(str(amount_text).strip())
+        except (ValueError, AttributeError):
+            self.show_error_dialog("Enter a valid USD amount")
+            return
+        if amount <= 0:
+            self.show_error_dialog("Amount must be greater than zero")
+            return
+
+        self.show_loader("Funding card...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.show_success_dialog("Card funded successfully!")
+                self.update_dashboard()
+                self.load_card_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to fund card'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards/{card_id}/fund",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_body=json.dumps({'amount_usd': amount}),
+            timeout=20,
+        )
+
+    def toggle_card_freeze(self, card_id, current_status):
+        action = "unfreeze" if current_status == 'frozen' else "freeze"
+        self.show_loader(f"{'Unfreezing' if action == 'unfreeze' else 'Freezing'} card...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.load_card_data()
+            else:
+                self.show_error_dialog(result.get('message', f'Failed to {action} card'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards/{card_id}/{action}",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_body=json.dumps({}),
+            timeout=15,
+        )
+
+    def confirm_delete_card(self, card_id):
+        dialog = MDDialog(
+            title="Delete Card?",
+            text="This closes the card permanently and refunds any remaining balance to your wallet. This cannot be undone.",
+            buttons=[
+                MDFlatButton(text="CANCEL", theme_text_color="Custom",
+                              text_color=self.theme_cls.primary_color,
+                              on_release=lambda x: dialog.dismiss()),
+                MDRaisedButton(text="DELETE", md_bg_color=[0.8, 0.2, 0.2, 1],
+                                on_release=lambda x: self._process_delete_card(dialog, card_id)),
+            ],
+        )
+        dialog.open()
+
+    def _process_delete_card(self, dialog, card_id):
+        dialog.dismiss()
+        self.show_loader("Deleting card...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.show_success_dialog("Card deleted — balance refunded to your wallet")
+                self.update_dashboard()
+                self.load_card_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to delete card'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards/{card_id}",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_method='DELETE',
+            timeout=15,
+        )
+
+    def show_card_transactions(self, card_id):
+        self.show_loader("Loading history...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') != 'success':
+                self.show_error_dialog("Could not load card history")
+                return
+            entries = result.get('data', {}).get('transactions', [])
+            self._show_card_transactions_dialog(entries)
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/cards/{card_id}/transactions",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+    def _show_card_transactions_dialog(self, entries):
+        scroll = ScrollView(size_hint_y=None, height=dp(300))
+        tx_list = MDList(spacing=dp(6))
+
+        if not entries:
+            tx_list.add_widget(OneLineListItem(text="No transactions yet"))
+        else:
+            for e in entries:
+                date_str = e.get('created_at', '')
+                try:
+                    dt = datetime.fromisoformat(date_str.replace('Z', ''))
+                    date_str = dt.strftime('%b %d, %Y %I:%M %p')
+                except Exception:
+                    pass
+                tx_list.add_widget(TwoLineListItem(
+                    text=f"{e.get('type', '').title()} — ${e.get('amount', 0):,.2f}",
+                    secondary_text=f"{e.get('description', '')} • {date_str}",
+                ))
+
+        scroll.add_widget(tx_list)
+
+        dialog = MDDialog(
+            title="Card Transactions", type="custom", content_cls=scroll,
+            buttons=[MDFlatButton(text="CLOSE", theme_text_color="Custom",
+                                    text_color=self.theme_cls.primary_color,
+                                    on_release=lambda x: dialog.dismiss())],
+        )
+        dialog.open()
+
+    # ── Bill Reminder ────────────────────────────────────────────────
+
+    BILL_TYPE_LABELS = {
+        'dstv': 'DSTV', 'gotv': 'GOtv', 'startimes': 'StarTimes',
+        'electricity': 'Electricity', 'internet': 'Internet',
+    }
+
+    def show_reminder_screen(self):
+        """Navigate to the Bill Reminders screen and load fresh data."""
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to manage bill reminders")
+            self.root.current = "login"
+            return
+        self.root.current = "reminders"
+        Clock.schedule_once(lambda dt: self.load_reminder_data(), 0.3)
+
+    def load_reminder_data(self):
+        if not self.current_user or not self.session_token:
+            return
+
+        def on_success(req, result):
+            if result.get('status') == 'success':
+                self.bill_reminders = result.get('data', [])
+                try:
+                    screen = self.root.get_screen('reminders')
+                    self._render_reminder_list(screen, self.bill_reminders)
+                except Exception as e:
+                    print(f"Reminder list render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/reminders",
+            on_success=on_success,
+            on_failure=lambda req, error: print(f"load reminders failed: {error}"),
+            on_error=lambda req, error: print(f"load reminders error: {error}"),
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+    def _render_reminder_list(self, screen, reminders):
+        try:
+            ids = screen.ids
+            box = ids.reminder_list_box
+            box.clear_widgets()
+
+            if not reminders:
+                if hasattr(ids, 'reminder_empty_label'):
+                    ids.reminder_empty_label.text = "No bill reminders yet — add one above"
+                return
+            if hasattr(ids, 'reminder_empty_label'):
+                ids.reminder_empty_label.text = ""
+
+            for r in reminders:
+                box.add_widget(self._build_reminder_widget(r))
+        except Exception as e:
+            print(f"_render_reminder_list error: {e}")
+
+    def _build_reminder_widget(self, r):
+        label = self.BILL_TYPE_LABELS.get(r.get('bill_type'), r.get('bill_type', '').title())
+        title = r.get('nickname') or label
+        is_active = r.get('is_active', True)
+
+        card = MDCard(
+            orientation='vertical', padding=dp(15), spacing=dp(6),
+            size_hint_y=None, height=dp(140), radius=[15], elevation=2,
+            opacity=1.0 if is_active else 0.55,
+        )
+
+        top_row = MDBoxLayout(size_hint_y=None, height=dp(28))
+        top_row.add_widget(MDLabel(text=f"{title} ({label})", bold=True))
+        top_row.add_widget(MDIconButton(
+            icon="pencil-outline", on_release=lambda x, rid=r.get('id'): self.show_edit_reminder_dialog(rid)))
+        top_row.add_widget(MDIconButton(
+            icon="delete-outline", on_release=lambda x, rid=r.get('id'): self.confirm_delete_reminder(rid)))
+        card.add_widget(top_row)
+
+        card.add_widget(MDLabel(
+            text=f"Account: {r.get('account_identifier', '')}", font_style="Caption",
+            theme_text_color="Secondary", size_hint_y=None, height=dp(20)))
+
+        next_due = r.get('next_due_date', '')
+        amount_part = f" • Est. {self.format_currency(r.get('estimated_amount'))}" if r.get('estimated_amount') else ""
+        card.add_widget(MDLabel(
+            text=f"Next due: {next_due}{amount_part}", font_style="Caption",
+            theme_text_color="Secondary", size_hint_y=None, height=dp(20)))
+
+        bottom_row = MDBoxLayout(size_hint_y=None, height=dp(30))
+        bottom_row.add_widget(MDLabel(
+            text="Active" if is_active else "Paused", font_style="Caption",
+            theme_text_color="Secondary"))
+        bottom_row.add_widget(MDFlatButton(
+            text="PAUSE" if is_active else "RESUME",
+            theme_text_color="Custom", text_color=self.theme_cls.primary_color,
+            on_release=lambda x, rid=r.get('id'), active=is_active: self.toggle_reminder_active(rid, active),
+        ))
+        card.add_widget(bottom_row)
+
+        return card
+
+    def show_add_reminder_dialog(self):
+        self._reminder_dialog_bill_type = 'dstv'
+        self._open_reminder_form_dialog(title="Add Bill Reminder", existing=None)
+
+    def show_edit_reminder_dialog(self, reminder_id):
+        existing = next((r for r in getattr(self, 'bill_reminders', []) if r.get('id') == reminder_id), None)
+        if not existing:
+            return
+        self._reminder_dialog_bill_type = existing.get('bill_type', 'dstv')
+        self._open_reminder_form_dialog(title="Edit Bill Reminder", existing=existing)
+
+    def _open_reminder_form_dialog(self, title, existing):
+        content = MDBoxLayout(orientation='vertical', spacing=dp(10),
+                               size_hint_y=None, height=dp(340), padding=dp(10))
+
+        type_row = MDBoxLayout(spacing=dp(6), size_hint_y=None, height=dp(40))
+        type_buttons = {}
+        for bt, label in self.BILL_TYPE_LABELS.items():
+            btn = MDFlatButton(
+                text=label,
+                md_bg_color=self.theme_cls.primary_color if bt == self._reminder_dialog_bill_type else [0, 0, 0, 0],
+                on_release=lambda x, b=bt: _select_type(b),
+            )
+            type_buttons[bt] = btn
+            type_row.add_widget(btn)
+
+        def _select_type(bt):
+            self._reminder_dialog_bill_type = bt
+            for key, b in type_buttons.items():
+                b.md_bg_color = self.theme_cls.primary_color if key == bt else [0, 0, 0, 0]
+
+        content.add_widget(type_row)
+
+        nickname_input = MDTextField(hint_text="Nickname (optional, e.g. Home DSTV)", mode="rectangle",
+                                       text=(existing or {}).get('nickname') or '')
+        account_input = MDTextField(hint_text="Account / smartcard / meter number", mode="rectangle",
+                                      text=(existing or {}).get('account_identifier') or '')
+        due_day_input = MDTextField(hint_text="Due day of month (1-31)", input_type='number', mode="rectangle",
+                                      text=str((existing or {}).get('due_day_of_month') or ''))
+        amount_input = MDTextField(hint_text="Estimated amount (optional)", input_type='number', mode="rectangle",
+                                     text=str((existing or {}).get('estimated_amount') or ''))
+
+        for field in (nickname_input, account_input, due_day_input, amount_input):
+            content.add_widget(field)
+
+        def _submit(*_):
+            dialog.dismiss()
+            payload = {
+                'bill_type': self._reminder_dialog_bill_type,
+                'nickname': nickname_input.text.strip(),
+                'account_identifier': account_input.text.strip(),
+                'due_day_of_month': due_day_input.text.strip(),
+                'estimated_amount': amount_input.text.strip() or None,
+            }
+            if not payload['account_identifier']:
+                self.show_error_dialog("Account/smartcard/meter number is required")
+                return
+            if not payload['due_day_of_month']:
+                self.show_error_dialog("Due day of month is required")
+                return
+            if existing:
+                self._process_update_reminder(existing.get('id'), payload)
+            else:
+                self._process_create_reminder(payload)
+
+        dialog = MDDialog(
+            title=title, type="custom", content_cls=content,
+            buttons=[
+                MDFlatButton(text="CANCEL", theme_text_color="Custom",
+                              text_color=self.theme_cls.primary_color,
+                              on_release=lambda x: dialog.dismiss()),
+                MDRaisedButton(text="SAVE", md_bg_color=self.theme_cls.primary_color, on_release=_submit),
+            ],
+            radius=[20, 7, 20, 7],
+        )
+        dialog.open()
+
+    def _process_create_reminder(self, payload):
+        self.show_loader("Saving reminder...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.show_success_dialog("Bill reminder added!")
+                self.load_reminder_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to add reminder'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/reminders",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_body=json.dumps(payload), timeout=15,
+        )
+
+    def _process_update_reminder(self, reminder_id, payload):
+        self.show_loader("Saving reminder...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.show_success_dialog("Bill reminder updated!")
+                self.load_reminder_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to update reminder'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/reminders/{reminder_id}",
+            on_success=on_success, on_failure=on_failure, on_error=on_failure,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_body=json.dumps(payload), req_method='PUT', timeout=15,
+        )
+
+    def toggle_reminder_active(self, reminder_id, currently_active):
+        self._process_update_reminder(reminder_id, {'is_active': not currently_active})
+
+    def confirm_delete_reminder(self, reminder_id):
+        dialog = MDDialog(
+            title="Delete Reminder?",
+            text="You'll stop getting reminders for this bill. This cannot be undone.",
+            buttons=[
+                MDFlatButton(text="CANCEL", theme_text_color="Custom",
+                              text_color=self.theme_cls.primary_color,
+                              on_release=lambda x: dialog.dismiss()),
+                MDRaisedButton(text="DELETE", md_bg_color=[0.8, 0.2, 0.2, 1],
+                                on_release=lambda x: self._process_delete_reminder(dialog, reminder_id)),
+            ],
+        )
+        dialog.open()
+
+    def _process_delete_reminder(self, dialog, reminder_id):
+        dialog.dismiss()
+
+        def on_success(req, result):
+            if result.get('status') == 'success':
+                self.load_reminder_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to delete reminder'))
+
+        UrlRequest(
+            f"{self.backend_url}/api/reminders/{reminder_id}",
+            on_success=on_success,
+            on_failure=lambda req, error: self.show_error_dialog(f"Network error: {error}"),
+            on_error=lambda req, error: self.show_error_dialog(f"Network error: {error}"),
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_method='DELETE', timeout=15,
+        )
+
+    def check_pending_bill_reminders(self):
+        """Polls for reminders queued on the push channel and fires a real
+        on-device notification via plyer for each, then acknowledges it so
+        it isn't shown again. Safe no-op if plyer isn't available (e.g.
+        desktop dev environment) or the user isn't logged in."""
+        if not self.current_user or not self.session_token:
+            return
+
+        def on_success(req, result):
+            if result.get('status') != 'success':
+                return
+            for log in result.get('data', []):
+                self._fire_local_notification(
+                    title="Bill Reminder",
+                    message=log.get('message', 'You have a bill due soon'),
+                )
+                self._ack_pending_reminder(log.get('id'))
+
+        UrlRequest(
+            f"{self.backend_url}/api/reminders/pending",
+            on_success=on_success,
+            on_failure=lambda req, error: None,
+            on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+    def _fire_local_notification(self, title, message):
+        try:
+            from plyer import notification as plyer_notification
+            plyer_notification.notify(title=title, message=message, app_name="Cheap4U")
+        except Exception as e:
+            # plyer isn't available on every platform/dev setup — fall back
+            # to an in-app banner so the reminder is still seen.
+            print(f"Local notification unavailable ({e}); showing in-app instead")
+            try:
+                self.show_success_dialog(f"{title}: {message}")
+            except Exception:
+                pass
+
+    def _ack_pending_reminder(self, log_id):
+        if not log_id:
+            return
+        UrlRequest(
+            f"{self.backend_url}/api/reminders/pending/{log_id}/ack",
+            on_success=lambda req, result: None,
+            on_failure=lambda req, error: None,
+            on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}', 'Content-Type': 'application/json'},
+            req_body=json.dumps({}), timeout=15,
+        )
+
 
     def load_airtime_networks(self):
         """Load airtime networks from backend"""
@@ -12525,6 +13477,12 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.merchant_profile = {}
         self.merchant_business_type = 'individual'
         self.merchant_job_type = 'airtime'
+
+        self.card_config = {}
+        self.user_cards = []
+
+        self.bill_reminders = []
+        self._reminder_dialog_bill_type = 'dstv'
         
         self.users = {}
         self.transactions = {}
@@ -15532,6 +16490,16 @@ class DashboardApp(ChallengeMixin, MDApp):
             elapsed = time.time() - self._splash_start_time
             remaining = max(self.SPLASH_MIN_DURATION - elapsed, 0)
             Clock.schedule_once(lambda dt: self.finish_splash(), remaining)
+
+    def on_resume(self):
+        """Called by Kivy when the app returns from the background — a
+        good moment to check for any bill reminders that queued up while
+        the app wasn't running."""
+        try:
+            self.check_pending_bill_reminders()
+        except Exception as e:
+            print(f"on_resume reminder check error: {e}")
+        return True
 
     def finish_splash(self):
         """Routes away from the splash screen exactly once."""
@@ -21065,6 +22033,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 # Referral balance
                 referral_balance = self.current_user.get('referral_balance', 0) if self.current_user else 0
                 screen.ids.referral_balance.text = self.format_currency(referral_balance)
+
+                self.check_pending_bill_reminders()
                 
 
 

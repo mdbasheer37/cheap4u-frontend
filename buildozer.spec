@@ -46,7 +46,7 @@ version = 0.1
 # comma separated e.g. requirements = sqlite3,kivy
 # Versions are pinned to known-compatible releases so CI builds are
 # reproducible and don't suddenly break when a new Kivy/KivyMD drops.
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3
+requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
 
 
 # (str) Custom source folders for requirements
@@ -109,7 +109,7 @@ android.presplash_color = #0D285A
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
 #android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
-android.permissions = INTERNET, RECORD_AUDIO
+android.permissions = INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
 
