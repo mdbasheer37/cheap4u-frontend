@@ -359,6 +359,12 @@ class CashbackScreen(Screen):
 class SpinScreen(Screen):
     pass
 
+class CouponScreen(Screen):
+    pass
+
+class MerchantScreen(Screen):
+    pass
+
 class TermsScreen(Screen):
     pass
 
@@ -503,6 +509,10 @@ MDScreenManager:
     CashbackScreen:
 
     SpinScreen:
+
+    CouponScreen:
+
+    MerchantScreen:
 
     TermsScreen:
 
@@ -4837,6 +4847,122 @@ MDScreenManager:
 
                                     height: self.texture_size[1]
 
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [0.9, 0.9, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.32, 1]
+
+                            on_release: app.show_coupon_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "ticket-percent"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.35, 0.3, 0.9, 1]
+
+                                MDLabel:
+
+                                    text: "Coupons"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [0.9, 0.95, 0.92, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.25, 0.2, 1]
+
+                            on_release: app.show_merchant_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "briefcase-outline"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.55, 0.4, 1]
+
+                                MDLabel:
+
+                                    text: "Merchant"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
 
 
                     # Services section
@@ -7902,6 +8028,407 @@ MDScreenManager:
                         id: spin_history_list
                         spacing: dp(4)
 
+<CouponScreen>:
+    name: "coupons"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.35, 0.3, 0.9, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "My Coupons"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_coupon_data()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    MDLabel:
+                        text: "Enter a coupon code at checkout on any airtime, data, cable TV, electricity or exam-pin purchase to redeem it."
+                        halign: "left"
+                        text_size: self.width, None
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: self.texture_size[1]
+
+                    MDLabel:
+                        id: coupon_empty_label
+                        text: ""
+                        halign: "center"
+                        theme_text_color: "Secondary"
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDList:
+                        id: coupon_list
+                        spacing: dp(6)
+
+<MerchantScreen>:
+    name: "merchant"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.1, 0.55, 0.4, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Merchant Dashboard"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_merchant_data()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    # ── Apply form (shown when no profile / rejected) ──
+                    MDBoxLayout:
+                        id: merchant_apply_box
+                        orientation: 'vertical'
+                        spacing: dp(12)
+                        size_hint_y: None
+                        height: 0
+                        opacity: 0
+
+                        MDLabel:
+                            text: "Become a Merchant"
+                            font_style: "H6"
+                            bold: True
+                            size_hint_y: None
+                            height: dp(30)
+
+                        MDLabel:
+                            id: merchant_rejection_label
+                            text: ""
+                            theme_text_color: "Error"
+                            size_hint_y: None
+                            height: self.texture_size[1]
+                            text_size: self.width, None
+
+                        MDTextField:
+                            id: merchant_business_name
+                            hint_text: "Business name"
+                            mode: "rectangle"
+
+                        MDBoxLayout:
+                            spacing: dp(10)
+                            size_hint_y: None
+                            height: dp(45)
+
+                            MDRaisedButton:
+                                id: merchant_type_individual_btn
+                                text: "Individual"
+                                md_bg_color: app.theme_cls.primary_color
+                                on_release: app.set_merchant_business_type("individual")
+
+                            MDFlatButton:
+                                id: merchant_type_registered_btn
+                                text: "Registered Business"
+                                on_release: app.set_merchant_business_type("registered_business")
+
+                        MDTextField:
+                            id: merchant_registration_number
+                            hint_text: "CAC / Registration number (optional)"
+                            mode: "rectangle"
+
+                        MDTextField:
+                            id: merchant_business_address
+                            hint_text: "Business address"
+                            mode: "rectangle"
+
+                        MDTextField:
+                            id: merchant_business_phone
+                            hint_text: "Business phone"
+                            input_type: "number"
+                            mode: "rectangle"
+
+                        MDRaisedButton:
+                            text: "SUBMIT APPLICATION"
+                            md_bg_color: [0.1, 0.55, 0.4, 1]
+                            pos_hint: {"center_x": 0.5}
+                            size_hint_x: 0.9
+                            on_release: app.submit_merchant_application()
+
+                    # ── Status banner (shown when pending / suspended) ──
+                    MDCard:
+                        id: merchant_status_box
+                        orientation: 'vertical'
+                        padding: dp(20)
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: 0
+                        opacity: 0
+                        elevation: 2
+                        radius: [15]
+
+                        MDIcon:
+                            icon: "clock-outline"
+                            pos_hint: {"center_x": 0.5}
+                            size_hint: [None, None]
+                            size: [dp(40), dp(40)]
+
+                        MDLabel:
+                            id: merchant_status_label
+                            text: ""
+                            halign: "center"
+                            text_size: self.width, None
+                            theme_text_color: "Secondary"
+
+                    # ── Dashboard (shown when approved) ──
+                    MDBoxLayout:
+                        id: merchant_dashboard_box
+                        orientation: 'vertical'
+                        spacing: dp(15)
+                        size_hint_y: None
+                        height: 0
+                        opacity: 0
+
+                        MDCard:
+                            orientation: 'vertical'
+                            padding: dp(20)
+                            spacing: dp(8)
+                            size_hint_y: None
+                            height: dp(110)
+                            elevation: 2
+                            radius: [15]
+                            md_bg_color: [0.1, 0.55, 0.4, 1]
+
+                            MDLabel:
+                                text: "Wallet Balance"
+                                halign: "center"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 0.9]
+                                size_hint_y: None
+                                height: dp(25)
+
+                            MDLabel:
+                                id: merchant_wallet_label
+                                text: "₦0.00"
+                                font_style: "H4"
+                                bold: True
+                                halign: "center"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 1]
+
+                        MDCard:
+                            orientation: 'vertical'
+                            padding: dp(15)
+                            spacing: dp(8)
+                            size_hint_y: None
+                            height: dp(110)
+                            elevation: 2
+                            radius: [15]
+
+                            MDLabel:
+                                text: "Profit Summary"
+                                font_style: "H6"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(28)
+
+                            MDLabel:
+                                id: merchant_profit_label
+                                text: "Total profit: ₦0.00"
+                                theme_text_color: "Secondary"
+                                size_hint_y: None
+                                height: dp(25)
+
+                            MDLabel:
+                                id: merchant_profit_breakdown_label
+                                text: ""
+                                theme_text_color: "Secondary"
+                                font_style: "Caption"
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: self.texture_size[1]
+
+                        MDCard:
+                            orientation: 'vertical'
+                            padding: dp(15)
+                            spacing: dp(10)
+                            size_hint_y: None
+                            height: self.minimum_height
+                            elevation: 2
+                            radius: [15]
+
+                            MDLabel:
+                                text: "Bulk Purchase"
+                                font_style: "H6"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(28)
+
+                            MDBoxLayout:
+                                id: merchant_job_type_row
+                                spacing: dp(6)
+                                size_hint_y: None
+                                height: dp(40)
+
+                                MDRaisedButton:
+                                    id: merchant_type_airtime_btn
+                                    text: "Airtime"
+                                    md_bg_color: app.theme_cls.primary_color
+                                    on_release: app.set_merchant_job_type("airtime")
+
+                                MDFlatButton:
+                                    id: merchant_type_data_btn
+                                    text: "Data"
+                                    on_release: app.set_merchant_job_type("data")
+
+                                MDFlatButton:
+                                    id: merchant_type_cable_btn
+                                    text: "Cable"
+                                    on_release: app.set_merchant_job_type("cable_tv")
+
+                            MDBoxLayout:
+                                spacing: dp(6)
+                                size_hint_y: None
+                                height: dp(40)
+
+                                MDFlatButton:
+                                    id: merchant_type_electricity_btn
+                                    text: "Electricity"
+                                    on_release: app.set_merchant_job_type("electricity")
+
+                                MDFlatButton:
+                                    id: merchant_type_exam_btn
+                                    text: "Exam PIN"
+                                    on_release: app.set_merchant_job_type("exam_pin")
+
+                            MDLabel:
+                                id: merchant_format_hint_label
+                                text: "One per line: network,phone,amount"
+                                font_style: "Caption"
+                                theme_text_color: "Secondary"
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: self.texture_size[1]
+
+                            MDTextField:
+                                id: merchant_bulk_input
+                                hint_text: "MTN,08012345678,500"
+                                multiline: True
+                                mode: "rectangle"
+                                size_hint_y: None
+                                height: dp(120)
+
+                            MDRaisedButton:
+                                text: "SUBMIT BATCH"
+                                md_bg_color: [0.1, 0.55, 0.4, 1]
+                                pos_hint: {"center_x": 0.5}
+                                size_hint_x: 0.9
+                                on_release: app.submit_merchant_bulk_job()
+
+                        MDCard:
+                            orientation: 'vertical'
+                            padding: dp(15)
+                            spacing: dp(8)
+                            size_hint_y: None
+                            height: dp(90)
+                            elevation: 2
+                            radius: [15]
+
+                            MDLabel:
+                                text: "API Access"
+                                font_style: "H6"
+                                bold: True
+                                size_hint_y: None
+                                height: dp(28)
+
+                            MDBoxLayout:
+                                spacing: dp(10)
+                                size_hint_y: None
+                                height: dp(35)
+
+                                MDLabel:
+                                    text: "Use your API key in the X-API-Key header"
+                                    font_style: "Caption"
+                                    theme_text_color: "Secondary"
+
+                                MDFlatButton:
+                                    text: "Get / Reset Key"
+                                    theme_text_color: "Custom"
+                                    text_color: [0.1, 0.55, 0.4, 1]
+                                    on_release: app.regenerate_merchant_api_key()
+
+                        MDLabel:
+                            text: "Recent Bulk Jobs"
+                            font_style: "H6"
+                            bold: True
+                            size_hint_y: None
+                            height: dp(30)
+
+                        MDList:
+                            id: merchant_job_list
+                            spacing: dp(4)
+
 <ProfitScreen>:
     name: "profit"
     
@@ -9331,8 +9858,104 @@ class DashboardApp(ChallengeMixin, MDApp):
     def _clear_verified_pin(self):
         """Clear the temporarily stored PIN after transaction"""
         if hasattr(self, 'verified_pin'):
-            self.verified_pin = ""            
-          
+            self.verified_pin = ""
+
+    # ── Coupon System (shared across all purchase flows) ────────────
+
+    def _prompt_coupon_then_pin(self, category, amount, on_ready):
+        """Optional 'have a coupon?' step shown before PIN verification.
+        Works the same for airtime/data/electricity/cable/exam-pin — pass
+        the purchase category + amount so the backend can validate the
+        coupon against the right rules before the PIN dialog opens."""
+        self.pending_coupon_code = None
+        self.pending_coupon_category = category
+        self.pending_coupon_amount = amount
+
+        content = MDBoxLayout(
+            orientation='vertical', spacing=dp(10),
+            size_hint_y=None, height=dp(80), padding=dp(10),
+        )
+        coupon_input = MDTextField(
+            hint_text="Coupon code (optional)",
+            mode="rectangle",
+        )
+        content.add_widget(coupon_input)
+
+        def _skip(*_):
+            dialog.dismiss()
+            self.pending_coupon_code = None
+            self.verify_transaction_pin(on_ready)
+
+        def _apply(*_):
+            dialog.dismiss()
+            code = (coupon_input.text or "").strip()
+            if not code:
+                self.pending_coupon_code = None
+                self.verify_transaction_pin(on_ready)
+            else:
+                self._validate_and_store_coupon(code, category, amount, on_ready)
+
+        dialog = MDDialog(
+            title="Have a coupon code?",
+            type="custom",
+            content_cls=content,
+            buttons=[
+                MDFlatButton(
+                    text="SKIP",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=_skip,
+                ),
+                MDRaisedButton(
+                    text="APPLY",
+                    md_bg_color=self.theme_cls.primary_color,
+                    on_release=_apply,
+                ),
+            ],
+            radius=[20, 7, 20, 7],
+        )
+        dialog.open()
+
+    def _validate_and_store_coupon(self, code, category, amount, on_ready):
+        """Validates a coupon against the backend before proceeding to
+        PIN verification. On failure, tells the user and still lets them
+        continue the purchase without a discount rather than blocking them."""
+        if not self.session_token:
+            self.pending_coupon_code = None
+            self.verify_transaction_pin(on_ready)
+            return
+
+        self.show_loader("Checking coupon...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                data = result.get('data', {})
+                self.pending_coupon_code = data.get('code')
+                discount = data.get('discount_amount', 0)
+                self.show_success_dialog(f"Coupon applied — you save {self.format_currency(discount)}")
+            else:
+                self.pending_coupon_code = None
+                self.show_error_dialog(result.get('message', 'Invalid or expired coupon'))
+            Clock.schedule_once(lambda dt: self.verify_transaction_pin(on_ready), 0.4)
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.pending_coupon_code = None
+            self.verify_transaction_pin(on_ready)
+
+        UrlRequest(
+            f"{self.backend_url}/api/coupons/validate?code={code}&category={category}&amount={amount}",
+            on_success=on_success,
+            on_failure=on_failure,
+            on_error=on_failure,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
     def process_vtpass_transaction_with_referral(self, transaction_data):
         """Process VTU transaction with referral bonus check"""
         try:
@@ -10191,6 +10814,488 @@ class DashboardApp(ChallengeMixin, MDApp):
         else:
             self.show_success_dialog("Better luck next time! Come back for your next spin.")
 
+    # ── Coupon System ────────────────────────────────────────────────
+
+    def show_coupon_screen(self):
+        """Navigate to the My Coupons screen and load fresh data."""
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to view your coupons")
+            self.root.current = "login"
+            return
+        self.root.current = "coupons"
+        Clock.schedule_once(lambda dt: self.load_coupon_data(), 0.3)
+
+    def load_coupon_data(self):
+        """Load coupons personally awarded to this user (referral rewards,
+        spin wins, etc.) from both the coupon system and Spin & Win."""
+        if not self.current_user or not self.session_token:
+            return
+
+        collected = []
+
+        def render_if_ready():
+            try:
+                screen = self.root.get_screen('coupons')
+                self.update_coupon_list_ui(screen, collected)
+            except Exception as e:
+                print(f"Coupon list render error: {e}")
+
+        def on_coupons_success(req, result):
+            if result.get('status') == 'success':
+                for c in result.get('data', []):
+                    collected.append({
+                        'code': c.get('code'),
+                        'discount_type': c.get('discount_type', 'fixed'),
+                        'discount_value': c.get('discount_value', 0),
+                        'expires_at': c.get('expires_at'),
+                        'source': 'Personal offer',
+                    })
+            render_if_ready()
+
+        UrlRequest(
+            f"{self.backend_url}/api/coupons/my-coupons",
+            on_success=on_coupons_success,
+            on_failure=lambda req, error: render_if_ready(),
+            on_error=lambda req, error: render_if_ready(),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+        def on_spin_coupons_success(req, result):
+            if result.get('status') == 'success':
+                for c in result.get('data', []):
+                    if not c.get('is_used'):
+                        collected.append({
+                            'code': c.get('code'),
+                            'discount_type': 'fixed',
+                            'discount_value': c.get('discount_amount', 0),
+                            'expires_at': c.get('expires_at'),
+                            'source': 'Spin & Win prize',
+                        })
+            render_if_ready()
+
+        UrlRequest(
+            f"{self.backend_url}/api/spin/coupons",
+            on_success=on_spin_coupons_success,
+            on_failure=lambda req, error: render_if_ready(),
+            on_error=lambda req, error: render_if_ready(),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+    def update_coupon_list_ui(self, screen, coupons):
+        """Populate the My Coupons list. Called after both sources have
+        responded (or failed) so the list only renders once, complete."""
+        try:
+            ids = screen.ids
+            if not hasattr(ids, 'coupon_list'):
+                return
+
+            coupon_list = ids.coupon_list
+            coupon_list.clear_widgets()
+
+            if not coupons:
+                if hasattr(ids, 'coupon_empty_label'):
+                    ids.coupon_empty_label.text = "No personal coupons yet — win one from Spin & Win!"
+                return
+
+            if hasattr(ids, 'coupon_empty_label'):
+                ids.coupon_empty_label.text = ""
+
+            for c in coupons:
+                if c.get('discount_type') == 'percentage':
+                    discount_text = f"{c.get('discount_value', 0):.0f}% off"
+                else:
+                    discount_text = f"{self.format_currency(c.get('discount_value', 0))} off"
+
+                expiry_text = ""
+                if c.get('expires_at'):
+                    try:
+                        dt = datetime.fromisoformat(c['expires_at'].replace('Z', ''))
+                        expiry_text = f" • Expires {dt.strftime('%b %d, %Y')}"
+                    except Exception:
+                        pass
+
+                item = TwoLineListItem(
+                    text=f"{c.get('code', '')}  —  {discount_text}",
+                    secondary_text=f"{c.get('source', '')}{expiry_text}",
+                    on_release=lambda x, code=c.get('code'): self._copy_coupon_code(code),
+                )
+                coupon_list.add_widget(item)
+        except Exception as e:
+            print(f"update_coupon_list_ui error: {e}")
+
+    def _copy_coupon_code(self, code):
+        if not code:
+            return
+        Clipboard.copy(code)
+        self.show_success_dialog(f"Coupon code {code} copied — paste it at checkout")
+
+    # ── Merchant Dashboard ────────────────────────────────────────────
+
+    def show_merchant_screen(self):
+        """Navigate to the Merchant Dashboard and load fresh data."""
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to access the Merchant Dashboard")
+            self.root.current = "login"
+            return
+        self.root.current = "merchant"
+        self.merchant_business_type = 'individual'
+        self.merchant_job_type = 'airtime'
+        Clock.schedule_once(lambda dt: self.load_merchant_data(), 0.3)
+
+    def load_merchant_data(self):
+        """Load the merchant profile and, if approved, the dashboard data."""
+        if not self.current_user or not self.session_token:
+            return
+
+        def on_success(req, result):
+            if result.get('status') != 'success':
+                return
+            self.merchant_profile = result.get('data')
+            try:
+                screen = self.root.get_screen('merchant')
+                self._render_merchant_sections(screen, self.merchant_profile)
+            except Exception as e:
+                print(f"Merchant screen render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/profile",
+            on_success=on_success,
+            on_failure=lambda req, error: print(f"merchant profile failed: {error}"),
+            on_error=lambda req, error: print(f"merchant profile error: {error}"),
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            timeout=15,
+        )
+
+    def _render_merchant_sections(self, screen, profile):
+        """Show exactly one of: apply form / pending-or-suspended banner /
+        full dashboard, based on the merchant profile's current status."""
+        try:
+            ids = screen.ids
+            apply_box = ids.merchant_apply_box
+            status_box = ids.merchant_status_box
+            dash_box = ids.merchant_dashboard_box
+
+            for box in (apply_box, status_box, dash_box):
+                box.height = 0
+                box.opacity = 0
+
+            status = (profile or {}).get('status')
+
+            if not profile or status == 'rejected':
+                apply_box.height = apply_box.minimum_height
+                apply_box.opacity = 1
+                if hasattr(ids, 'merchant_rejection_label'):
+                    reason = (profile or {}).get('rejection_reason')
+                    ids.merchant_rejection_label.text = (
+                        f"Your previous application was declined: {reason}\nYou can re-apply below."
+                        if status == 'rejected' else ""
+                    )
+
+            elif status == 'pending':
+                status_box.height = dp(150)
+                status_box.opacity = 1
+                if hasattr(ids, 'merchant_status_label'):
+                    ids.merchant_status_label.text = (
+                        "Your merchant application is under review.\n"
+                        "We'll notify you once it's approved."
+                    )
+
+            elif status == 'suspended':
+                status_box.height = dp(150)
+                status_box.opacity = 1
+                if hasattr(ids, 'merchant_status_label'):
+                    reason = (profile or {}).get('rejection_reason')
+                    ids.merchant_status_label.text = (
+                        f"Your merchant account is currently suspended.\n{reason or ''}"
+                    )
+
+            elif status == 'approved':
+                dash_box.height = dash_box.minimum_height
+                dash_box.opacity = 1
+                self._load_merchant_dashboard_data(screen)
+
+        except Exception as e:
+            print(f"_render_merchant_sections error: {e}")
+
+    def set_merchant_business_type(self, business_type):
+        self.merchant_business_type = business_type
+        try:
+            screen = self.root.get_screen('merchant')
+            ids = screen.ids
+            is_individual = business_type == 'individual'
+            ids.merchant_type_individual_btn.md_bg_color = (
+                self.theme_cls.primary_color if is_individual else [0, 0, 0, 0])
+            ids.merchant_type_registered_btn.md_bg_color = (
+                self.theme_cls.primary_color if not is_individual else [0, 0, 0, 0])
+        except Exception as e:
+            print(f"set_merchant_business_type error: {e}")
+
+    def submit_merchant_application(self):
+        try:
+            screen = self.root.get_screen('merchant')
+            ids = screen.ids
+            business_name = ids.merchant_business_name.text.strip()
+            if not business_name:
+                self.show_error_dialog("Business name is required")
+                return
+
+            payload = {
+                'business_name': business_name,
+                'business_type': getattr(self, 'merchant_business_type', 'individual'),
+                'registration_number': ids.merchant_registration_number.text.strip(),
+                'business_address': ids.merchant_business_address.text.strip(),
+                'business_phone': ids.merchant_business_phone.text.strip(),
+            }
+        except Exception as e:
+            self.show_error_dialog(f"Please check the form: {e}")
+            return
+
+        self.show_loader("Submitting application...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                self.show_success_dialog("Application submitted! We'll review it shortly.")
+                self.load_merchant_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Application failed'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/apply",
+            on_success=on_success,
+            on_failure=on_failure,
+            on_error=on_failure,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            req_body=json.dumps(payload),
+            timeout=15,
+        )
+
+    def _load_merchant_dashboard_data(self, screen):
+        # Wallet
+        def on_wallet(req, result):
+            if result.get('status') == 'success' and hasattr(screen.ids, 'merchant_wallet_label'):
+                bal = result.get('data', {}).get('wallet_balance', 0)
+                screen.ids.merchant_wallet_label.text = self.format_currency(bal)
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/wallet",
+            on_success=on_wallet,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+        # Profit analytics
+        def on_profit(req, result):
+            if result.get('status') == 'success':
+                data = result.get('data', {})
+                if hasattr(screen.ids, 'merchant_profit_label'):
+                    screen.ids.merchant_profit_label.text = f"Total profit: {self.format_currency(data.get('total_profit', 0))}"
+                if hasattr(screen.ids, 'merchant_profit_breakdown_label'):
+                    parts = [f"{c['category']}: {self.format_currency(c['profit'])}" for c in data.get('by_category', [])]
+                    screen.ids.merchant_profit_breakdown_label.text = " • ".join(parts)
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/analytics/profit",
+            on_success=on_profit,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+        # Recent bulk jobs
+        def on_jobs(req, result):
+            if result.get('status') == 'success':
+                jobs = result.get('data', {}).get('jobs', [])
+                self._render_merchant_job_list(screen, jobs)
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/bulk/jobs?per_page=15",
+            on_success=on_jobs,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+    def _render_merchant_job_list(self, screen, jobs):
+        try:
+            if not hasattr(screen.ids, 'merchant_job_list'):
+                return
+            job_list = screen.ids.merchant_job_list
+            job_list.clear_widgets()
+
+            if not jobs:
+                job_list.add_widget(TwoLineListItem(text="No bulk jobs yet",
+                                                      secondary_text="Submit a batch above to get started"))
+                return
+
+            for j in jobs:
+                status_text = j.get('status', '').replace('_', ' ').title()
+                item = TwoLineListItem(
+                    text=f"{j.get('job_type', '').title()} — {j.get('success_count', 0)}/{j.get('total_items', 0)} succeeded",
+                    secondary_text=f"{status_text} • {self.format_currency(j.get('total_amount_charged', 0))} charged",
+                )
+                job_list.add_widget(item)
+        except Exception as e:
+            print(f"_render_merchant_job_list error: {e}")
+
+    MERCHANT_FORMAT_HINTS = {
+        'airtime':     "One per line: network,phone,amount",
+        'data':        "One per line: plan_id,phone",
+        'electricity': "One per line: disco,meter_number,meter_type,amount,phone",
+        'cable_tv':    "One per line: plan_id,smartcard",
+        'exam_pin':    "One per line: exam_name,quantity,selling_price",
+    }
+
+    def set_merchant_job_type(self, job_type):
+        self.merchant_job_type = job_type
+        try:
+            screen = self.root.get_screen('merchant')
+            ids = screen.ids
+            buttons = {
+                'airtime': ids.merchant_type_airtime_btn,
+                'data': ids.merchant_type_data_btn,
+                'electricity': ids.merchant_type_electricity_btn,
+                'cable_tv': ids.merchant_type_cable_btn,
+                'exam_pin': ids.merchant_type_exam_btn,
+            }
+            for key, btn in buttons.items():
+                btn.md_bg_color = self.theme_cls.primary_color if key == job_type else [0, 0, 0, 0]
+            if hasattr(ids, 'merchant_format_hint_label'):
+                ids.merchant_format_hint_label.text = self.MERCHANT_FORMAT_HINTS.get(job_type, "")
+        except Exception as e:
+            print(f"set_merchant_job_type error: {e}")
+
+    def _parse_merchant_bulk_lines(self, job_type, text):
+        """Turns pasted CSV-style lines into the item dicts each bulk
+        endpoint expects. Returns (items, errors) — errors are line-level
+        so the merchant can fix just the bad rows."""
+        items, errors = [], []
+        lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
+
+        for i, line in enumerate(lines, start=1):
+            parts = [p.strip() for p in line.split(',')]
+            try:
+                if job_type == 'airtime':
+                    network, phone, amount = parts[0], parts[1], parts[2]
+                    items.append({'network': network, 'phone': phone, 'amount': float(amount)})
+                elif job_type == 'data':
+                    plan_id, phone = parts[0], parts[1]
+                    items.append({'plan_id': plan_id, 'phone': phone})
+                elif job_type == 'electricity':
+                    disco, meter_number, meter_type, amount, phone = parts[0], parts[1], parts[2], parts[3], parts[4]
+                    items.append({'disco': disco, 'meter_number': meter_number, 'meter_type': meter_type,
+                                  'amount': float(amount), 'phone': phone})
+                elif job_type == 'cable_tv':
+                    plan_id, smartcard = parts[0], parts[1]
+                    items.append({'plan_id': plan_id, 'smartcard': smartcard})
+                elif job_type == 'exam_pin':
+                    exam_name, quantity, selling_price = parts[0], parts[1], parts[2]
+                    items.append({'exam_name': exam_name, 'quantity': int(quantity), 'selling_price': float(selling_price)})
+            except (IndexError, ValueError):
+                errors.append(f"Line {i}: invalid format — {line}")
+
+        return items, errors
+
+    def submit_merchant_bulk_job(self):
+        job_type = getattr(self, 'merchant_job_type', 'airtime')
+        try:
+            screen = self.root.get_screen('merchant')
+            raw_text = screen.ids.merchant_bulk_input.text
+        except Exception:
+            raw_text = ""
+
+        items, errors = self._parse_merchant_bulk_lines(job_type, raw_text)
+        if errors:
+            self.show_error_dialog("Fix these lines and try again:\n" + "\n".join(errors[:5]))
+            return
+        if not items:
+            self.show_error_dialog("Add at least one line before submitting")
+            return
+
+        endpoint_map = {
+            'airtime': 'bulk/airtime', 'data': 'bulk/data', 'electricity': 'bulk/electricity',
+            'cable_tv': 'bulk/cable-tv', 'exam_pin': 'bulk/exam-pin',
+        }
+        self.show_loader(f"Processing {len(items)} item(s)...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                job = result.get('data', {})
+                self.show_success_dialog(
+                    f"Batch complete: {job.get('success_count', 0)}/{job.get('total_items', 0)} succeeded\n"
+                    f"Charged: {self.format_currency(job.get('total_amount_charged', 0))}"
+                )
+                try:
+                    screen.ids.merchant_bulk_input.text = ""
+                except Exception:
+                    pass
+                self.load_merchant_data()
+            else:
+                self.show_error_dialog(result.get('message', 'Bulk job failed'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/{endpoint_map[job_type]}",
+            on_success=on_success,
+            on_failure=on_failure,
+            on_error=on_failure,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            req_body=json.dumps({'items': items}),
+            timeout=60,
+        )
+
+    def regenerate_merchant_api_key(self):
+        self.show_loader("Generating API key...")
+
+        def on_success(req, result):
+            self.hide_loader()
+            if result.get('status') == 'success':
+                key = result.get('data', {}).get('api_key', '')
+                Clipboard.copy(key)
+                self.show_success_dialog(f"New API key copied to clipboard:\n{key}")
+            else:
+                self.show_error_dialog(result.get('message', 'Failed to generate API key'))
+
+        def on_failure(req, error):
+            self.hide_loader()
+            self.show_error_dialog(f"Network error: {error}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/merchant/api-key/regenerate",
+            on_success=on_success,
+            on_failure=on_failure,
+            on_error=on_failure,
+            req_headers={
+                'Authorization': f'Bearer {self.session_token}',
+                'Content-Type': 'application/json',
+            },
+            req_body=json.dumps({}),
+            timeout=15,
+        )
+
 
     def load_airtime_networks(self):
         """Load airtime networks from backend"""
@@ -10350,7 +11455,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_airtime_purchase()
         
-        self.verify_transaction_pin(on_pin_success)
+        self._prompt_coupon_then_pin("airtime", self.selected_airtime_amount, on_pin_success)
 
     def _execute_airtime_purchase(self):
         """Execute airtime purchase after PIN verified"""
@@ -10372,7 +11477,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'phone': phone,
                 'amount': amount,
                 'pin': self.verified_pin,
-                'user_email': self.current_user.get('email')
+                'user_email': self.current_user.get('email'),
+                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -10382,17 +11488,19 @@ class DashboardApp(ChallengeMixin, MDApp):
                 if success and response.get('status') == 'success':
                     profit_amount = response.get('data', {}).get('profit_amount', 0)
                     new_balance   = response.get('data', {}).get('new_balance')
+                    discount      = response.get('data', {}).get('discount_amount', 0)
                     if new_balance is not None and self.current_user:
                         self.current_user['wallet_balance'] = new_balance
-                    self.show_success_dialog(
-                        f"Airtime topup of ₦{amount:,} successful!\n"
-                        f"Profit earned: ₦{profit_amount:,.2f}"
-                    )
+                    msg = f"Airtime topup of ₦{amount:,} successful!\nProfit earned: ₦{profit_amount:,.2f}"
+                    if discount:
+                        msg += f"\nCoupon savings: {self.format_currency(discount)}"
+                    self.show_success_dialog(msg)
                     self.update_dashboard()
                     
                     
                     self.root.current = "dashboard"
                     self.reset_airtime_selections()
+                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Airtime topup failed')
                     self.show_error_dialog(f"Airtime topup failed: {error_msg}")
@@ -10601,7 +11709,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'plan_id': self.selected_plan_id,   # Send plan_id, not plan_code
                 'phone': phone,
                 'pin': self.verified_pin,
-                'user_email': self.current_user.get('email')
+                'user_email': self.current_user.get('email'),
+                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -10609,13 +11718,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self._clear_verified_pin()
                 if success and response.get('status') == 'success':
                     profit_amount = response.get('data', {}).get('profit_amount', 0)
-                    self.show_success_dialog(
-                        f"Data purchase of {self.selected_data_plan} successful!\n"
-                        f"Profit earned: ₦{profit_amount:,.2f}"
-                    )
+                    discount = response.get('data', {}).get('discount_amount', 0)
+                    msg = f"Data purchase of {self.selected_data_plan} successful!\nProfit earned: ₦{profit_amount:,.2f}"
+                    if discount:
+                        msg += f"\nCoupon savings: {self.format_currency(discount)}"
+                    self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
                     self.reset_data_selections()
+                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Data purchase failed')
                     self.show_error_dialog(f"Data purchase failed: {error_msg}")
@@ -10638,7 +11749,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_data_purchase()
         
-        self.verify_transaction_pin(on_pin_success)
+        self._prompt_coupon_then_pin("data", float(self.selected_data_amount), on_pin_success)
 
     
 
@@ -11408,6 +12519,12 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.spin_segments = []
         self.spin_status = {}
         self.spin_in_progress = False
+
+        self.pending_coupon_code = None
+
+        self.merchant_profile = {}
+        self.merchant_business_type = 'individual'
+        self.merchant_job_type = 'airtime'
         
         self.users = {}
         self.transactions = {}
@@ -12214,8 +13331,13 @@ class DashboardApp(ChallengeMixin, MDApp):
         # Ask for PIN
         def on_pin_success():
             self._execute_electricity_payment()
-        
-        self.verify_transaction_pin(on_pin_success)
+
+        try:
+            screen = self.root.get_screen("electricity")
+            amount = float(screen.ids.electricity_amount_input.text.replace('₦', '').replace(',', ''))
+        except Exception:
+            amount = 0
+        self._prompt_coupon_then_pin("electricity", amount, on_pin_success)
 
     def _execute_electricity_payment(self):
         """Execute electricity payment after PIN verified"""
@@ -12240,7 +13362,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'amount': amount,
                 'phone': phone,
                 'pin': self.verified_pin,
-                'user_email': self.current_user.get('email')
+                'user_email': self.current_user.get('email'),
+                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -12251,16 +13374,18 @@ class DashboardApp(ChallengeMixin, MDApp):
                     data = response.get('data', {})
                     token = data.get('token', '')
                     profit_amount = data.get('profit_amount', 0)
+                    discount = data.get('discount_amount', 0)
                     
                     if token:
                         self._show_electricity_success(token, meter_number, amount, profit_amount)
                     else:
-                        self.show_success_dialog(
-                            f"Electricity payment of ₦{amount:,} successful!\n"
-                            f"Profit earned: ₦{profit_amount:,.2f}"
-                        )
+                        msg = f"Electricity payment of ₦{amount:,} successful!\nProfit earned: ₦{profit_amount:,.2f}"
+                        if discount:
+                            msg += f"\nCoupon savings: {self.format_currency(discount)}"
+                        self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
+                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Electricity payment failed')
                     self.show_error_dialog(f"Electricity payment failed: {error_msg}")
@@ -12338,7 +13463,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_cable_subscription()
         
-        self.verify_transaction_pin(on_pin_success)
+        self._prompt_coupon_then_pin("cable_tv", self.selected_cable_amount, on_pin_success)
 
     
 
@@ -12758,7 +13883,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_exam_pin_purchase()
         
-        self.verify_transaction_pin(on_pin_success)
+        self._prompt_coupon_then_pin("exam_pin", self.exam_pin_total_amount, on_pin_success)
 
 
     def _execute_exam_pin_purchase(self):
@@ -12779,7 +13904,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'quantity': self.selected_exam_quantity,
                 'selling_price': amount,   # ← send selling price to backend
                 'pin': self.verified_pin,
-                'user_email': self.current_user.get('email')
+                'user_email': self.current_user.get('email'),
+                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -12790,17 +13916,19 @@ class DashboardApp(ChallengeMixin, MDApp):
                     pins = [data.get('pin')] if data.get('pin') else []
                     serial = data.get('serial')
                     profit_amount = data.get('profit_amount', 0)
+                    discount = data.get('discount_amount', 0)
                     
                     if pins:
                         self.show_exam_pins_dialog(pins, profit_amount, serial)
                     else:
-                        self.show_success_dialog(
-                            f"{self.selected_exam_type} PIN purchase successful!\n"
-                            f"Profit earned: ₦{profit_amount:,.2f}"
-                        )
+                        msg = f"{self.selected_exam_type} PIN purchase successful!\nProfit earned: ₦{profit_amount:,.2f}"
+                        if discount:
+                            msg += f"\nCoupon savings: {self.format_currency(discount)}"
+                        self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
                     self.reset_exam_pin_selections()
+                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Exam PIN purchase failed')
                     self.show_error_dialog(f"Exam PIN purchase failed: {error_msg}")
@@ -16471,7 +17599,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'plan_id': self.selected_cable_plan_id,   # Send plan_id, not provider/package names
                 'smartcard': smartcard,
                 'pin': self.verified_pin,
-                'user_email': self.current_user.get('email')
+                'user_email': self.current_user.get('email'),
+                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -16479,13 +17608,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self._clear_verified_pin()
                 if success and response.get('status') == 'success':
                     profit_amount = response.get('data', {}).get('profit_amount', 0)
-                    self.show_success_dialog(
-                        f"{self.selected_cable_provider} subscription successful!\n"
-                        f"Profit earned: ₦{profit_amount:,.2f}"
-                    )
+                    discount = response.get('data', {}).get('discount_amount', 0)
+                    msg = f"{self.selected_cable_provider} subscription successful!\nProfit earned: ₦{profit_amount:,.2f}"
+                    if discount:
+                        msg += f"\nCoupon savings: {self.format_currency(discount)}"
+                    self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
                     self.reset_cable_selections()
+                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Cable subscription failed')
                     self.show_error_dialog(f"Cable subscription failed: {error_msg}")
