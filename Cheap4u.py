@@ -371,6 +371,9 @@ class CardScreen(Screen):
 class BillReminderScreen(Screen):
     pass
 
+class ComparisonScreen(Screen):
+    pass
+
 class TermsScreen(Screen):
     pass
 
@@ -523,6 +526,8 @@ MDScreenManager:
     CardScreen:
 
     BillReminderScreen:
+
+    ComparisonScreen:
 
     TermsScreen:
 
@@ -5089,6 +5094,64 @@ MDScreenManager:
 
                                     height: self.texture_size[1]
 
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [0.88, 0.95, 0.96, 1] if app.theme_cls.theme_style == "Light" else [0.12, 0.24, 0.25, 1]
+
+                            on_release: app.show_comparison_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "chart-bar"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.6, 0.65, 1]
+
+                                MDLabel:
+
+                                    text: "Compare"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
 
 
                     # Services section
@@ -8708,6 +8771,109 @@ MDScreenManager:
                         size_hint_y: None
                         height: self.minimum_height
 
+<ComparisonScreen>:
+    name: "compare"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.1, 0.6, 0.65, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Price Comparison"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_comparison_data()
+
+            MDBoxLayout:
+                spacing: dp(8)
+                size_hint_y: None
+                height: dp(45)
+
+                MDRaisedButton:
+                    id: compare_data_tab_btn
+                    text: "Data Plans"
+                    md_bg_color: [0.1, 0.6, 0.65, 1]
+                    on_release: app.set_comparison_mode("data")
+
+                MDFlatButton:
+                    id: compare_airtime_tab_btn
+                    text: "Airtime"
+                    on_release: app.set_comparison_mode("airtime")
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    MDLabel:
+                        id: compare_note_label
+                        text: ""
+                        font_style: "Caption"
+                        theme_text_color: "Secondary"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+
+                    MDBoxLayout:
+                        id: compare_badges_box
+                        orientation: 'vertical'
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                    MDBoxLayout:
+                        id: compare_promo_box
+                        orientation: 'vertical'
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                    MDLabel:
+                        text: "Full Comparison"
+                        font_style: "H6"
+                        bold: True
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDBoxLayout:
+                        id: compare_results_box
+                        orientation: 'vertical'
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
 <ProfitScreen>:
     name: "profit"
     
@@ -12248,6 +12414,159 @@ class DashboardApp(ChallengeMixin, MDApp):
             req_body=json.dumps({}), timeout=15,
         )
 
+    # ── Smart Price Comparison ───────────────────────────────────────
+
+    def show_comparison_screen(self):
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to compare prices")
+            self.root.current = "login"
+            return
+        self.root.current = "compare"
+        self.comparison_mode = 'data'
+        Clock.schedule_once(lambda dt: self.load_comparison_data(), 0.3)
+
+    def set_comparison_mode(self, mode):
+        self.comparison_mode = mode
+        try:
+            screen = self.root.get_screen('compare')
+            ids = screen.ids
+            ids.compare_data_tab_btn.md_bg_color = self.theme_cls.primary_color if mode == 'data' else [0, 0, 0, 0]
+            ids.compare_airtime_tab_btn.md_bg_color = self.theme_cls.primary_color if mode == 'airtime' else [0, 0, 0, 0]
+        except Exception as e:
+            print(f"set_comparison_mode error: {e}")
+        self.load_comparison_data()
+
+    def load_comparison_data(self):
+        if not self.current_user or not self.session_token:
+            return
+        mode = getattr(self, 'comparison_mode', 'data')
+        endpoint = 'data' if mode == 'data' else 'airtime'
+
+        def on_success(req, result):
+            if result.get('status') != 'success':
+                return
+            try:
+                screen = self.root.get_screen('compare')
+                if mode == 'data':
+                    self._render_data_comparison(screen, result.get('data', {}))
+                else:
+                    self._render_airtime_comparison(screen, result.get('data', {}))
+            except Exception as e:
+                print(f"comparison render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/compare/{endpoint}",
+            on_success=on_success,
+            on_failure=lambda req, error: print(f"comparison load failed: {error}"),
+            on_error=lambda req, error: print(f"comparison load error: {error}"),
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=20,
+        )
+
+    def _make_badge(self, icon, title, value, color):
+        card = MDCard(orientation='horizontal', padding=dp(12), spacing=dp(10),
+                       size_hint_y=None, height=dp(60), radius=[12], elevation=1, md_bg_color=color)
+        card.add_widget(MDIcon(icon=icon, theme_text_color="Custom", text_color=[1, 1, 1, 1],
+                                 size_hint_x=None, width=dp(30)))
+        text_box = MDBoxLayout(orientation='vertical')
+        text_box.add_widget(MDLabel(text=title, font_style="Caption", theme_text_color="Custom",
+                                      text_color=[1, 1, 1, 0.85], size_hint_y=None, height=dp(18)))
+        text_box.add_widget(MDLabel(text=value, bold=True, theme_text_color="Custom", text_color=[1, 1, 1, 1]))
+        card.add_widget(text_box)
+        return card
+
+    def _render_promotions(self, ids, promotions):
+        box = ids.compare_promo_box
+        box.clear_widgets()
+        if not promotions:
+            return
+        box.add_widget(MDLabel(text="Active Promotions", font_style="H6", bold=True,
+                                 size_hint_y=None, height=dp(28)))
+        for p in promotions:
+            if p.get('discount_type') == 'percentage':
+                desc = f"{p.get('discount_value', 0):.0f}% off"
+            else:
+                desc = f"{self.format_currency(p.get('discount_value', 0))} off"
+            box.add_widget(self._make_badge("ticket-percent", f"Code: {p.get('code')}", desc, [0.85, 0.55, 0.1, 1]))
+
+    def _render_data_comparison(self, screen, data):
+        ids = screen.ids
+        ids.compare_note_label.text = "Comparing live prices, speed, and reliability across all data providers."
+
+        badges_box = ids.compare_badges_box
+        badges_box.clear_widgets()
+
+        cheapest = data.get('cheapest_plan')
+        if cheapest:
+            badges_box.add_widget(self._make_badge(
+                "cash", f"Cheapest — {cheapest.get('provider')} {cheapest.get('size')}",
+                f"₦{cheapest.get('price_per_gb', 0):,.2f}/GB", [0.1, 0.6, 0.3, 1]))
+
+        fastest = data.get('fastest_provider')
+        if fastest:
+            stats = data.get('provider_stats', {}).get(fastest, {})
+            time_ms = stats.get('avg_processing_time_ms')
+            badges_box.add_widget(self._make_badge(
+                "lightning-bolt", f"Fastest — {fastest}",
+                f"~{time_ms:,}ms avg" if time_ms else "N/A", [0.85, 0.55, 0.1, 1]))
+
+        best_value = data.get('best_value_plan')
+        if best_value:
+            badges_box.add_widget(self._make_badge(
+                "star", f"Best Value — {best_value.get('provider')} {best_value.get('size')}",
+                f"Score {best_value.get('value_score', 0)}/100", [0.3, 0.25, 0.7, 1]))
+
+        self._render_promotions(ids, data.get('promotions', []))
+
+        results_box = ids.compare_results_box
+        results_box.clear_widgets()
+        for plan in data.get('plans', []):
+            item = TwoLineListItem(
+                text=f"{plan.get('provider')} — {plan.get('size')} ({plan.get('plan_type')}) — {self.format_currency(plan.get('price', 0))}",
+                secondary_text=(
+                    f"₦{plan.get('price_per_gb', 0):,.2f}/GB • Value score {plan.get('value_score', 0)}/100 • "
+                    f"{plan.get('speed', {}).get('success_rate') or 'N/A'}% success"
+                ),
+            )
+            results_box.add_widget(item)
+
+    def _render_airtime_comparison(self, screen, data):
+        ids = screen.ids
+        ids.compare_note_label.text = data.get('note', '')
+
+        badges_box = ids.compare_badges_box
+        badges_box.clear_widgets()
+
+        fastest = data.get('fastest_network')
+        if fastest:
+            net_stats = next((n for n in data.get('networks', []) if n.get('network') == fastest), {})
+            time_ms = net_stats.get('avg_processing_time_ms')
+            badges_box.add_widget(self._make_badge(
+                "lightning-bolt", f"Fastest — {fastest}",
+                f"~{time_ms:,}ms avg" if time_ms else "N/A", [0.85, 0.55, 0.1, 1]))
+
+        reliable = data.get('most_reliable_network')
+        if reliable:
+            net_stats = next((n for n in data.get('networks', []) if n.get('network') == reliable), {})
+            badges_box.add_widget(self._make_badge(
+                "shield-check", f"Most Reliable — {reliable}",
+                f"{net_stats.get('success_rate', 0)}% success", [0.1, 0.6, 0.3, 1]))
+
+        self._render_promotions(ids, data.get('promotions', []))
+
+        results_box = ids.compare_results_box
+        results_box.clear_widgets()
+        for net in data.get('networks', []):
+            success = net.get('success_rate')
+            time_ms = net.get('avg_processing_time_ms')
+            item = TwoLineListItem(
+                text=f"{net.get('network')} — Value score {net.get('value_score', 0)}/100",
+                secondary_text=(
+                    f"{success}% success rate • ~{time_ms:,}ms avg" if (success is not None and time_ms)
+                    else "Not enough recent data yet"
+                ),
+            )
+            results_box.add_widget(item)
+
 
     def load_airtime_networks(self):
         """Load airtime networks from backend"""
@@ -13483,6 +13802,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         self.bill_reminders = []
         self._reminder_dialog_bill_type = 'dstv'
+
+        self.comparison_mode = 'data'
         
         self.users = {}
         self.transactions = {}
