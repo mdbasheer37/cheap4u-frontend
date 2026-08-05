@@ -4492,7 +4492,7 @@ MDScreenManager:
 
                         size_hint_y: None
 
-                        height: dp(100)
+                        height: self.minimum_height
 
                         
 
