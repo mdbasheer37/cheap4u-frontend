@@ -16742,7 +16742,83 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             self.primary_light = [0.2, 0.2, 0.4, 1]
 
-    
+    # ── Dark Mode ────────────────────────────────────────────────────
+
+    def _detect_system_theme(self):
+        """Returns 'Dark' or 'Light' based on the device's OS-level theme.
+        Real detection on Android via Configuration.uiMode (the same
+        jnius/autoclass pattern already used elsewhere in this file for
+        Android integration). Falls back to 'Light' anywhere detection
+        isn't available (desktop dev, iOS) rather than guessing."""
+        try:
+            from jnius import autoclass
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            activity = PythonActivity.mActivity
+            config = activity.getResources().getConfiguration()
+            UI_MODE_NIGHT_MASK = 0x30
+            UI_MODE_NIGHT_YES = 0x20
+            is_night = (config.uiMode & UI_MODE_NIGHT_MASK) == UI_MODE_NIGHT_YES
+            return "Dark" if is_night else "Light"
+        except Exception:
+            return "Light"
+
+    def _resolve_theme_style(self, preference):
+        """'light'/'dark' map directly; 'system' resolves via OS detection."""
+        if preference == 'dark':
+            return "Dark"
+        if preference == 'system':
+            return self._detect_system_theme()
+        return "Light"
+
+    def load_app_settings(self):
+        """Loads the persisted theme preference (light/dark/system) and
+        applies it to theme_cls BEFORE the UI is built, so there's never a
+        flash of the wrong theme on launch."""
+        self.theme_preference = 'light'
+        try:
+            if os.path.exists(self.settings_file):
+                with open(self.settings_file, 'r') as f:
+                    data = json.load(f)
+                    self.theme_preference = data.get('theme_preference', 'light')
+        except Exception as e:
+            print(f"load_app_settings error: {e}")
+
+        self.theme_cls.theme_style = self._resolve_theme_style(self.theme_preference)
+
+    def save_app_settings(self):
+        try:
+            with open(self.settings_file, 'w') as f:
+                json.dump({'theme_preference': getattr(self, 'theme_preference', 'light')}, f)
+        except Exception as e:
+            print(f"save_app_settings error: {e}")
+
+    def apply_theme(self, theme_style, animate=True):
+        """Switches theme_cls.theme_style with a smooth cross-fade instead
+        of an instant, jarring flip — KivyMD doesn't animate this itself."""
+        def _swap(*_):
+            self.theme_cls.theme_style = theme_style
+            self.update_theme_colors()
+
+        if animate and hasattr(self, 'root') and self.root:
+            fade_out = Animation(opacity=0.35, duration=0.12, transition='out_quad')
+
+            def _fade_back_in(*_):
+                _swap()
+                Animation(opacity=1, duration=0.18, transition='out_quad').start(self.root)
+
+            fade_out.bind(on_complete=_fade_back_in)
+            fade_out.start(self.root)
+        else:
+            _swap()
+
+    def set_theme_preference(self, preference):
+        """preference: 'light' | 'dark' | 'system'. Persists immediately
+        and applies with a smooth transition."""
+        self.theme_preference = preference
+        self.save_app_settings()
+        self.apply_theme(self._resolve_theme_style(preference))
+
+
  
     # Splash timing: a short minimum so the brand mark doesn't just flash
     # (feels broken, not "fast"), and a hard maximum failsafe so a slow
@@ -16815,11 +16891,21 @@ class DashboardApp(ChallengeMixin, MDApp):
     def on_resume(self):
         """Called by Kivy when the app returns from the background — a
         good moment to check for any bill reminders that queued up while
-        the app wasn't running."""
+        the app wasn't running, and to re-sync the theme if it's set to
+        follow the system (the OS theme may have changed while backgrounded)."""
         try:
             self.check_pending_bill_reminders()
         except Exception as e:
             print(f"on_resume reminder check error: {e}")
+
+        try:
+            if getattr(self, 'theme_preference', 'light') == 'system':
+                resolved = self._resolve_theme_style('system')
+                if resolved != self.theme_cls.theme_style:
+                    self.apply_theme(resolved)
+        except Exception as e:
+            print(f"on_resume theme sync error: {e}")
+
         return True
 
     def finish_splash(self):
@@ -22315,13 +22401,14 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def build(self):
         self.theme_cls.primary_palette = "Blue"
-        self.theme_cls.theme_style = "Light"
-        self.theme_cls.primary_hue = "500"
         self.users_file = "users.json"
         self.transactions_file = "transactions.json"
+        self.settings_file = "app_settings.json"
         self.load_quick_pin()
         self.load_users()
         self.load_transactions()
+        self.load_app_settings()   # sets self.theme_preference + resolves theme_cls.theme_style
+        self.theme_cls.primary_hue = "500"
         self.update_theme_colors()
         Window.bind(on_keyboard=self.handle_back_button)
         root = Builder.load_string(KV)
@@ -22360,153 +22447,65 @@ class DashboardApp(ChallengeMixin, MDApp):
 
 
     def show_settings(self):
-
-           """Show app settings"""
-
-           content = MDBoxLayout(
-
-                 orientation='vertical',
-
-                 spacing=dp(10),
-
-                 padding=dp(15),
-
-                 size_hint_y=None,
-
-                 height=dp(200)
-
-    )
-
-    
-
-           theme_switch = MDCheckbox(
-
-                 active=self.theme_cls.theme_style == "Dark",
-
-                 size_hint=(None, None),
-
-                 size=(dp(48), dp(48))
-
-    )
-
-           theme_label = MDLabel(
-
-                 text="Enable Dark Mode",
-
-                 font_style="Subtitle1"
-
-    )
-
-    
-
-           box = MDBoxLayout(
-
-                 orientation='horizontal',
-
-                 spacing=dp(10),
-
-                 size_hint_y=None,
-
-                 height=dp(50)
-
-    )
-
-           box.add_widget(theme_switch)
-
-           box.add_widget(theme_label)
-
-           content.add_widget(box)
-
-    
-
-           notifications = MDCheckbox(
-
-                active=self.current_user.get('notifications_enabled', True) if self.current_user else True,
-
-                size_hint=(None, None),
-
-                size=(dp(48), dp(48))
-
-    )
-
-           notifications_label = MDLabel(
-
-                text="Enable Notifications",
-
-                font_style="Subtitle1"
-
-    )
-
-    
-
-           notifications_box = MDBoxLayout(
-
-                orientation='horizontal',
-
-                spacing=dp(10),
-
-                size_hint_y=None,
-
-                height=dp(50)
-
-    )
-
-           notifications_box.add_widget(notifications)
-
-           notifications_box.add_widget(notifications_label)
-
-           content.add_widget(notifications_box)
-
-    
-
-           dialog = MDDialog(
-
-                title="Settings",
-
-                type="custom",
-
-                content_cls=content,
-
-                buttons=[
-
-                      MDFlatButton(
-
-                              text="CANCEL",
-
-                               theme_text_color="Custom",
-
-                               text_color=self.theme_cls.primary_color,
-
-                               on_release=lambda x: dialog.dismiss()
-
-            ),
-
-                       MDRaisedButton(
-
-                               text="SAVE",
-
-                                 theme_text_color="Custom",
-
-                               text_color=[1, 1, 1, 1],
-
-                               md_bg_color=self.theme_cls.primary_color,
-
-                               on_release=lambda x: self.save_settings(dialog, theme_switch.active, notifications.active)
-
+        """Show app settings"""
+        content = MDBoxLayout(
+            orientation='vertical', spacing=dp(10), padding=dp(15),
+            size_hint_y=None, height=dp(230),
+        )
+
+        content.add_widget(MDLabel(text="Theme", font_style="Subtitle1",
+                                     size_hint_y=None, height=dp(30)))
+
+        current_pref = getattr(self, 'theme_preference', 'light')
+        theme_row = MDBoxLayout(orientation='horizontal', spacing=dp(8),
+                                  size_hint_y=None, height=dp(45))
+        theme_buttons = {}
+
+        def _select(pref):
+            self._settings_selected_theme = pref
+            for key, btn in theme_buttons.items():
+                btn.md_bg_color = self.theme_cls.primary_color if key == pref else [0, 0, 0, 0]
+
+        self._settings_selected_theme = current_pref
+        for pref, label in (('light', 'Light'), ('dark', 'Dark'), ('system', 'Auto')):
+            btn = MDFlatButton(
+                text=label,
+                md_bg_color=self.theme_cls.primary_color if pref == current_pref else [0, 0, 0, 0],
+                on_release=lambda x, p=pref: _select(p),
             )
+            theme_buttons[pref] = btn
+            theme_row.add_widget(btn)
+        content.add_widget(theme_row)
 
-        ],
+        notifications = MDCheckbox(
+            active=self.current_user.get('notifications_enabled', True) if self.current_user else True,
+            size_hint=(None, None), size=(dp(48), dp(48)),
+        )
+        notifications_label = MDLabel(text="Enable Notifications", font_style="Subtitle1")
+        notifications_box = MDBoxLayout(orientation='horizontal', spacing=dp(10),
+                                          size_hint_y=None, height=dp(50))
+        notifications_box.add_widget(notifications)
+        notifications_box.add_widget(notifications_label)
+        content.add_widget(notifications_box)
 
-                radius=[20, 7, 20, 7]
+        dialog = MDDialog(
+            title="Settings", type="custom", content_cls=content,
+            buttons=[
+                MDFlatButton(text="CANCEL", theme_text_color="Custom",
+                              text_color=self.theme_cls.primary_color,
+                              on_release=lambda x: dialog.dismiss()),
+                MDRaisedButton(text="SAVE", theme_text_color="Custom", text_color=[1, 1, 1, 1],
+                                md_bg_color=self.theme_cls.primary_color,
+                                on_release=lambda x: self.save_settings(dialog, self._settings_selected_theme, notifications.active)),
+            ],
+            radius=[20, 7, 20, 7],
+        )
+        dialog.open()
 
-    )
-
-           dialog.open()
-
-    def save_settings(self, dialog, dark_theme, notifications_enabled):
-        """Save app settings"""
-        self.theme_cls.theme_style = "Dark" if dark_theme else "Light"
-        self.update_theme_colors()
+    def save_settings(self, dialog, theme_preference, notifications_enabled):
+        """Save app settings — persists the theme choice locally so it
+        survives app restarts, and applies it with a smooth transition."""
+        self.set_theme_preference(theme_preference)
 
         if self.current_user:
             # Find user by email, not list index
