@@ -31,6 +31,7 @@ from kivymd.uix.label import MDLabel, MDIcon
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.card import MDCard
+from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.pickers import MDDatePicker
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.spinner import MDSpinner
@@ -374,6 +375,9 @@ class BillReminderScreen(Screen):
 class ComparisonScreen(Screen):
     pass
 
+class GamificationScreen(Screen):
+    pass
+
 class TermsScreen(Screen):
     pass
 
@@ -528,6 +532,8 @@ MDScreenManager:
     BillReminderScreen:
 
     ComparisonScreen:
+
+    GamificationScreen:
 
     TermsScreen:
 
@@ -5152,6 +5158,64 @@ MDScreenManager:
 
                                     height: self.texture_size[1]
 
+                        MDCard:
+
+                            orientation: "vertical"
+
+                            spacing: dp(0)
+
+                            size_hint: [None, None]
+
+                            size: [dp(80), dp(80)]
+
+                            radius: [15]
+
+                            elevation: 2
+
+                            md_bg_color: [1, 0.96, 0.88, 1] if app.theme_cls.theme_style == "Light" else [0.3, 0.25, 0.1, 1]
+
+                            on_release: app.show_gamification_screen()
+
+                            MDBoxLayout:
+
+                                orientation: "vertical"
+
+                                spacing: dp(5)
+
+                                padding: [dp(5), dp(5), dp(5), dp(15)]
+
+                                size_hint_y: None
+
+                                height: dp(60)
+
+                                pos_hint: {"center_x": 0.5}
+
+                                MDIcon:
+
+                                    icon: "trophy-outline"
+
+                                    size_hint: [None, None]
+
+                                    size: [dp(30), dp(30)]
+
+                                    pos_hint: {"center_x": 0.5}
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.85, 0.6, 0.1, 1]
+
+                                MDLabel:
+
+                                    text: "Rewards"
+
+                                    font_style: "Caption"
+
+                                    halign: "center"
+
+                                    size_hint_y: None
+
+                                    height: self.texture_size[1]
+
 
 
                     # Services section
@@ -8874,6 +8938,163 @@ MDScreenManager:
                         size_hint_y: None
                         height: self.minimum_height
 
+<GamificationScreen>:
+    name: "gamification"
+
+    MDScreen:
+        md_bg_color: app.theme_cls.bg_normal
+
+        MDBoxLayout:
+            orientation: 'vertical'
+            padding: dp(10)
+            spacing: dp(10)
+
+            # Header
+            MDBoxLayout:
+                size_hint_y: None
+                height: dp(60)
+                padding: [dp(10), 0]
+                spacing: dp(10)
+                md_bg_color: [0.85, 0.6, 0.1, 1]
+                radius: [10, 10, 0, 0]
+
+                MDIconButton:
+                    icon: "arrow-left"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.root.current = "dashboard"
+                    radius: [4, ]
+
+                MDLabel:
+                    text: "Rewards"
+                    font_style: "H5"
+                    bold: True
+                    theme_text_color: "Custom"
+                    text_color: [1, 1, 1, 1]
+                    halign: "center"
+                    size_hint_x: 0.8
+
+                MDIconButton:
+                    icon: "refresh"
+                    theme_icon_color: "Custom"
+                    icon_color: [1, 1, 1, 1]
+                    on_release: app.load_gamification_data()
+
+            ScrollView:
+                MDBoxLayout:
+                    orientation: 'vertical'
+                    spacing: dp(15)
+                    padding: [dp(20), dp(20), dp(20), dp(20)]
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    # Level / XP card
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(20)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: dp(180)
+                        elevation: 2
+                        radius: [15]
+                        md_bg_color: [0.85, 0.6, 0.1, 1]
+
+                        MDBoxLayout:
+                            size_hint_y: None
+                            height: dp(40)
+
+                            MDIcon:
+                                id: gam_level_icon
+                                icon: "star-outline"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 1]
+                                size_hint_x: None
+                                width: dp(30)
+
+                            MDLabel:
+                                id: gam_level_label
+                                text: "Level 1 — Bronze"
+                                font_style: "H6"
+                                bold: True
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 1]
+
+                            MDLabel:
+                                id: gam_rank_label
+                                text: ""
+                                halign: "right"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 0.9]
+
+                        MDProgressBar:
+                            id: gam_xp_progress
+                            value: 0
+                            max: 100
+                            size_hint_y: None
+                            height: dp(10)
+                            color: [1, 1, 1, 1]
+
+                        MDLabel:
+                            id: gam_xp_label
+                            text: "0 XP"
+                            halign: "center"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.9]
+                            size_hint_y: None
+                            height: dp(25)
+
+                        MDLabel:
+                            id: gam_next_level_label
+                            text: ""
+                            halign: "center"
+                            font_style: "Caption"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.8]
+                            size_hint_y: None
+                            height: dp(20)
+
+                    # Missions
+                    MDLabel:
+                        text: "Missions"
+                        font_style: "H6"
+                        bold: True
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDBoxLayout:
+                        id: gam_missions_box
+                        orientation: 'vertical'
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                    # Badges
+                    MDLabel:
+                        text: "Badges"
+                        font_style: "H6"
+                        bold: True
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDGridLayout:
+                        id: gam_badges_grid
+                        cols: 4
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                    # Leaderboard
+                    MDLabel:
+                        text: "Leaderboard"
+                        font_style: "H6"
+                        bold: True
+                        size_hint_y: None
+                        height: dp(30)
+
+                    MDList:
+                        id: gam_leaderboard_list
+                        spacing: dp(4)
+
 <ProfitScreen>:
     name: "profit"
     
@@ -12566,6 +12787,186 @@ class DashboardApp(ChallengeMixin, MDApp):
                 ),
             )
             results_box.add_widget(item)
+
+    # ── Gamification ─────────────────────────────────────────────────
+
+    def show_gamification_screen(self):
+        if not self.current_user or not self.session_token:
+            self.show_error_dialog("Please login to view your rewards")
+            self.root.current = "login"
+            return
+        self.root.current = "gamification"
+        Clock.schedule_once(lambda dt: self.load_gamification_data(), 0.3)
+
+    def load_gamification_data(self):
+        if not self.current_user or not self.session_token:
+            return
+
+        def on_summary(req, result):
+            if result.get('status') == 'success':
+                try:
+                    screen = self.root.get_screen('gamification')
+                    self._render_gamification_summary(screen, result.get('data', {}))
+                except Exception as e:
+                    print(f"gamification summary render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/gamification/summary",
+            on_success=on_summary,
+            on_failure=lambda req, error: print(f"gamification summary failed: {error}"),
+            on_error=lambda req, error: print(f"gamification summary error: {error}"),
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+        def on_missions(req, result):
+            if result.get('status') == 'success':
+                try:
+                    screen = self.root.get_screen('gamification')
+                    self._render_missions(screen, result.get('data', []))
+                except Exception as e:
+                    print(f"missions render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/gamification/missions",
+            on_success=on_missions,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+        def on_badges(req, result):
+            if result.get('status') == 'success':
+                try:
+                    screen = self.root.get_screen('gamification')
+                    self._render_badges(screen, result.get('data', []))
+                except Exception as e:
+                    print(f"badges render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/gamification/badges/all",
+            on_success=on_badges,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+        def on_leaderboard(req, result):
+            if result.get('status') == 'success':
+                try:
+                    screen = self.root.get_screen('gamification')
+                    self._render_leaderboard(screen, result.get('data', []))
+                except Exception as e:
+                    print(f"leaderboard render error: {e}")
+
+        UrlRequest(
+            f"{self.backend_url}/api/gamification/leaderboard?limit=20",
+            on_success=on_leaderboard,
+            on_failure=lambda req, error: None, on_error=lambda req, error: None,
+            req_headers={'Authorization': f'Bearer {self.session_token}'}, timeout=15,
+        )
+
+    def _render_gamification_summary(self, screen, data):
+        ids = screen.ids
+        current_level = data.get('current_level') or {}
+        next_level = data.get('next_level')
+        total_xp = data.get('total_xp', 0)
+
+        ids.gam_level_icon.icon = current_level.get('icon', 'star-outline')
+        ids.gam_level_label.text = f"Level {current_level.get('level_number', 1)} — {current_level.get('title', 'Bronze')}"
+        ids.gam_rank_label.text = f"Rank #{data.get('rank', '-')}"
+        ids.gam_xp_label.text = f"{total_xp:,} XP"
+
+        if next_level:
+            span = max(1, next_level.get('xp_required', 1) - current_level.get('xp_required', 0))
+            progress = max(0, total_xp - current_level.get('xp_required', 0))
+            ids.gam_xp_progress.max = span
+            ids.gam_xp_progress.value = min(span, progress)
+            ids.gam_next_level_label.text = (
+                f"{data.get('xp_to_next_level', 0):,} XP to {next_level.get('title')}"
+            )
+        else:
+            ids.gam_xp_progress.max = max(total_xp, 1)
+            ids.gam_xp_progress.value = ids.gam_xp_progress.max
+            ids.gam_next_level_label.text = "Max level reached!"
+
+    def _render_missions(self, screen, missions):
+        box = screen.ids.gam_missions_box
+        box.clear_widgets()
+
+        if not missions:
+            box.add_widget(MDLabel(text="No active missions right now — check back soon!",
+                                     theme_text_color="Secondary", size_hint_y=None, height=dp(30)))
+            return
+
+        for m in missions:
+            card = MDCard(orientation='vertical', padding=dp(12), spacing=dp(6),
+                           size_hint_y=None, height=dp(90), radius=[12], elevation=1)
+
+            top_row = MDBoxLayout(size_hint_y=None, height=dp(22))
+            period_tag = "Daily" if m.get('period') == 'daily' else "Weekly"
+            top_row.add_widget(MDLabel(text=f"{m.get('title')} ({period_tag})", bold=True, font_style="Body2"))
+            if m.get('is_completed'):
+                top_row.add_widget(MDIcon(icon="check-circle", theme_text_color="Custom",
+                                            text_color=[0.1, 0.7, 0.3, 1], size_hint_x=None, width=dp(24)))
+            card.add_widget(top_row)
+
+            progress_bar = MDProgressBar(
+                value=min(m.get('progress_value', 0), m.get('target_value', 1)),
+                max=max(m.get('target_value', 1), 1),
+                size_hint_y=None, height=dp(8),
+            )
+            card.add_widget(progress_bar)
+
+            reward_text = f"+{m.get('xp_reward', 0)} XP"
+            if m.get('points_reward'):
+                reward_text += f" • +{m.get('points_reward')} points"
+            card.add_widget(MDLabel(text=reward_text, font_style="Caption", theme_text_color="Secondary",
+                                      size_hint_y=None, height=dp(20)))
+
+            box.add_widget(card)
+
+    def _render_badges(self, screen, badges):
+        grid = screen.ids.gam_badges_grid
+        grid.clear_widgets()
+
+        if not badges:
+            grid.add_widget(MDLabel(text="No badges available yet", theme_text_color="Secondary"))
+            return
+
+        for b in badges:
+            earned = b.get('earned', False)
+            cell = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(90))
+            icon = MDIcon(
+                icon=b.get('icon', 'medal'), pos_hint={"center_x": 0.5},
+                size_hint=(None, None), size=(dp(36), dp(36)),
+                theme_text_color="Custom",
+                text_color=[0.85, 0.6, 0.1, 1] if earned else [0.6, 0.6, 0.6, 0.4],
+            )
+            label = MDLabel(
+                text=b.get('name', ''), font_style="Caption", halign="center",
+                theme_text_color="Primary" if earned else "Secondary",
+                opacity=1.0 if earned else 0.5,
+            )
+            cell.add_widget(icon)
+            cell.add_widget(label)
+            grid.add_widget(cell)
+
+    def _render_leaderboard(self, screen, rows):
+        lb_list = screen.ids.gam_leaderboard_list
+        lb_list.clear_widgets()
+
+        if not rows:
+            lb_list.add_widget(OneLineListItem(text="No rankings yet"))
+            return
+
+        my_id = self.current_user.get('id') if self.current_user else None
+        for row in rows:
+            is_me = row.get('user_id') == my_id
+            item = TwoLineListItem(
+                text=f"#{row.get('rank')} {row.get('name', '')}" + ("  (You)" if is_me else ""),
+                secondary_text=f"Level {row.get('level', 1)} • {row.get('total_xp', 0):,} XP",
+                theme_text_color="Custom" if is_me else "Primary",
+                text_color=self.theme_cls.primary_color if is_me else [0, 0, 0, 1],
+            )
+            lb_list.add_widget(item)
 
 
     def load_airtime_networks(self):
