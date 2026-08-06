@@ -3246,6 +3246,16 @@ MDScreenManager:
                     size_hint_y: None
                     height: dp(20)
 
+            # Skeleton placeholders — shown briefly while the real list loads
+            MDBoxLayout:
+                id: history_skeleton_box
+                orientation: 'vertical'
+                spacing: dp(8)
+                padding: [dp(8), dp(8)]
+                size_hint_y: None
+                height: 0
+                opacity: 0
+
             # Main transaction list
             ScrollView:
                 id: history_scroll
@@ -3256,6 +3266,17 @@ MDScreenManager:
                     padding: [dp(8), dp(8)]
                     size_hint_y: None
                     height: self.minimum_height
+
+            # Shown when we fall back to locally-cached data after a network failure
+            MDLabel:
+                id: history_offline_banner
+                text: ""
+                font_style: "Caption"
+                halign: "center"
+                theme_text_color: "Secondary"
+                size_hint_y: None
+                height: 0
+                opacity: 0
 
             # Empty state - FIXED: no conflicting size props
             MDBoxLayout:
@@ -10025,6 +10046,75 @@ class SpinWheelWidget(Widget):
             self._rot_instr.angle = self.rotation
 
 
+class SkeletonCard(MDCard):
+    """A shimmering placeholder shaped like a list row (avatar circle +
+    two text bars), shown while real content is still loading. Used
+    instead of (or alongside) a spinner on screens with list content —
+    gives users an immediate sense of the page's shape instead of a blank
+    gap, and reads as more "alive" than a static spinner.
+
+    Purely decorative — callers just add/remove instances of this widget
+    from a container; it animates itself and needs no other wiring.
+    """
+
+    shimmer_alpha = NumericProperty(0.35)
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault('size_hint_y', None)
+        kwargs.setdefault('height', dp(72))
+        kwargs.setdefault('radius', [12])
+        kwargs.setdefault('elevation', 0)
+        kwargs.setdefault('padding', dp(12))
+        kwargs.setdefault('spacing', dp(12))
+        kwargs.setdefault('orientation', 'horizontal')
+        super().__init__(**kwargs)
+
+        self.md_bg_color = [0, 0, 0, 0.04]
+
+        avatar = Widget(size_hint=(None, None), size=(dp(40), dp(40)))
+        with avatar.canvas:
+            self._avatar_color = Color(0, 0, 0, self.shimmer_alpha)
+            self._avatar_ellipse = Ellipse(pos=avatar.pos, size=avatar.size)
+        avatar.bind(pos=self._sync_avatar, size=self._sync_avatar)
+        self.add_widget(avatar)
+
+        bars = BoxLayout(orientation='vertical', spacing=dp(8), padding=[0, dp(4), 0, dp(4)])
+        self._bar_widgets = []
+        for w_hint in (0.6, 0.35):
+            bar = Widget(size_hint=(w_hint, None), height=dp(14))
+            with bar.canvas:
+                color = Color(0, 0, 0, self.shimmer_alpha)
+                rect = RoundedRectangle(pos=bar.pos, size=bar.size, radius=[6])
+            bar.bind(pos=lambda w, v, r=rect: setattr(r, 'pos', v),
+                      size=lambda w, v, r=rect: setattr(r, 'size', v))
+            self._bar_widgets.append(color)
+            bars.add_widget(bar)
+            bars.add_widget(Widget(size_hint_y=None, height=dp(2)))
+        self.add_widget(bars)
+
+        self.bind(shimmer_alpha=self._apply_alpha)
+        self._start_shimmer()
+
+    def _sync_avatar(self, widget, *_):
+        self._avatar_ellipse.pos = widget.pos
+        self._avatar_ellipse.size = widget.size
+
+    def _apply_alpha(self, *_):
+        self._avatar_color.a = self.shimmer_alpha
+        for color in self._bar_widgets:
+            color.a = self.shimmer_alpha
+
+    def _start_shimmer(self, *_):
+        grow = Animation(shimmer_alpha=0.12, duration=0.7, t='in_out_sine')
+        shrink = Animation(shimmer_alpha=0.35, duration=0.7, t='in_out_sine')
+        grow.bind(on_complete=lambda *_: shrink.start(self))
+        shrink.bind(on_complete=self._start_shimmer)
+        grow.start(self)
+
+    def stop(self):
+        Animation.cancel_all(self)
+
+
 class GradientCard(MDCard):
     """MDCard with a real blue gradient background (instead of a flat
     md_bg_color), used for the Support Center's hero header and its
@@ -12439,34 +12529,77 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._reminder_dialog_bill_type = existing.get('bill_type', 'dstv')
         self._open_reminder_form_dialog(title="Edit Bill Reminder", existing=existing)
 
-    def _open_reminder_form_dialog(self, title, existing):
-        content = MDBoxLayout(orientation='vertical', spacing=dp(10),
-                               size_hint_y=None, height=dp(340), padding=dp(10))
+    BILL_TYPE_ICONS = {
+        'dstv': 'television-classic', 'gotv': 'television-classic',
+        'startimes': 'television-classic', 'electricity': 'flash',
+        'internet': 'wifi',
+    }
 
-        type_row = MDBoxLayout(spacing=dp(6), size_hint_y=None, height=dp(40))
+    def _open_reminder_form_dialog(self, title, existing):
+        content = MDBoxLayout(orientation='vertical', spacing=dp(16),
+                               size_hint_y=None, height=dp(430), padding=[dp(4), dp(6), dp(4), 0])
+
+        content.add_widget(MDLabel(
+            text="Bill type", font_style="Caption", theme_text_color="Secondary",
+            size_hint_y=None, height=dp(18),
+        ))
+
+        # 3-per-row wrapping grid — a single fixed-width row previously let
+        # "Internet" (the 5th option) overflow off the dialog with no way
+        # to reach it. This always fits all 5 types within two rows.
+        type_grid = MDGridLayout(cols=3, spacing=dp(8), size_hint_y=None, height=dp(96))
         type_buttons = {}
-        for bt, label in self.BILL_TYPE_LABELS.items():
-            btn = MDFlatButton(
-                text=label,
-                md_bg_color=self.theme_cls.primary_color if bt == self._reminder_dialog_bill_type else [0, 0, 0, 0],
-                on_release=lambda x, b=bt: _select_type(b),
-            )
-            type_buttons[bt] = btn
-            type_row.add_widget(btn)
+
+        def _chip_colors(selected):
+            if selected:
+                return self.theme_cls.primary_color, [1, 1, 1, 1]
+            light = self.theme_cls.theme_style == "Light"
+            return ([0.93, 0.93, 0.96, 1] if light else [0.22, 0.22, 0.28, 1]), \
+                   ([0.15, 0.15, 0.15, 1] if light else [0.9, 0.9, 0.9, 1])
 
         def _select_type(bt):
             self._reminder_dialog_bill_type = bt
-            for key, b in type_buttons.items():
-                b.md_bg_color = self.theme_cls.primary_color if key == bt else [0, 0, 0, 0]
+            for key, chip in type_buttons.items():
+                bg, fg = _chip_colors(key == bt)
+                chip.md_bg_color = bg
+                chip.ids.chip_icon.text_color = fg
+                chip.ids.chip_label.text_color = fg
 
-        content.add_widget(type_row)
+        for bt, label in self.BILL_TYPE_LABELS.items():
+            is_selected = bt == self._reminder_dialog_bill_type
+            bg, fg = _chip_colors(is_selected)
+
+            chip = MDCard(
+                orientation='vertical', spacing=dp(2), padding=[dp(4), dp(8), dp(4), dp(6)],
+                radius=[14], elevation=0, md_bg_color=bg, ripple_behavior=True,
+                on_release=lambda x, b=bt: _select_type(b),
+            )
+            icon = MDIcon(icon=self.BILL_TYPE_ICONS.get(bt, 'file-document-outline'),
+                           halign="center", theme_text_color="Custom", text_color=fg)
+            label_widget = MDLabel(text=label, font_style="Caption", halign="center",
+                                     theme_text_color="Custom", text_color=fg)
+            chip.add_widget(icon)
+            chip.add_widget(label_widget)
+            chip.ids = {'chip_icon': icon, 'chip_label': label_widget}
+
+            type_buttons[bt] = chip
+            type_grid.add_widget(chip)
+
+        content.add_widget(type_grid)
+
+        content.add_widget(MDLabel(
+            text="Details", font_style="Caption", theme_text_color="Secondary",
+            size_hint_y=None, height=dp(18),
+        ))
 
         nickname_input = MDTextField(hint_text="Nickname (optional, e.g. Home DSTV)", mode="rectangle",
                                        text=(existing or {}).get('nickname') or '')
         account_input = MDTextField(hint_text="Account / smartcard / meter number", mode="rectangle",
                                       text=(existing or {}).get('account_identifier') or '')
         due_day_input = MDTextField(hint_text="Due day of month (1-31)", input_type='number', mode="rectangle",
-                                      text=str((existing or {}).get('due_day_of_month') or ''))
+                                      text=str((existing or {}).get('due_day_of_month') or ''),
+                                      helper_text="We'll remind you a few days before this date each month",
+                                      helper_text_mode="persistent")
         amount_input = MDTextField(hint_text="Estimated amount (optional)", input_type='number', mode="rectangle",
                                      text=str((existing or {}).get('estimated_amount') or ''))
 
@@ -12474,20 +12607,31 @@ class DashboardApp(ChallengeMixin, MDApp):
             content.add_widget(field)
 
         def _submit(*_):
+            account_value = account_input.text.strip()
+            due_day_value = due_day_input.text.strip()
+
+            if not account_value:
+                self.show_error_dialog("Account/smartcard/meter number is required")
+                return
+            if not due_day_value:
+                self.show_error_dialog("Due day of month is required")
+                return
+            try:
+                due_day_int = int(due_day_value)
+                if not (1 <= due_day_int <= 31):
+                    raise ValueError
+            except ValueError:
+                self.show_error_dialog("Due day of month must be a number from 1 to 31")
+                return
+
             dialog.dismiss()
             payload = {
                 'bill_type': self._reminder_dialog_bill_type,
                 'nickname': nickname_input.text.strip(),
-                'account_identifier': account_input.text.strip(),
-                'due_day_of_month': due_day_input.text.strip(),
+                'account_identifier': account_value,
+                'due_day_of_month': due_day_value,
                 'estimated_amount': amount_input.text.strip() or None,
             }
-            if not payload['account_identifier']:
-                self.show_error_dialog("Account/smartcard/meter number is required")
-                return
-            if not payload['due_day_of_month']:
-                self.show_error_dialog("Due day of month is required")
-                return
             if existing:
                 self._process_update_reminder(existing.get('id'), payload)
             else:
@@ -21323,6 +21467,46 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.load_transaction_history(filter_type)
 
     
+    def _show_history_skeleton(self, screen, show):
+        """Toggles shimmering placeholder rows shaped like transaction
+        items while the real list is loading — replaces a blank gap with
+        an immediate sense of the page's shape."""
+        try:
+            box = screen.ids.history_skeleton_box
+        except Exception:
+            return
+
+        if show:
+            box.clear_widgets()
+            for _ in range(5):
+                box.add_widget(SkeletonCard())
+            box.height = 5 * (dp(72) + dp(8))
+            box.opacity = 1
+        else:
+            for child in list(box.children):
+                if hasattr(child, 'stop'):
+                    child.stop()
+            box.clear_widgets()
+            box.height = 0
+            box.opacity = 0
+
+    def _show_history_offline_banner(self, screen, show):
+        """Tells the user plainly when they're looking at locally-cached
+        transactions because the live request failed — rather than
+        silently showing old data as if it were fresh."""
+        try:
+            banner = screen.ids.history_offline_banner
+        except Exception:
+            return
+        if show:
+            banner.text = "Showing saved data — check your connection for the latest"
+            banner.height = dp(30)
+            banner.opacity = 1
+        else:
+            banner.text = ""
+            banner.height = 0
+            banner.opacity = 0
+
     def load_transaction_history(self, filter_type='all'):
         """Load transaction history from backend."""
         if not self.current_user or not self.session_token:
@@ -21336,6 +21520,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             screen.ids.empty_state.opacity = 0
             screen.ids.history_list.clear_widgets()
             screen.ids.history_list.height = 0
+            self._show_history_offline_banner(screen, False)
+            self._show_history_skeleton(screen, True)
         except Exception as e:
             print(f"History screen reset error: {e}")
 
@@ -21343,6 +21529,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             try:
                 screen.ids.loading_indicator.opacity = 0
                 screen.ids.history_spinner.active = False
+                self._show_history_skeleton(screen, False)
+                self._show_history_offline_banner(screen, False)
             except Exception:
                 pass
 
@@ -21358,6 +21546,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             try:
                 screen.ids.loading_indicator.opacity = 0
                 screen.ids.history_spinner.active = False
+                self._show_history_skeleton(screen, False)
+                self._show_history_offline_banner(screen, True)
             except Exception:
                 pass
             print(f"History load failed: {error}")
@@ -21369,6 +21559,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             try:
                 screen.ids.loading_indicator.opacity = 0
                 screen.ids.history_spinner.active = False
+                self._show_history_skeleton(screen, False)
+                self._show_history_offline_banner(screen, True)
             except Exception:
                 pass
             Clock.schedule_once(
