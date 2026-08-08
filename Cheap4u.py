@@ -10,7 +10,17 @@ from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
-from kivy.metrics import dp
+from kivy.metrics import dp, Metrics
+
+# Kivy's sp() unit (used internally by KivyMD for font sizes) multiplies by
+# the OS's accessibility font-scale setting on Android by default -- meaning
+# a user who bumps their phone's system font size up or down would see the
+# whole app's text resize to match, unpredictably breaking layouts that
+# were designed around fixed sizes. Locking fontscale to 1 makes sp()
+# behave identically to dp() everywhere, so the app's typography is always
+# exactly what it was designed to be, independent of the device's system
+# font-size setting.
+Metrics.fontscale = 1
 from kivy.network.urlrequest import UrlRequest
 from kivy.properties import (
     StringProperty, ObjectProperty, NumericProperty, ListProperty, BooleanProperty
@@ -9987,11 +9997,22 @@ class SpinWheelWidget(Widget):
         self._rot_instr = None
         self.bind(pos=self._redraw, size=self._redraw)
         self.bind(rotation=self._apply_rotation)
+        self.bind(parent=self._on_parent_changed)
         self._redraw()
+
+    def _on_parent_changed(self, *_):
+        # pos_hint centering is resolved by the parent FloatLayout AFTER
+        # this widget is added to it (not during __init__, when pos/size
+        # are still Kivy's defaults) — force a couple of follow-up redraws
+        # once actually attached so the wheel never gets stuck showing its
+        # very first (wrongly-positioned) draw.
+        Clock.schedule_once(self._redraw, 0)
+        Clock.schedule_once(self._redraw, 0.3)
 
     def set_segments(self, segments):
         self.segments = segments or []
         self._redraw()
+        Clock.schedule_once(self._redraw, 0.2)
 
     @staticmethod
     def _hex_to_rgba(hex_color, alpha=1.0):
