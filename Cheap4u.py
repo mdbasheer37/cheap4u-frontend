@@ -4473,7 +4473,8 @@ MDScreenManager:
                             text: "Your account number"
                             font_style: "Subtitle1"
                             bold: True
-                            theme_text_color: "Primary"
+                            theme_text_color: "Custom"
+                            text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                         MDBoxLayout:
                             orientation: 'horizontal'
@@ -4481,17 +4482,18 @@ MDScreenManager:
                             size_hint_y: None
                             height: dp(40)
 
-                            MDLabel:
-                                id: virtual_account_display
-                                text: f"{app. virtual_bank_name} - {app. virtual_account_number}" if app.  virtual_account_number else "Loading  account..."
-                                theme_text_color: "Secondary"
-
                             MDIconButton:
                                 icon: "content-copy"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
                                 on_release: app.copy_virtual_account()
-                                disabled: not app.virtual_account_number       
+                                disabled: not app.virtual_account_number
+
+                            MDLabel:
+                                id: virtual_account_display
+                                text: f"{app. virtual_bank_name} - {app. virtual_account_number}" if app.  virtual_account_number else "Loading  account..."
+                                theme_text_color: "Custom"
+                                text_color: [0.35, 0.35, 0.35, 1] if app.theme_cls.theme_style == "Light" else [0.85, 0.85, 0.85, 1]
             
             
                     MDLabel:
@@ -4508,7 +4510,9 @@ MDScreenManager:
 
                         height: self.texture_size[1]
 
-                        theme_text_color: "Primary"
+                        theme_text_color: "Custom"
+
+                        text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                         halign: "left"
 
@@ -5255,7 +5259,9 @@ MDScreenManager:
 
                         height: self.texture_size[1]
 
-                        theme_text_color: "Primary"
+                        theme_text_color: "Custom"
+
+                        text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                         halign: "left"
 
@@ -8416,6 +8422,7 @@ MDScreenManager:
 
             ScrollView:
                 MDBoxLayout:
+                    id: merchant_sections_container
                     orientation: 'vertical'
                     spacing: dp(15)
                     padding: [dp(20), dp(20), dp(20), dp(20)]
@@ -8428,8 +8435,7 @@ MDScreenManager:
                         orientation: 'vertical'
                         spacing: dp(12)
                         size_hint_y: None
-                        height: 0
-                        opacity: 0
+                        height: self.minimum_height
 
                         MDLabel:
                             text: "Become a Merchant"
@@ -8497,8 +8503,7 @@ MDScreenManager:
                         padding: dp(20)
                         spacing: dp(10)
                         size_hint_y: None
-                        height: 0
-                        opacity: 0
+                        height: dp(150)
                         elevation: 2
                         radius: [15]
 
@@ -8521,8 +8526,7 @@ MDScreenManager:
                         orientation: 'vertical'
                         spacing: dp(15)
                         size_hint_y: None
-                        height: 0
-                        opacity: 0
+                        height: self.minimum_height
 
                         MDCard:
                             orientation: 'vertical'
@@ -11704,6 +11708,21 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.root.current = "merchant"
         self.merchant_business_type = 'individual'
         self.merchant_job_type = 'airtime'
+
+        # The apply/status/dashboard sections are all statically defined in
+        # KV (so their MDTextFields etc. exist and can be looked up via
+        # ids), which means all three are present in the tree at once
+        # until _render_merchant_sections picks the right one. Detach them
+        # immediately so nothing overlaps while the profile is loading.
+        try:
+            screen = self.root.get_screen('merchant')
+            for box_id in ('merchant_apply_box', 'merchant_status_box', 'merchant_dashboard_box'):
+                box = screen.ids.get(box_id)
+                if box and box.parent:
+                    box.parent.remove_widget(box)
+        except Exception as e:
+            print(f"show_merchant_screen cleanup error: {e}")
+
         Clock.schedule_once(lambda dt: self.load_merchant_data(), 0.3)
 
     def load_merchant_data(self):
@@ -11735,22 +11754,29 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def _render_merchant_sections(self, screen, profile):
         """Show exactly one of: apply form / pending-or-suspended banner /
-        full dashboard, based on the merchant profile's current status."""
+        full dashboard, based on the merchant profile's current status.
+
+        Sections are added/removed from the container entirely (not just
+        collapsed to height 0) — collapsing a box that still contains live
+        MDTextFields left their layout/touch targets in an inconsistent
+        state on some devices, which is why typing into the apply form
+        could silently fail. Fully detaching the inactive sections avoids
+        that class of bug altogether."""
         try:
             ids = screen.ids
+            container = ids.merchant_sections_container
             apply_box = ids.merchant_apply_box
             status_box = ids.merchant_status_box
             dash_box = ids.merchant_dashboard_box
 
             for box in (apply_box, status_box, dash_box):
-                box.height = 0
-                box.opacity = 0
+                if box.parent:
+                    box.parent.remove_widget(box)
 
             status = (profile or {}).get('status')
 
             if not profile or status == 'rejected':
-                apply_box.height = apply_box.minimum_height
-                apply_box.opacity = 1
+                container.add_widget(apply_box)
                 if hasattr(ids, 'merchant_rejection_label'):
                     reason = (profile or {}).get('rejection_reason')
                     ids.merchant_rejection_label.text = (
@@ -11759,8 +11785,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                     )
 
             elif status == 'pending':
-                status_box.height = dp(150)
-                status_box.opacity = 1
+                container.add_widget(status_box)
                 if hasattr(ids, 'merchant_status_label'):
                     ids.merchant_status_label.text = (
                         "Your merchant application is under review.\n"
@@ -11768,8 +11793,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                     )
 
             elif status == 'suspended':
-                status_box.height = dp(150)
-                status_box.opacity = 1
+                container.add_widget(status_box)
                 if hasattr(ids, 'merchant_status_label'):
                     reason = (profile or {}).get('rejection_reason')
                     ids.merchant_status_label.text = (
@@ -11777,8 +11801,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                     )
 
             elif status == 'approved':
-                dash_box.height = dash_box.minimum_height
-                dash_box.opacity = 1
+                container.add_widget(dash_box)
                 self._load_merchant_dashboard_data(screen)
 
         except Exception as e:
