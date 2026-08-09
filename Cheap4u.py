@@ -9236,6 +9236,34 @@ MDScreenManager:
                             theme_text_color: "Custom"
                             text_color: [1, 1, 1, 0.8]
                             halign: 'center'
+
+                    # Spin & Win extra-spin fee revenue
+                    MDCard:
+                        orientation: 'horizontal'
+                        padding: dp(15)
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: dp(60)
+                        elevation: 1
+                        radius: [12]
+
+                        MDIcon:
+                            icon: "dharmachakra"
+                            theme_text_color: "Custom"
+                            text_color: [0.95, 0.55, 0.1, 1]
+                            size_hint_x: None
+                            width: dp(30)
+
+                        MDLabel:
+                            text: "Spin & Win fees"
+                            theme_text_color: "Primary"
+
+                        MDLabel:
+                            id: spin_fee_profit_label
+                            text: "₦0.00"
+                            bold: True
+                            halign: 'right'
+                            theme_text_color: "Primary"
                     
                     # Withdrawal Section
                     MDCard:
@@ -13931,6 +13959,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'electricity': ('electricity_profit_label', 'electricity_count_label'),
                 'cable_tv':    ('tv_profit_label',          'tv_count_label'),
                 'exam_pin':    ('exam_profit_label',        'exam_count_label'),
+                'spin_fee':    ('spin_fee_profit_label',    None),
             }
 
             for category, (amount_id, count_id) in category_map.items():
@@ -13944,7 +13973,7 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 if hasattr(screen.ids, amount_id):
                     screen.ids[amount_id].text = self.format_currency(amount)
-                if hasattr(screen.ids, count_id):
+                if count_id and hasattr(screen.ids, count_id):
                     screen.ids[count_id].text = f"{count} transactions"
 
         except Exception as e:
@@ -23046,11 +23075,29 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.load_transactions()
         self.load_app_settings()   # sets self.theme_preference + resolves theme_cls.theme_style
         self.theme_cls.primary_hue = "500"
+        self._shrink_font_styles(0.82)
         self.update_theme_colors()
         Window.bind(on_keyboard=self.handle_back_button)
         root = Builder.load_string(KV)
         register_challenge_screens(root, self)
         return root
+
+    def _shrink_font_styles(self, scale):
+        """Scales down KivyMD's whole default type scale (H1..Caption) by
+        `scale`, applied once before the KV tree is built. Every MDLabel
+        that uses font_style (nearly all text in this app) picks this up
+        automatically — no need to touch each label individually, and it
+        applies uniformly to bold heading styles (H6, Subtitle2, Button)
+        the same as regular body text."""
+        try:
+            scaled = {}
+            for name, props in self.theme_cls.font_styles.items():
+                props = list(props)
+                props[1] = max(10, round(props[1] * scale))   # never shrink below 10sp
+                scaled[name] = props
+            self.theme_cls.font_styles = scaled
+        except Exception as e:
+            print(f"_shrink_font_styles error: {e}")
     
     
     def handle_tvpass_error(self, error_msg):
