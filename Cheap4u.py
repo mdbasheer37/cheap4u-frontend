@@ -1063,6 +1063,8 @@ MDScreenManager:
 
                             hint_text: "Your SIM's airtime transfer PIN"
 
+                            icon_left: "shield-key-outline"
+
                             password: True
 
                             input_filter: "int"
@@ -6614,6 +6616,8 @@ MDScreenManager:
 
                         hint_text: "Enter your PIN"
 
+                        icon_left: "shield-key-outline"
+
                         password: True
 
                         input_filter: "int"
@@ -10489,6 +10493,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         
         old_pin_input = MDTextField(
             hint_text="Current PIN leave empty if not set",
+            icon_left="shield-key-outline",
             password=True,
             input_type='number',
             max_text_length=6,
@@ -10497,6 +10502,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         
         new_pin_input = MDTextField(
             hint_text="New PIN (4-6 digits)",
+            icon_left="shield-key-outline",
             password=True,
             input_type='number',
             max_text_length=6,
@@ -10505,6 +10511,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         
         confirm_pin_input = MDTextField(
             hint_text="Confirm New PIN",
+            icon_left="shield-key-outline",
             password=True,
             input_type='number',
             max_text_length=6,
@@ -10585,6 +10592,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         
         self.pin_input = MDTextField(
             hint_text="Enter 4-6 digit PIN",
+            icon_left="shield-key-outline",
             password=True,
             input_type='number',
             max_text_length=6,
@@ -16402,6 +16410,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             hint_text="Current Password",
 
+            icon_left="key",
+
             password=True,
 
             mode="rectangle"
@@ -16414,6 +16424,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             hint_text="New Password", 
 
+            icon_left="key",
+
             password=True,
 
             mode="rectangle"
@@ -16425,6 +16437,8 @@ class DashboardApp(ChallengeMixin, MDApp):
         confirm_password = MDTextField(
 
             hint_text="Confirm New Password",
+
+            icon_left="key-change",
 
             password=True,
 
@@ -17248,12 +17262,14 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._reset_pass_field = MDTextField(
             hint_text="New Password (min 6 characters)",
             mode="rectangle",
+            icon_left="key",
             password=True,
             size_hint_x=1,
         )
         self._reset_pass2_field = MDTextField(
             hint_text="Confirm New Password",
             mode="rectangle",
+            icon_left="key-change",
             password=True,
             size_hint_x=1,
         )
@@ -22701,12 +22717,14 @@ class DashboardApp(ChallengeMixin, MDApp):
         try:
             pin_field = MDTextField(
                 hint_text="Choose a 4-6 digit PIN",
+                icon_left="shield-key-outline",
                 password=True,
                 input_filter="int",
                 max_text_length=6,
             )
             confirm_field = MDTextField(
                 hint_text="Confirm PIN",
+                icon_left="shield-key-outline",
                 password=True,
                 input_filter="int",
                 max_text_length=6,
