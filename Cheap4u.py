@@ -4566,9 +4566,9 @@ MDScreenManager:
 
                             spacing: dp(10)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4628,9 +4628,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4692,9 +4692,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4751,9 +4751,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4809,9 +4809,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4867,9 +4867,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4925,9 +4925,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -4983,9 +4983,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -5041,9 +5041,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -5099,9 +5099,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -5157,9 +5157,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -5215,9 +5215,9 @@ MDScreenManager:
 
                             spacing: dp(0)
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(80), dp(80)]
+                            height: dp(80)
 
                             radius: [15]
 
@@ -5313,9 +5313,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5371,9 +5371,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5429,9 +5429,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5487,9 +5487,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5545,9 +5545,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5603,9 +5603,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5661,9 +5661,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5725,9 +5725,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5784,9 +5784,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5842,9 +5842,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5900,9 +5900,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -5958,9 +5958,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -6016,9 +6016,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -6074,9 +6074,9 @@ MDScreenManager:
 
                             orientation: 'vertical'
 
-                            size_hint: [None, None]
+                            size_hint: [1, None]
 
-                            size: [dp(105), dp(105)]
+                            height: dp(105)
 
                             md_bg_color: [0.95, 0.98, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
@@ -10459,6 +10459,18 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._loader_overlay = scrim
         scrim.opacity = 0
         Animation(opacity=1, duration=0.25, t="out_quad").start(scrim)
+        # Safety net: on a slow/flaky connection, a hung network request can
+        # fail to ever call back (neither success, failure, nor error) --
+        # leaving hide_loader() never called and this dark overlay stuck on
+        # screen indefinitely. That looks exactly like "the app is just
+        # dark/broken" on whichever device hits it. Force it away after a
+        # generous timeout no matter what caused the hang.
+        Clock.schedule_once(lambda dt: self._force_hide_stuck_loader(scrim), 20)
+
+    def _force_hide_stuck_loader(self, scrim):
+        if getattr(self, '_loader_overlay', None) is scrim:
+            print("Loader force-hidden after 20s timeout — a request likely hung without calling back")
+            self.hide_loader(animated=True)
 
     def hide_loader(self, animated=True):
         scrim = getattr(self, '_loader_overlay', None)
@@ -16308,13 +16320,69 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'referral':        'dashboard',
                 'profit':          'dashboard',
                 'withdraw':        'profit',
+                # FIX: these screens were missing from back_map entirely,
+                # so pressing back on any of them fell through to Android's
+                # default behavior and exited the app instantly instead of
+                # returning to the dashboard like every other screen does.
+                'cashback':        'dashboard',
+                'spin':            'dashboard',
+                'coupons':         'dashboard',
+                'merchant':        'dashboard',
+                'cards':           'dashboard',
+                'reminders':       'dashboard',
+                'compare':         'dashboard',
+                'gamification':    'dashboard',
             }
             current = self.root.current
             if current in back_map:
                 self.root.transition.direction = "right"
                 self.root.current = back_map[current]
                 return True
+
+            # Nowhere further "back" to go (dashboard, or any screen not
+            # listed above) -- require a second press within 2 seconds
+            # before actually letting the app exit, so a single accidental
+            # tap doesn't close it. Standard Android "press back again to
+            # exit" pattern.
+            now = time.time()
+            last_press = getattr(self, '_last_back_press_time', 0)
+            if now - last_press < 2.0:
+                return False  # let the system perform the actual exit
+            self._last_back_press_time = now
+            self.show_toast("Press back again to exit")
+            return True
         return False
+
+    def show_toast(self, message, duration=2.0):
+        """Lightweight, non-blocking bottom toast for brief hints (like
+        'Press back again to exit') that shouldn't interrupt the user the
+        way a full dialog would."""
+        try:
+            toast = MDCard(
+                orientation='horizontal', padding=dp(14),
+                size_hint=(None, None),
+                size=(min(Window.width - dp(40), dp(320)), dp(48)),
+                pos_hint={"center_x": 0.5},
+                y=dp(70),
+                radius=[24], elevation=4,
+                md_bg_color=[0.15, 0.15, 0.15, 0.95],
+            )
+            toast.add_widget(MDLabel(
+                text=message, halign="center",
+                theme_text_color="Custom", text_color=[1, 1, 1, 1],
+            ))
+            toast.opacity = 0
+            Window.add_widget(toast)
+            Animation(opacity=1, duration=0.2).start(toast)
+
+            def _dismiss(*_):
+                anim_out = Animation(opacity=0, duration=0.2)
+                anim_out.bind(on_complete=lambda *_: Window.remove_widget(toast))
+                anim_out.start(toast)
+
+            Clock.schedule_once(_dismiss, duration)
+        except Exception as e:
+            print(f"show_toast error: {e}")
         
    
 
