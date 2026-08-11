@@ -931,6 +931,8 @@ MDScreenManager:
 
                             hint_text: "Your phone number (the SIM to convert from)"
 
+                            icon_left: "phone-outline"
+
                             input_filter: "int"
 
                             max_text_length: 11
@@ -942,6 +944,8 @@ MDScreenManager:
                             id: a2c_amount_input
 
                             hint_text: "Amount of airtime to convert (₦)"
+
+                            icon_left: "cash"
 
                             input_filter: "int"
 
@@ -1002,6 +1006,8 @@ MDScreenManager:
                             id: a2c_otp_input
 
                             hint_text: "6-digit OTP"
+
+                            icon_left: "message-text-outline"
 
                             input_filter: "int"
 
@@ -1215,6 +1221,8 @@ MDScreenManager:
                     id: otp_input
 
                     hint_text: "OTP Code"
+
+                    icon_left: "message-text-outline"
 
                     input_type: 'number'
 
@@ -1750,6 +1758,8 @@ MDScreenManager:
                             id: data_phone_input
 
                             hint_text: "Recipient Phone Number"
+
+                            icon_left: "phone-outline"
 
                             input_type: 'number'
 
@@ -2306,6 +2316,8 @@ MDScreenManager:
                                 id: electricity_amount_input
 
                                 hint_text: "Amount (₦)"
+
+                                icon_left: "cash"
 
                                 helper_text: "Enter amount to pay (₦50 - ₦100,000)"
 
@@ -4174,6 +4186,8 @@ MDScreenManager:
                 id: phone_input
 
                 hint_text: "Phone Number"
+
+                icon_left: "phone-outline"
 
                 input_type: 'number'
 
@@ -8469,6 +8483,7 @@ MDScreenManager:
                         MDTextField:
                             id: merchant_business_name
                             hint_text: "Business name"
+                            icon_left: "store-outline"
                             mode: "rectangle"
 
                         MDBoxLayout:
@@ -8490,16 +8505,19 @@ MDScreenManager:
                         MDTextField:
                             id: merchant_registration_number
                             hint_text: "CAC / Registration number (optional)"
+                            icon_left: "file-document-outline"
                             mode: "rectangle"
 
                         MDTextField:
                             id: merchant_business_address
                             hint_text: "Business address"
+                            icon_left: "map-marker-outline"
                             mode: "rectangle"
 
                         MDTextField:
                             id: merchant_business_phone
                             hint_text: "Business phone"
+                            icon_left: "phone-outline"
                             input_type: "number"
                             mode: "rectangle"
 
@@ -9390,11 +9408,12 @@ MDScreenManager:
                         padding: dp(20)
                         spacing: dp(15)
                         size_hint_y: None
-                        height: dp(400)
+                        height: dp(330)
                         
                         MDTextField:
                             id: withdraw_amount
                             hint_text: "Amount to withdraw"
+                            icon_left: "cash"
                             input_type: 'number'
                             helper_text: "Enter amount between ₦50 and ₦500,000"
                             helper_text_mode: "on_focus"
@@ -9402,13 +9421,8 @@ MDScreenManager:
                             
                         MDTextField:
                             id: bank_name
-                            hint_text: "Bank Name"
-                            helper_text: "e.g., GTBank, Zenith Bank"
-                            size_hint_x: 1
-                            
-                        MDTextField:
-                            id: bank_name
                             hint_text: "Tap to select bank"
+                            icon_left: "bank-outline"
                           #  readonly: True
                             size_hint_x: 1
                             on_focus: if self.focus: app.show_bank_picker()                           
@@ -9416,6 +9430,7 @@ MDScreenManager:
                         MDTextField:
                             id: account_number
                             hint_text: "Account Number (10 digits)"
+                            icon_left: "credit-card-outline"
                             input_type: 'number'
                             max_text_length: 10
                             size_hint_x: 1                                                                                                  
@@ -9932,6 +9947,7 @@ MDScreenManager:
                 MDTextField:
                     id: ai_chat_input
                     hint_text: "Type your question..."
+                    icon_left: "chat-outline"
                     mode: "round"
                     multiline: False
                     size_hint_x: 1
@@ -10694,6 +10710,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         coupon_input = MDTextField(
             hint_text="Coupon code (optional)",
+            icon_left="ticket-percent-outline",
             mode="rectangle",
         )
         content.add_widget(coupon_input)
@@ -10968,6 +10985,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         amount_input = MDTextField(
             hint_text=f"Amount (max ₦{self.referral_balance:,.2f})",
+            icon_left="cash",
             input_type='number',
             helper_text=f"Minimum ₦200 | Available: ₦{self.referral_balance:,.2f}",
             helper_text_mode="persistent",
@@ -11250,6 +11268,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         amount_input = MDTextField(
             hint_text=f"Amount (max {self.format_currency(balance)})",
+            icon_left="cash",
             input_type='number',
             text=f"{balance:.2f}",
             helper_text=f"Available: {self.format_currency(balance)}",
@@ -12282,6 +12301,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                                size_hint_y=None, height=dp(120), padding=dp(10))
         amount_input = MDTextField(
             hint_text=f"Funding amount in USD (min ${min_funding:,.2f})",
+            icon_left="currency-usd",
             input_type='number', mode="rectangle",
             helper_text=f"+ ${fee:,.2f} card fee, charged at ₦{rate:,.0f}/$ from your wallet",
             helper_text_mode="persistent",
@@ -12339,7 +12359,7 @@ class DashboardApp(ChallengeMixin, MDApp):
     def show_fund_card_dialog(self, card_id):
         content = MDBoxLayout(orientation='vertical', spacing=dp(10),
                                size_hint_y=None, height=dp(90), padding=dp(10))
-        amount_input = MDTextField(hint_text="Amount in USD", input_type='number', mode="rectangle")
+        amount_input = MDTextField(hint_text="Amount in USD", icon_left="currency-usd", input_type='number', mode="rectangle")
         content.add_widget(amount_input)
 
         dialog = MDDialog(
@@ -12672,15 +12692,15 @@ class DashboardApp(ChallengeMixin, MDApp):
             size_hint_y=None, height=dp(18),
         ))
 
-        nickname_input = MDTextField(hint_text="Nickname (optional, e.g. Home DSTV)", mode="rectangle",
+        nickname_input = MDTextField(hint_text="Nickname (optional, e.g. Home DSTV)", icon_left="tag-outline", mode="rectangle",
                                        text=(existing or {}).get('nickname') or '')
-        account_input = MDTextField(hint_text="Account / smartcard / meter number", mode="rectangle",
+        account_input = MDTextField(hint_text="Account / smartcard / meter number", icon_left="card-account-details-outline", mode="rectangle",
                                       text=(existing or {}).get('account_identifier') or '')
-        due_day_input = MDTextField(hint_text="Due day of month (1-31)", input_type='number', mode="rectangle",
+        due_day_input = MDTextField(hint_text="Due day of month (1-31)", icon_left="calendar-month-outline", input_type='number', mode="rectangle",
                                       text=str((existing or {}).get('due_day_of_month') or ''),
                                       helper_text="We'll remind you a few days before this date each month",
                                       helper_text_mode="persistent")
-        amount_input = MDTextField(hint_text="Estimated amount (optional)", input_type='number', mode="rectangle",
+        amount_input = MDTextField(hint_text="Estimated amount (optional)", icon_left="cash", input_type='number', mode="rectangle",
                                      text=str((existing or {}).get('estimated_amount') or ''))
 
         for field in (nickname_input, account_input, due_day_input, amount_input):
@@ -16622,6 +16642,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             hint_text="Full Name",
 
+            icon_left="account-outline",
+
             text=self.current_user.get('name', ''),
 
             mode="rectangle",
@@ -16636,6 +16658,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             hint_text="Email",
 
+            icon_left="email-outline",
+
             text=self.current_user.get('email', ''),
 
             mode="rectangle",
@@ -16649,6 +16673,8 @@ class DashboardApp(ChallengeMixin, MDApp):
         phone_field = MDTextField(
 
             hint_text="Phone Number",
+
+            icon_left="phone-outline",
 
             text=self.current_user.get('phone', ''),
 
@@ -17076,6 +17102,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         self._reset_email_field = MDTextField(
             hint_text="Enter your email address",
+            icon_left="email-outline",
             mode="rectangle",
             size_hint_x=1,
         )
@@ -17255,6 +17282,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         self._reset_otp_field = MDTextField(
             hint_text="Enter OTP from SMS",
+            icon_left="message-text-outline",
             mode="rectangle",
             input_type='number',
             size_hint_x=1,
@@ -24510,6 +24538,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                  hint_text="Beneficiary Name",
 
+                 icon_left="account-outline",
+
                  required=True
 
     )
@@ -24517,6 +24547,8 @@ class DashboardApp(ChallengeMixin, MDApp):
            phone_input = MDTextField(
 
                  hint_text="Phone Number",
+
+                 icon_left="phone-outline",
 
                  input_type='number',
 
