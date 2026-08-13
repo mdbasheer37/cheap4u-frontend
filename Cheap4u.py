@@ -4614,6 +4614,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -4678,6 +4682,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -4740,6 +4748,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -4799,6 +4811,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -4856,6 +4872,10 @@ MDScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                                     size_hint_y: None
 
@@ -4915,6 +4935,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -4972,6 +4996,10 @@ MDScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                                     size_hint_y: None
 
@@ -5031,6 +5059,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -5088,6 +5120,10 @@ MDScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                                     size_hint_y: None
 
@@ -5147,6 +5183,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -5205,6 +5245,10 @@ MDScreenManager:
 
                                     halign: "center"
 
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+
                                     size_hint_y: None
 
                                     height: self.texture_size[1]
@@ -5262,6 +5306,10 @@ MDScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
                                     size_hint_y: None
 
@@ -5361,7 +5409,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5419,7 +5469,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5477,7 +5529,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5535,7 +5589,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5593,7 +5649,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5651,7 +5709,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5715,7 +5775,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5774,7 +5836,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5832,7 +5896,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5890,7 +5956,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -5948,7 +6016,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -6006,7 +6076,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -6064,7 +6136,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -6122,7 +6196,9 @@ MDScreenManager:
 
                                     font_style: "Subtitle1"
 
-                                    theme_text_color: "Primary"
+                                    theme_text_color: "Custom"
+
+                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 
@@ -23185,8 +23261,6 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.transactions_file = "transactions.json"
         self.settings_file = "app_settings.json"
         self.load_quick_pin()
-        self.load_users()
-        self.load_transactions()
         self.load_app_settings()   # sets self.theme_preference + resolves theme_cls.theme_style
         self.theme_cls.primary_hue = "500"
         self._shrink_font_styles(0.82)
@@ -23194,6 +23268,15 @@ class DashboardApp(ChallengeMixin, MDApp):
         Window.bind(on_keyboard=self.handle_back_button)
         root = Builder.load_string(KV)
         register_challenge_screens(root, self)
+        # These are local JSON caches nothing in the KV tree reads at parse
+        # time (route_to_login_or_pin only depends on load_quick_pin(),
+        # called above) — deferring them until right after the window can
+        # render removes their I/O from the black-screen window before the
+        # first frame paints, instead of blocking it.
+        self.users = {}
+        self.transactions = {}
+        Clock.schedule_once(lambda dt: self.load_users(), 0)
+        Clock.schedule_once(lambda dt: self.load_transactions(), 0)
         return root
 
     def _shrink_font_styles(self, scale):
