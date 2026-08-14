@@ -10,6 +10,15 @@ from kivy.animation import Animation
 from kivy.clock import Clock
 from kivy.core.clipboard import Clipboard
 from kivy.core.window import Window
+
+# Without this, Android's on-screen keyboard just overlays the window with
+# nothing repositioning the field currently being typed into -- on a field
+# positioned low on screen, the keyboard can cover it entirely, leaving no
+# visible feedback of what's being typed. 'below_target' shifts the window
+# content so the focused text field always stays visible directly above the
+# keyboard, the same way most other apps behave. Applies to every field in
+# the app automatically, no per-screen changes needed.
+Window.softinput_mode = 'below_target'
 from kivy.metrics import dp, Metrics
 
 # Kivy's sp() unit (used internally by KivyMD for font sizes) multiplies by
@@ -417,6 +426,15 @@ KV = '''
 
 #:import Window kivy.core.window.Window
 
+
+# Applies to EVERY MDTextField in the app (both KV-defined and
+# Python-instantiated ones pick this up automatically) -- explicitly fixes
+# the color of the text actually being TYPED, which previously relied on
+# KivyMD's own theme-based default and wasn't rendering reliably on some
+# devices, making it look like nothing was appearing while typing.
+<MDTextField>:
+    text_color_normal: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+    text_color_focus: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
 
 
 <CustomCard@MDCard>
