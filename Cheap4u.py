@@ -9580,7 +9580,8 @@ MDScreenManager:
             # ── Header: standard AppBar row (matches every other screen)
             # plus the "Need Help?" hero, all on one continuous blue
             # gradient panel (primary -> accent, per the design spec).
-            GradientCard:
+            MDCard:
+                md_bg_color: app.theme_cls.primary_color
                 size_hint_y: None
                 height: dp(172)
                 radius: [0, 0, dp(24), dp(24)]
@@ -9642,7 +9643,8 @@ MDScreenManager:
                     height: self.minimum_height
 
                     # 1. AI ASSISTANT — main / biggest option
-                    GradientCard:
+                    MDCard:
+                        md_bg_color: app.theme_cls.primary_color
                         size_hint_y: None
                         height: dp(152)
                         radius: [dp(22)]
