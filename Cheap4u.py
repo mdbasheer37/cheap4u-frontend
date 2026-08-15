@@ -4913,7 +4913,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [1, 0.95, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.3, 0.22, 0.15, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_spin_screen()
 
@@ -4975,7 +4975,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [0.9, 0.9, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.32, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_coupon_screen()
 
@@ -5037,7 +5037,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [0.9, 0.95, 0.92, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.25, 0.2, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_merchant_screen()
 
@@ -5099,7 +5099,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [0.92, 0.92, 0.97, 1] if app.theme_cls.theme_style == "Light" else [0.18, 0.18, 0.28, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_card_screen()
 
@@ -5161,7 +5161,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [0.95, 0.93, 0.85, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.24, 0.15, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_reminder_screen()
 
@@ -5223,7 +5223,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [0.88, 0.95, 0.96, 1] if app.theme_cls.theme_style == "Light" else [0.12, 0.24, 0.25, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_comparison_screen()
 
@@ -5285,7 +5285,7 @@ MDScreenManager:
 
                             elevation: 2
 
-                            md_bg_color: [1, 0.96, 0.88, 1] if app.theme_cls.theme_style == "Light" else [0.3, 0.25, 0.1, 1]
+                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
                             on_release: app.show_gamification_screen()
 
