@@ -8093,7 +8093,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.1, 0.75, 0.35, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -8135,7 +8135,7 @@ MDScreenManager:
                         height: dp(160)
                         elevation: 2
                         radius: [15]
-                        md_bg_color: [0.1, 0.75, 0.35, 1]
+                        md_bg_color: [0.1294, 0.5882, 0.9529, 1]
 
                         MDLabel:
                             text: "Available Cashback"
@@ -8314,7 +8314,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.95, 0.55, 0.1, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -8379,7 +8379,7 @@ MDScreenManager:
                     MDRaisedButton:
                         id: spin_button
                         text: "SPIN NOW"
-                        md_bg_color: [0.95, 0.55, 0.1, 1]
+                        md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                         pos_hint: {"center_x": 0.5}
                         size_hint_x: 0.7
                         size_hint_y: None
@@ -8447,7 +8447,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.35, 0.3, 0.9, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -8517,7 +8517,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.1, 0.55, 0.4, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -8588,7 +8588,7 @@ MDScreenManager:
                             MDRaisedButton:
                                 id: merchant_type_individual_btn
                                 text: "Individual"
-                                md_bg_color: app.theme_cls.primary_color
+                                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                                 on_release: app.set_merchant_business_type("individual")
 
                             MDFlatButton:
@@ -8617,7 +8617,7 @@ MDScreenManager:
 
                         MDRaisedButton:
                             text: "SUBMIT APPLICATION"
-                            md_bg_color: [0.1, 0.55, 0.4, 1]
+                            md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                             pos_hint: {"center_x": 0.5}
                             size_hint_x: 0.9
                             on_release: app.submit_merchant_application()
@@ -8662,7 +8662,7 @@ MDScreenManager:
                             height: dp(110)
                             elevation: 2
                             radius: [15]
-                            md_bg_color: [0.1, 0.55, 0.4, 1]
+                            md_bg_color: [0.1294, 0.5882, 0.9529, 1]
 
                             MDLabel:
                                 text: "Wallet Balance"
@@ -8738,7 +8738,7 @@ MDScreenManager:
                                 MDRaisedButton:
                                     id: merchant_type_airtime_btn
                                     text: "Airtime"
-                                    md_bg_color: app.theme_cls.primary_color
+                                    md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                                     on_release: app.set_merchant_job_type("airtime")
 
                                 MDFlatButton:
@@ -8785,7 +8785,7 @@ MDScreenManager:
 
                             MDRaisedButton:
                                 text: "SUBMIT BATCH"
-                                md_bg_color: [0.1, 0.55, 0.4, 1]
+                                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                                 pos_hint: {"center_x": 0.5}
                                 size_hint_x: 0.9
                                 on_release: app.submit_merchant_bulk_job()
@@ -8850,7 +8850,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.3, 0.25, 0.7, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -8894,7 +8894,7 @@ MDScreenManager:
 
                     MDRaisedButton:
                         text: "+ CREATE NEW CARD"
-                        md_bg_color: [0.3, 0.25, 0.7, 1]
+                        md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                         pos_hint: {"center_x": 0.5}
                         size_hint_x: 0.9
                         on_release: app.show_create_card_dialog()
@@ -8931,7 +8931,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.75, 0.55, 0.1, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -8966,7 +8966,7 @@ MDScreenManager:
 
                     MDRaisedButton:
                         text: "+ ADD BILL REMINDER"
-                        md_bg_color: [0.75, 0.55, 0.1, 1]
+                        md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                         pos_hint: {"center_x": 0.5}
                         size_hint_x: 0.9
                         on_release: app.show_add_reminder_dialog()
@@ -9003,7 +9003,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.1, 0.6, 0.65, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -9036,7 +9036,7 @@ MDScreenManager:
                 MDRaisedButton:
                     id: compare_data_tab_btn
                     text: "Data Plans"
-                    md_bg_color: [0.1, 0.6, 0.65, 1]
+                    md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                     on_release: app.set_comparison_mode("data")
 
                 MDFlatButton:
@@ -9106,7 +9106,7 @@ MDScreenManager:
                 height: dp(60)
                 padding: [dp(10), 0]
                 spacing: dp(10)
-                md_bg_color: [0.85, 0.6, 0.1, 1]
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 radius: [10, 10, 0, 0]
 
                 MDIconButton:
@@ -9148,7 +9148,7 @@ MDScreenManager:
                         height: dp(180)
                         elevation: 2
                         radius: [15]
-                        md_bg_color: [0.85, 0.6, 0.1, 1]
+                        md_bg_color: [0.1294, 0.5882, 0.9529, 1]
 
                         MDBoxLayout:
                             size_hint_y: None
@@ -9581,7 +9581,7 @@ MDScreenManager:
             # plus the "Need Help?" hero, all on one continuous blue
             # gradient panel (primary -> accent, per the design spec).
             MDCard:
-                md_bg_color: app.theme_cls.primary_color
+                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                 size_hint_y: None
                 height: dp(172)
                 radius: [0, 0, dp(24), dp(24)]
@@ -9644,7 +9644,7 @@ MDScreenManager:
 
                     # 1. AI ASSISTANT — main / biggest option
                     MDCard:
-                        md_bg_color: app.theme_cls.primary_color
+                        md_bg_color: [0.1294, 0.5882, 0.9529, 1]
                         size_hint_y: None
                         height: dp(152)
                         radius: [dp(22)]
