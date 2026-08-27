@@ -1,0 +1,17 @@
+# Android signing material - NEVER commit these.
+# The upload keystore/passwords are supplied only via GitHub Actions
+# Secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD) and decoded to a temporary
+# file during CI, which is deleted after the build.
+*.jks
+*.keystore
+release.keystore
+upload-keystore.jks
+*.pem
+*.p12
+
+# Buildozer / python-for-android build output and caches
+.buildozer/
+bin/
+__pycache__/
+*.pyc
