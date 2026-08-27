@@ -197,17 +197,34 @@ jobs:
           echo "buildozer.spec now points to:"
           grep -n "^android.sdk_path\|^android.ndk_path" buildozer.spec
 
+      - name: Validate required signing secrets are present (release builds only)
+        if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
+        env:
+          HAS_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+          HAS_KEYSTORE_PW: ${{ secrets.ANDROID_KEYSTORE_PASSWORD != '' }}
+          HAS_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS != '' }}
+          HAS_KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          missing=0
+          [ "$HAS_KEYSTORE_B64" = "true" ] || { echo "::error::Missing required secret ANDROID_KEYSTORE_BASE64"; missing=1; }
+          [ "$HAS_KEYSTORE_PW" = "true" ] || { echo "::error::Missing required secret ANDROID_KEYSTORE_PASSWORD"; missing=1; }
+          [ "$HAS_KEY_ALIAS" = "true" ] || { echo "::error::Missing required secret ANDROID_KEY_ALIAS"; missing=1; }
+          [ "$HAS_KEY_PW" = "true" ] || { echo "::error::Missing required secret ANDROID_KEY_PASSWORD"; missing=1; }
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more required signing secrets are not set in Settings > Secrets and variables > Actions. Aborting release build." >&2
+            exit 1
+          fi
+          echo "All required signing secrets are present."
+
       - name: Decode release keystore (release builds only)
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           set -euo pipefail
-          if [ -z "$KEYSTORE_B64" ]; then
-            echo "ANDROID_KEYSTORE_BASE64 secret is not set - see the setup instructions in this workflow's comments." >&2
-            exit 1
-          fi
           echo "$KEYSTORE_B64" | base64 -d > "$GITHUB_WORKSPACE/release.keystore"
+          echo "Decoded keystore to a temporary file (not committed, cleaned up after the build)."
 
       # ---------------------------------------------------------------
       # Build the APK/AAB. buildozer.spec now has explicit android.sdk_path
@@ -223,13 +240,16 @@ jobs:
       # longer accepted). To build a release AAB:
       #   1. Generate a keystore once, locally (keep it forever - you
       #      need the SAME keystore for every future update to this app):
-      #        keytool -genkey -v -keystore release.keystore \
-      #          -alias cheap4u -keyalg RSA -keysize 2048 -validity 10000
+      #        keytool -genkey -v -keystore upload-keystore.jks \
+      #          -alias upload -keyalg RSA -keysize 2048 -validity 10000
+      #      (If Google Play has approved an upload-key reset, use the
+      #      new upload-keystore.jks / alias 'upload' issued for that
+      #      reset instead of generating a fresh one.)
       #   2. Add these as GitHub repo secrets (Settings > Secrets and
       #      variables > Actions):
-      #        ANDROID_KEYSTORE_BASE64   = base64 -w0 release.keystore
+      #        ANDROID_KEYSTORE_BASE64   = base64 -w0 upload-keystore.jks
       #        ANDROID_KEYSTORE_PASSWORD = the keystore password you set
-      #        ANDROID_KEY_ALIAS         = cheap4u  (or whatever alias you used)
+      #        ANDROID_KEY_ALIAS         = upload  (or whatever alias you used)
       #        ANDROID_KEY_PASSWORD      = the key/alias password you set
       #   3. Run this workflow manually (Actions tab > Run workflow) and
       #      choose "release" as the build type.
@@ -304,6 +324,39 @@ jobs:
             exit 1
           fi
           echo "apk_path=$PKG_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Verify release AAB is signed with the expected upload certificate
+        if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
+        env:
+          EXPECTED_SHA1: "C4:3D:05:63:A6:AE:A0:3D:D9:5F:28:65:97:29:58:38:38:CD:BA:AD"
+        run: |
+          set -euo pipefail
+          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          echo "Inspecting signer certificate of $PKG_PATH ..."
+          ACTUAL_SHA1=$(keytool -printcert -jarfile "$PKG_PATH" | grep -A1 "^Certificate fingerprints:" | grep "SHA1:" | sed 's/.*SHA1: //')
+          if [ -z "$ACTUAL_SHA1" ]; then
+            # Some keytool versions print the fingerprint without the
+            # "Certificate fingerprints:" header line - fall back to a
+            # direct SHA1 grep.
+            ACTUAL_SHA1=$(keytool -printcert -jarfile "$PKG_PATH" | grep -m1 "SHA1:" | sed 's/.*SHA1: //')
+          fi
+          echo "Expected upload cert SHA-1: $EXPECTED_SHA1"
+          echo "Actual AAB signer SHA-1:    $ACTUAL_SHA1"
+          if [ "$ACTUAL_SHA1" != "$EXPECTED_SHA1" ]; then
+            echo "::error::AAB is NOT signed with the expected new upload certificate. Google Play will reject this upload. Check that ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_ALIAS secrets point at the new upload-keystore.jks (alias 'upload')." >&2
+            exit 1
+          fi
+          echo "Signature verified: AAB is signed with the new upload certificate."
+
+      - name: Clean up temporary keystore file
+        if: always()
+        run: |
+          if [ -f "$GITHUB_WORKSPACE/release.keystore" ]; then
+            shred -u "$GITHUB_WORKSPACE/release.keystore" 2>/dev/null || rm -f "$GITHUB_WORKSPACE/release.keystore"
+            echo "Temporary keystore file removed."
+          else
+            echo "No temporary keystore file present - nothing to clean up."
+          fi
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
