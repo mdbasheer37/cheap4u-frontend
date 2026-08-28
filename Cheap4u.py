@@ -3536,6 +3536,10 @@ MDScreenManager:
 
                         text: "Upgrade account"
 
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
+
                         on_release: app.show_upgrade_options()
 
                         IconLeftWidget:
@@ -3553,6 +3557,10 @@ MDScreenManager:
                     OneLineIconListItem:
 
                         text: "Show My Referrals"
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
 
                         on_release: app.show_referrals()
 
@@ -3572,6 +3580,10 @@ MDScreenManager:
 
                         text: "Monthly Challenge"
 
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
+
                         on_release: app.open_monthly_challenge_screen()
 
                         IconLeftWidget:
@@ -3588,6 +3600,10 @@ MDScreenManager:
 
                         text: "Winners History"
 
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
+
                         on_release: app.open_winners_history_screen()
 
                         IconLeftWidget:
@@ -3603,6 +3619,10 @@ MDScreenManager:
                     OneLineIconListItem:
 
                         text: "Challenge Admin"
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
 
                         opacity: 1 if app.current_user and app.current_user.get('role') == 'admin' else 0
                         disabled: not (app.current_user and app.current_user.get('role') == 'admin')
@@ -3625,6 +3645,10 @@ MDScreenManager:
 
                         text: "Themes"
 
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
+
                         on_release: app.switch_theme()
 
                         IconLeftWidget:
@@ -3642,6 +3666,10 @@ MDScreenManager:
                     OneLineIconListItem:
 
                         text: "Settings"
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
 
                         on_release: app.show_settings()
 
@@ -3661,6 +3689,10 @@ MDScreenManager:
 
                         text: "Security"
 
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
+
                         on_release: app.show_security()
 
                         IconLeftWidget:
@@ -3676,6 +3708,8 @@ MDScreenManager:
                    
                     OneLineIconListItem:
                         text: "Set Transaction PIN"
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.text_color
                         on_release: app.show_set_pin_dialog()
                         IconLeftWidget:
                             icon: "lock-plus"
@@ -3685,6 +3719,10 @@ MDScreenManager:
                     OneLineIconListItem:
 
                         text: "Legal"
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
 
                         on_release: app.show_legal()
 
@@ -3703,6 +3741,10 @@ MDScreenManager:
                     OneLineIconListItem:
 
                         text: "Account Deletion"
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.text_color
 
                         on_release: app.show_account_deletion()
 
@@ -17509,16 +17551,43 @@ class DashboardApp(ChallengeMixin, MDApp):
         Clock.schedule_once(update_message, 5)
         
         
+    def _get_focused_text_input(self, widget):
+        """Recursively find a currently-focused text input under `widget`,
+        if any."""
+        try:
+            if getattr(widget, 'focus', False) and isinstance(widget, MDTextField):
+                return widget
+            for child in widget.children:
+                found = self._get_focused_text_input(child)
+                if found is not None:
+                    return found
+        except Exception:
+            pass
+        return None
+
     def on_keyboard(self, window, key, *args):
         """Handle keyboard events"""
         if key == 27:  # ESC key / Back button
+            # On Android, the back button is what dismisses the soft
+            # keyboard. With Window.softinput_mode = 'below_target',
+            # that dismissal doesn't reliably reset the focused
+            # MDTextField's `focus` property back to False - so a second
+            # tap on the same field thinks it's "already focused" and
+            # never re-requests the keyboard. Explicitly unfocus the
+            # active field first and consume this back-press just for
+            # that, matching normal Android UX (first back closes the
+            # keyboard, a second back press then navigates).
+            focused_input = self._get_focused_text_input(self.root)
+            if focused_input is not None:
+                focused_input.focus = False
+                return True
             if hasattr(self, 'file_manager') and self.file_manager.manager_open:
                 self.file_manager.close()
                 return True
             # Handle screen back navigation
             if self.root.current == "profile_details":
                 self.root.transition.direction = "right"
-                self.root.current = hetattr(self, '_previous_screen', 'profile')
+                self.root.current = getattr(self, '_previous_screen', 'profile')
                 return True
         return False
 
