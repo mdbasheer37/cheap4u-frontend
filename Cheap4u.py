@@ -489,6 +489,9 @@ class LazyScreenManager(_BaseScreenManager):
     def get_screen(self, name):
         if not self.has_screen(name) and name in _LAZY_SCREEN_CLASSES:
             try:
+                if name not in _lazy_kv_loaded and name in _LAZY_KV_CHUNKS:
+                    Builder.load_string(_LAZY_KV_CHUNKS[name])
+                    _lazy_kv_loaded.add(name)
                 cls = globals()[_LAZY_SCREEN_CLASSES[name]]
                 self.add_widget(cls())
             except Exception as e:
@@ -10135,6 +10138,54 @@ LazyScreenManager:
                             on_release: app.send_ai_message()
 
 '''
+
+# ─────────────────────────────────────────────────────────────────────
+# Split the KV text itself at each top-level `<ClassName>:` rule
+# boundary, so each of the 29 lazily-loaded screens' rule text can be
+# compiled by Builder.load_string() the first time it's actually
+# needed, instead of all ~9,700 lines being parsed/compiled up front.
+#
+# This addresses what measurement showed was the actual bottleneck:
+# Builder.load_string(KV) alone was taking ~12.5s even after screens
+# stopped being eagerly INSTANTIATED (see LazyScreenManager above) -
+# because Kivy still has to parse and compile every <ClassName>: rule's
+# text into a callable rule regardless of whether anything is ever
+# instantiated from it. Splitting the source text itself removes that
+# parse/compile cost too, not just the widget-construction cost.
+#
+# Implemented as pure text slicing of the ORIGINAL, unmodified KV
+# string above (byte-identical to what Builder.load_string(KV) would
+# have parsed as one piece) - nothing here changes what any screen's
+# markup says, only when each piece gets compiled.
+def _split_kv_into_lazy_chunks(kv_text, class_to_screen_name):
+    lines = kv_text.split('\n')
+    pattern = re.compile(r'^<([A-Za-z_]+)(?:@[A-Za-z_]+)?>:?\s*$')
+    boundaries = []
+    for i, line in enumerate(lines):
+        m = pattern.match(line)
+        if m:
+            boundaries.append((i, m.group(1)))
+    boundaries.append((len(lines), None))
+
+    core_parts = []
+    chunks = {}
+    if boundaries and boundaries[0][0] > 0:
+        core_parts.append('\n'.join(lines[0:boundaries[0][0]]))
+    for idx in range(len(boundaries) - 1):
+        start, cls_name = boundaries[idx]
+        end, _ = boundaries[idx + 1]
+        block_text = '\n'.join(lines[start:end])
+        screen_name = class_to_screen_name.get(cls_name)
+        if screen_name is not None:
+            chunks[screen_name] = block_text
+        else:
+            core_parts.append(block_text)
+    return '\n'.join(core_parts), chunks
+
+
+_class_to_screen_name = {v: k for k, v in _LAZY_SCREEN_CLASSES.items()}
+KV_CORE, _LAZY_KV_CHUNKS = _split_kv_into_lazy_chunks(KV, _class_to_screen_name)
+_lazy_kv_loaded = set()
 
 
 # Paste this BEFORE your LoginScreen, RegisterScreen etc.
@@ -23432,7 +23483,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.update_theme_colors()
         Window.bind(on_keyboard=self.handle_back_button)
         _STARTUP_TIMES['before_load_string'] = time.time()
-        root = Builder.load_string(KV)
+        root = Builder.load_string(KV_CORE)
         _STARTUP_TIMES['after_load_string'] = time.time()
         register_challenge_screens(root, self)
         # These are local JSON caches nothing in the KV tree reads at parse
