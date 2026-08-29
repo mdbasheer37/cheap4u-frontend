@@ -418,6 +418,73 @@ class SupportScreen(Screen):
 class AIChatScreen(Screen):
     pass
 
+# ─────────────────────────────────────────────────────────────────────
+# Lazy screen loading
+#
+# Historically every screen in the app (~33 of them) was instantiated
+# up front, as concrete children of the root ScreenManager, all inside
+# the single Builder.load_string(KV) call in build(). Kivy can't show
+# ANY frame - not even the splash screen - until build() returns, so
+# this meant the black screen between tapping the app icon and seeing
+# anything was gated on building the full widget tree for every single
+# screen in the app, not just the one shown first.
+#
+# LazyScreenManager keeps that exact same end state (every screen still
+# gets built, with the same KV rule/styling applied, the same `name`)
+# but only builds screens listed below the first time something
+# actually asks for them by name - via get_screen(), or via
+# `.current = name`, which resolves through get_screen() internally.
+# Only splash/pin_login/login/dashboard (+ PaymentScreen, which has no
+# KV styling and is essentially free) are still built immediately.
+_LAZY_SCREEN_CLASSES = {
+    'terms':            'TermsScreen',
+    'privacy':          'PrivacyScreen',
+    'airtime_to_cash':  'AirtimeToCashScreen',
+    'otp_verification': 'OTPVerificationScreen',
+    'data_purchase':    'DataPurchaseScreen',
+    'electricity':      'ElectricityScreen',
+    'cable_tv':         'CableTVScreen',
+    'airtime_topup':    'AirtimeTopupScreen',
+    'history':          'HistoryScreen',
+    'profile':          'ProfileScreen',
+    'profile_details':  'ProfileDetailsScreen',
+    'network_select':   'NetworkSelectionScreen',
+    'phone_input':      'PhoneInputScreen',
+    'register':         'RegisterScreen',
+    'exam_pin':         'ExamPinScreen',
+    'funding':          'FundingScreen',
+    'referral':         'ReferralScreen',
+    'cashback':         'CashbackScreen',
+    'spin':             'SpinScreen',
+    'coupons':          'CouponScreen',
+    'merchant':         'MerchantScreen',
+    'cards':            'CardScreen',
+    'reminders':        'BillReminderScreen',
+    'compare':          'ComparisonScreen',
+    'gamification':     'GamificationScreen',
+    'profit':           'ProfitScreen',
+    'withdraw':         'WithdrawScreen',
+    'support':          'SupportScreen',
+    'ai_chat':          'AIChatScreen',
+}
+
+try:
+    from kivymd.uix.screenmanager import MDScreenManager as _BaseScreenManager
+except Exception as _e:
+    print(f"LazyScreenManager: MDScreenManager import failed, falling back to ScreenManager: {_e}")
+    _BaseScreenManager = ScreenManager
+
+
+class LazyScreenManager(_BaseScreenManager):
+    def get_screen(self, name):
+        if not self.has_screen(name) and name in _LAZY_SCREEN_CLASSES:
+            try:
+                cls = globals()[_LAZY_SCREEN_CLASSES[name]]
+                self.add_widget(cls())
+            except Exception as e:
+                print(f"LazyScreenManager: failed to build screen '{name}': {e}")
+        return super().get_screen(name)
+
 KV = '''
 
 #:import hex kivy.utils.get_color_from_hex
@@ -502,78 +569,27 @@ KV = '''
 
 
 # Screen manager to handle multiple screens
+#
+# Only the screens needed to get the app on-screen are built here
+# eagerly (splash, pin_login, login, dashboard - plus PaymentScreen,
+# which has no KV styling at all and is essentially free to build).
+# Every other screen is registered in LazyScreenManager's
+# _LAZY_SCREEN_CLASSES map (see above) and gets built - full widget
+# tree, KV rule applied, identical to before - the first time it's
+# actually navigated to, instead of all ~29 of them being built
+# synchronously before the app's very first frame can appear.
 
-MDScreenManager:
+LazyScreenManager:
 
     SplashScreen:
 
     PinLoginScreen:
 
-    AirtimeToCashScreen:
-
     LoginScreen:
-
-    RegisterScreen:
 
     DashboardScreen:
 
-    NetworkSelectionScreen:
-
-    PhoneInputScreen:
-
-    ProfileScreen:
-
-    ProfileDetailsScreen:   
-
-    HistoryScreen:
-
-    AirtimeTopupScreen:
-
-    CableTVScreen:
-
-    ElectricityScreen:
-        
     PaymentScreen: 
-    
-    FundingScreen:         
-
-    DataPurchaseScreen:
-    
-    ExamPinScreen:    
-    
-    ProfitScreen:
-    
-    WithdrawScreen:   
-    
-    ReferralScreen:
-
-    CashbackScreen:
-
-    SpinScreen:
-
-    CouponScreen:
-
-    MerchantScreen:
-
-    CardScreen:
-
-    BillReminderScreen:
-
-    ComparisonScreen:
-
-    GamificationScreen:
-
-    TermsScreen:
-
-    PrivacyScreen:
-
-    OTPVerificationScreen:
-
-        name: "otp_verification"   
-
-    SupportScreen:
-
-    AIChatScreen:
 
 
 
