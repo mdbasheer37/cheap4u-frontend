@@ -36,7 +36,7 @@ source.exclude_dirs = tests, bin, venv, android-sdk, .buildozer, .git, .github
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.6
+version = 0.7
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -114,7 +114,7 @@ android.permissions = INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS
 #android.features = android.hardware.usb.host
 
 # (int) Target Android API, should be as high as possible.
-android.api = 35
+android.api = 36
 
 # (int) Minimum API your APK / AAB will support.
 android.minapi = 24
@@ -309,7 +309,7 @@ android.archs = arm64-v8a
 # accepted upload) regardless of how the archs/version-string formula
 # would otherwise compute it. Bump this by at least 1 for every future
 # release.
-android.numeric_version = 10246
+android.numeric_version = 10247
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
