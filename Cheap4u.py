@@ -61,6 +61,16 @@ from kivymd.toast import toast
 
 # Standard libs
 import os, re, json, hashlib, random, traceback, webbrowser, threading, time
+
+# ─────────────────────────────────────────────────────────────────────
+# TEMPORARY STARTUP DIAGNOSTIC - remove once the black-screen delay is
+# root-caused and fixed. Captures how long is spent in each phase of
+# cold start (module import, build(), splash→routed) and shows it in
+# a dialog once routing completes, so it can be read straight off the
+# screen without adb/logcat/root/a PC.
+_STARTUP_T0 = time.time()   # as early as this module can measure itself
+_STARTUP_TIMES = {'module_loaded': _STARTUP_T0}
+
 from datetime import datetime
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -17742,6 +17752,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         (screen setup, login-status/session check, API warm-up) in the
         background while it's on screen, and navigate away the moment
         that work is done - never waiting on animation timers."""
+        _STARTUP_TIMES['on_start'] = time.time()
         try:
             self._splash_routed = False
             self._splash_start_time = time.time()
@@ -17782,6 +17793,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         routes to the correct screen. Login status was already determined
         in build() via load_quick_pin()/load_users(), so routing just reads
         that state - no extra wait here."""
+        _STARTUP_TIMES['run_startup_tasks_start'] = time.time()
         try:
             self.load_networks()
             self.setup_airtime_topup_screen()
@@ -17795,6 +17807,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         except Exception as e:
             print(f"run_startup_tasks error: {e}")
         finally:
+            _STARTUP_TIMES['run_startup_tasks_end'] = time.time()
             elapsed = time.time() - self._splash_start_time
             remaining = max(self.SPLASH_MIN_DURATION - elapsed, 0)
             Clock.schedule_once(lambda dt: self.finish_splash(), remaining)
@@ -17824,7 +17837,53 @@ class DashboardApp(ChallengeMixin, MDApp):
         if self._splash_routed:
             return
         self._splash_routed = True
+        _STARTUP_TIMES['finish_splash'] = time.time()
         self.route_to_login_or_pin()
+        Clock.schedule_once(lambda dt: self._show_startup_diagnostic(), 0.6)
+
+    def _show_startup_diagnostic(self):
+        """TEMPORARY - remove once the black-screen delay is root-caused
+        and fixed. Shows how long each phase of cold start actually took,
+        measured from inside the running app, so it can be read straight
+        off the screen (screenshot it) without adb/logcat/root/a PC.
+        Note: this can only measure from the moment Python finished
+        importing this module onward - it CANNOT see how long Android
+        itself took to launch the process before Python started."""
+        try:
+            t = _STARTUP_TIMES
+            base = t.get('module_loaded')
+            if base is None:
+                return
+
+            def fmt(key):
+                return f"{t[key] - base:.2f}s" if key in t else "—"
+
+            lines = [
+                f"module→build start:      {fmt('build_start')}",
+                f"build: pre-KV setup:     {(t['before_load_string']-t['build_start']):.2f}s" if 'before_load_string' in t and 'build_start' in t else "build: pre-KV setup:     —",
+                f"build: Builder.load_string(KV): {(t['after_load_string']-t['before_load_string']):.2f}s" if 'after_load_string' in t and 'before_load_string' in t else "build: KV load:          —",
+                f"build: post-KV to return: {(t['build_end']-t['after_load_string']):.2f}s" if 'build_end' in t and 'after_load_string' in t else "build: post-KV:          —",
+                f"module→build END:        {fmt('build_end')}",
+                f"module→on_start:         {fmt('on_start')}",
+                f"module→run_startup_tasks start: {fmt('run_startup_tasks_start')}",
+                f"run_startup_tasks duration: {(t['run_startup_tasks_end']-t['run_startup_tasks_start']):.2f}s" if 'run_startup_tasks_end' in t and 'run_startup_tasks_start' in t else "run_startup_tasks:       —",
+                f"module→finish_splash:    {fmt('finish_splash')}",
+            ]
+            dialog = MDDialog(
+                title="Startup timing (debug)",
+                text="\n".join(lines),
+                buttons=[
+                    MDFlatButton(
+                        text="OK",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        on_release=lambda x: dialog.dismiss()
+                    )
+                ],
+            )
+            dialog.open()
+        except Exception as e:
+            print(f"_show_startup_diagnostic error: {e}")
 
     def initialize_services(self):
         """Warms up the API connection in the background. Non-blocking:
@@ -23361,6 +23420,7 @@ class DashboardApp(ChallengeMixin, MDApp):
    
 
     def build(self):
+        _STARTUP_TIMES['build_start'] = time.time()
         self.theme_cls.primary_palette = "Blue"
         self.users_file = "users.json"
         self.transactions_file = "transactions.json"
@@ -23371,7 +23431,9 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._shrink_font_styles(0.82)
         self.update_theme_colors()
         Window.bind(on_keyboard=self.handle_back_button)
+        _STARTUP_TIMES['before_load_string'] = time.time()
         root = Builder.load_string(KV)
+        _STARTUP_TIMES['after_load_string'] = time.time()
         register_challenge_screens(root, self)
         # These are local JSON caches nothing in the KV tree reads at parse
         # time (route_to_login_or_pin only depends on load_quick_pin(),
@@ -23382,6 +23444,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.transactions = {}
         Clock.schedule_once(lambda dt: self.load_users(), 0)
         Clock.schedule_once(lambda dt: self.load_transactions(), 0)
+        _STARTUP_TIMES['build_end'] = time.time()
         return root
 
     def _shrink_font_styles(self, scale):
