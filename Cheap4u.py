@@ -478,6 +478,23 @@ _LAZY_SCREEN_CLASSES = {
     'ai_chat':          'AIChatScreen',
 }
 
+# Screens whose one-time content setup (populating provider/plan lists
+# etc.) used to run eagerly for ALL of these at once in
+# run_startup_tasks(), regardless of whether the user ever visited them
+# - directly undermining the point of lazy-loading them in the first
+# place. Now each one's setup runs exactly once, right after
+# LazyScreenManager builds that specific screen for the first time
+# (i.e. the moment the user actually navigates to it), not at startup.
+_LAZY_SCREEN_SETUP = {
+    'network_select':  'load_networks',
+    'airtime_topup':   'setup_airtime_topup_screen',
+    'cable_tv':        'setup_cable_tv_screen',
+    'electricity':     'setup_electricity_screen',
+    'data_purchase':   'setup_data_purchase_screen',
+    'exam_pin':        'setup_exam_pin_screen',
+    'airtime_to_cash': 'setup_a2c_network_screen',
+}
+
 try:
     from kivymd.uix.screenmanager import MDScreenManager as _BaseScreenManager
 except Exception as _e:
@@ -487,6 +504,7 @@ except Exception as _e:
 
 class LazyScreenManager(_BaseScreenManager):
     def get_screen(self, name):
+        newly_built = False
         if not self.has_screen(name) and name in _LAZY_SCREEN_CLASSES:
             try:
                 if name not in _lazy_kv_loaded and name in _LAZY_KV_CHUNKS:
@@ -494,9 +512,17 @@ class LazyScreenManager(_BaseScreenManager):
                     _lazy_kv_loaded.add(name)
                 cls = globals()[_LAZY_SCREEN_CLASSES[name]]
                 self.add_widget(cls())
+                newly_built = True
             except Exception as e:
                 print(f"LazyScreenManager: failed to build screen '{name}': {e}")
-        return super().get_screen(name)
+        screen = super().get_screen(name)
+        if newly_built and name in _LAZY_SCREEN_SETUP:
+            try:
+                app = MDApp.get_running_app()
+                getattr(app, _LAZY_SCREEN_SETUP[name])()
+            except Exception as e:
+                print(f"LazyScreenManager: setup for '{name}' failed: {e}")
+        return screen
 
 KV = '''
 
@@ -17839,20 +17865,14 @@ class DashboardApp(ChallengeMixin, MDApp):
             print(f"animate_splash_in error: {e}")
 
     def run_startup_tasks(self):
-        """Prepares everything the app needs (screen widgets, login/session
-        status already loaded in build(), API connection warm-up), then
-        routes to the correct screen. Login status was already determined
-        in build() via load_quick_pin()/load_users(), so routing just reads
-        that state - no extra wait here."""
+        """Backend connection warm-up only. Screen-specific setup
+        (network list, airtime/cable/electricity/data/exam-pin plan
+        lists) now runs lazily via LazyScreenManager - once, the first
+        time the user actually opens that screen - instead of all of
+        them being built and populated eagerly here regardless of
+        whether the user ever visits them."""
         _STARTUP_TIMES['run_startup_tasks_start'] = time.time()
         try:
-            self.load_networks()
-            self.setup_airtime_topup_screen()
-            self.setup_cable_tv_screen()
-            self.setup_electricity_screen()
-            self.setup_data_purchase_screen()
-            self.setup_exam_pin_screen()
-            self.setup_a2c_network_screen()
             # Fire-and-forget backend warm-up; does not block navigation.
             self.initialize_services()
         except Exception as e:
