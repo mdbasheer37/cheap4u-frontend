@@ -21,13 +21,13 @@ on:
 env:
   # Centralised version pins so SDK / NDK / build-tools always agree
   # with what buildozer.spec expects.
-  ANDROID_COMPILE_SDK: "35"
+  ANDROID_COMPILE_SDK: "36"
   # Bump this whenever a toolchain change (e.g. the Cython pin) needs to
   # invalidate the .buildozer cache even though buildozer.spec itself
   # didn't change - otherwise stale, already-Cythonized C files from a
   # previous run get silently reused.
-  CACHE_VERSION: "v2-cython0294"
-  ANDROID_BUILD_TOOLS: "35.0.0"
+  CACHE_VERSION: "v3-api36"
+  ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "25.1.8937393"   # = NDK 25b
   ANDROID_HOME: /home/runner/android-sdk
   ANDROID_SDK_ROOT: /home/runner/android-sdk
