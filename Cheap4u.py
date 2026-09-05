@@ -4652,7 +4652,15 @@ LazyScreenManager:
 
                     MDGridLayout:
 
-                        cols: 4
+                        # Responsive column count instead of a fixed 4 -
+                        # keeps each card at roughly a comfortable dp(95)
+                        # wide regardless of actual screen width, so
+                        # captions like "Transfer to Cheap4U" never get
+                        # squeezed into an unreadably narrow column on
+                        # small/budget phones, while wider screens (large
+                        # phones, tablets) automatically get more columns
+                        # instead of leaving oversized empty-looking cards.
+                        cols: max(2, int(self.width / dp(95)))
 
                         spacing: dp(6)
 
@@ -4719,6 +4727,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -4788,6 +4798,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -4854,6 +4866,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -4917,6 +4931,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -4978,6 +4994,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5041,6 +5059,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5102,6 +5122,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5165,6 +5187,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5226,6 +5250,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5289,6 +5315,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5350,6 +5378,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5413,6 +5443,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5449,7 +5481,11 @@ LazyScreenManager:
 
                     GridLayout:
 
-                        cols: 3
+                        # Responsive column count instead of a fixed 3 -
+                        # see the Quick Actions grid above for why. These
+                        # cards are a bit richer (icon + label, dp(105)
+                        # tall), so they get a slightly wider target.
+                        cols: max(2, int(self.width / dp(115)))
 
                         spacing: dp(10)
 
@@ -5513,6 +5549,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5572,6 +5610,8 @@ LazyScreenManager:
                                     text: "Data"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -5633,6 +5673,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5692,6 +5734,8 @@ LazyScreenManager:
                                     text: "Electricity"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -5753,6 +5797,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5812,6 +5858,8 @@ LazyScreenManager:
                                     text: "Bulk SMS"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -5879,6 +5927,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5940,6 +5990,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5999,6 +6051,8 @@ LazyScreenManager:
                                     text: "Beneficiary"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -6060,6 +6114,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -6120,6 +6176,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -6179,6 +6237,8 @@ LazyScreenManager:
                                     text: "Betting"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -13498,8 +13558,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 
                 card = MDCard(
                     orientation='vertical',
-                    size_hint=(None, None),
-                    size=(dp(75), dp(75)),
+                    size_hint=(1, None),
+                    height=dp(75),
                     elevation=2,
                     on_release=lambda x, n=network: self.select_airtime_network(n),
                     md_bg_color=[0.95, 0.95, 0.95, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.2, 1],
@@ -15850,8 +15910,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             # Create card with logo
             card = MDCard(
                 orientation='vertical',
-                size_hint=(None, None),
-                size=(dp(75), dp(75)),
+                size_hint=(1, None),
+                height=dp(75),
                 elevation=2,
                 on_release=lambda x, e=exam["name"]: self.select_exam_type(e),
                 md_bg_color=[0.95, 0.95, 0.95, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.2, 1],
@@ -17954,9 +18014,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                     orientation='vertical',
 
-                    size_hint=(None, None),
+                    size_hint=(1, None),
 
-                    size=(dp(75), dp(75)),
+                    height=dp(75),
 
                     elevation=2,
 
@@ -18873,9 +18933,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 orientation='vertical',
 
-                size_hint=(None, None),
+                size_hint=(1, None),
 
-                size=(dp(75), dp(75)),
+                height=dp(75),
 
                 elevation=2,
 
@@ -19712,9 +19772,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 orientation='vertical',
 
-                size_hint=(None, None),
+                size_hint=(1, None),
 
-                size=(dp(75), dp(75)),
+                height=dp(75),
 
                 elevation=2,
 
@@ -20441,9 +20501,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 orientation='vertical',
 
-                size_hint=(None, None),
+                size_hint=(1, None),
 
-                size=(dp(75), dp(75)),
+                height=dp(75),
 
                 elevation=2,
                 
