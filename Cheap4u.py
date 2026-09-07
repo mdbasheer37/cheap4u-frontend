@@ -3313,6 +3313,7 @@ LazyScreenManager:
                     halign: "center"
                     size_hint_x: 0.8
                 MDIconButton:
+                    id: history_filter_btn
                     icon: "filter"
                     theme_icon_color: "Custom"
                     icon_color: [1, 1, 1, 1]
@@ -4676,15 +4677,7 @@ LazyScreenManager:
 
                     MDGridLayout:
 
-                        # Responsive column count instead of a fixed 4 -
-                        # keeps each card at roughly a comfortable dp(95)
-                        # wide regardless of actual screen width, so
-                        # captions like "Transfer to Cheap4U" never get
-                        # squeezed into an unreadably narrow column on
-                        # small/budget phones, while wider screens (large
-                        # phones, tablets) automatically get more columns
-                        # instead of leaving oversized empty-looking cards.
-                        cols: max(2, int(self.width / dp(95)))
+                        cols: 4
 
                         spacing: dp(6)
 
@@ -5505,11 +5498,7 @@ LazyScreenManager:
 
                     GridLayout:
 
-                        # Responsive column count instead of a fixed 3 -
-                        # see the Quick Actions grid above for why. These
-                        # cards are a bit richer (icon + label, dp(105)
-                        # tall), so they get a slightly wider target.
-                        cols: max(2, int(self.width / dp(115)))
+                        cols: 3
 
                         spacing: dp(10)
 
@@ -21952,17 +21941,23 @@ class DashboardApp(ChallengeMixin, MDApp):
         if self.filter_menu is not None:
             self.filter_menu.dismiss()
 
-        # Use history screen header as caller (always exists)
+        # Use the filter icon itself as the caller so the menu opens right
+        # under it - using the whole screen as caller (previous code) made
+        # KivyMD anchor the menu to the screen's full bounding box, which
+        # is why it was popping up far down the page instead of near the
+        # filter icon in the header.
         screen = self.root.get_screen('history')
+        filter_btn = screen.ids.get('history_filter_btn', screen)
 
         self.filter_menu = MDDropdownMenu(
-            caller=screen,
+            caller=filter_btn,
             items=[{
                 "text": item["text"],
                 "on_release": lambda x=item["value"]: self._apply_history_filter(x)
             } for item in filter_options],
             width_mult=4,
             max_height=dp(350),
+            position="auto",
             radius=[15, 15, 15, 15],
         )
         self.filter_menu.open()
