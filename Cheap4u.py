@@ -21962,6 +21962,27 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         self.filter_menu.open()
 
+        # Safety net: KivyMD centers/anchors the menu based on the caller's
+        # position, and the filter icon sits right at the top-right corner
+        # of the header - which was pushing most of the menu off the right
+        # edge of the screen. This runs one frame after open() (once the
+        # menu has its real size) and nudges it back on-screen if needed,
+        # without depending on exactly how KivyMD computed the position.
+        def _keep_filter_menu_onscreen(*_args):
+            menu = self.filter_menu
+            if menu is None:
+                return
+            try:
+                margin = dp(8)
+                if menu.x + menu.width > Window.width - margin:
+                    menu.x = max(margin, Window.width - menu.width - margin)
+                if menu.x < margin:
+                    menu.x = margin
+            except Exception as e:
+                print(f"filter menu position fix error: {e}")
+
+        Clock.schedule_once(_keep_filter_menu_onscreen, 0)
+
     def _apply_history_filter(self, filter_type):
         """Apply selected filter"""
         if self.filter_menu is not None:
