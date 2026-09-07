@@ -817,7 +817,7 @@ LazyScreenManager:
 
                 size_hint: None, None
 
-                size: dp(320), dp(40)
+                size: min(dp(320), Window.width - dp(40)), dp(40)
 
                 pos_hint: {'center_x': 0.5, 'center_y': 0.42}
 
@@ -839,7 +839,7 @@ LazyScreenManager:
 
                 size_hint: None, None
 
-                size: dp(320), dp(30)
+                size: min(dp(320), Window.width - dp(40)), dp(30)
 
                 pos_hint: {'center_x': 0.5, 'center_y': 0.36}
 
@@ -1169,223 +1169,230 @@ LazyScreenManager:
 
         md_bg_color: app.theme_cls.bg_normal
 
-        MDBoxLayout:
-
-            orientation: 'vertical'
-
-            padding: dp(10)
-           
-            spacing: dp(10)
-            
-            Widget:
-                size_hint_y: 0.1 
-        
-            
-
-            # App logo and title
-
+        ScrollView:
+            do_scroll_x: False
             MDBoxLayout:
 
                 orientation: 'vertical'
 
+                padding: dp(10)
+               
                 spacing: dp(10)
 
                 size_hint_y: None
+                height: self.minimum_height
+                
+                Widget:
+                    size_hint_y: None
+                    height: dp(24)
+            
+                
 
-                height: dp(100)
+                # App logo and title
 
-                pos_hint: {'center_x': 0.5}
+                MDBoxLayout:
+
+                    orientation: 'vertical'
+
+                    spacing: dp(10)
+
+                    size_hint_y: None
+
+                    height: dp(100)
+
+                    pos_hint: {'center_x': 0.5}
+
+                    
+
+                    MDIcon:
+
+                        icon: "shield-check"
+
+                        size_hint: (None, None)
+
+                        size: [dp(60), dp(60)]
+
+                        pos_hint: {'center_x': 0.5}
+
+                        theme_text_color: "Custom"
+
+                        text_color: app.theme_cls.primary_color
+
+                    
+
+                    MDLabel:
+
+                        text: "Verify Your Account"
+
+                        font_style: "H5"
+
+                        halign: "center"
+
+                        bold: True
+
+                        theme_text_color: "Primary"
 
                 
 
-                MDIcon:
+                # OTP form in a card
 
-                    icon: "shield-check"
+                MDCard:
 
-                    size_hint: (None, None)
+                    orientation: 'vertical'
 
-                    size: [dp(60), dp(60)]
+                    padding: dp(25)
+
+                    spacing: dp(20)
+
+                    size_hint: (0.9, None)
+
+                    height: dp(200)
+
+                    pos_hint: {'center_x': 0.5}
+
+                    elevation: 5
+
+                    radius: [dp(15),]
+
+                    md_bg_color: app.theme_cls.bg_light
+
+                    
+
+                    MDLabel:
+
+                        text: "Enter the 6-digit OTP sent to:"
+
+                        font_style: "Body1"
+
+                        halign: "center"
+
+                        theme_text_color: "Secondary"
+
+                    
+
+                    MDLabel:
+
+                        id: otp_email_or_phone
+
+                        text: ""
+
+                        font_style: "Subtitle1"
+
+                        halign: "center"
+
+                        bold: True
+
+                        theme_text_color: "Primary"
+
+                    
+
+                    MDTextField:
+
+                        id: otp_input
+
+                        hint_text: "OTP Code"
+
+                        icon_left: "message-text-outline"
+
+                        input_type: 'number'
+
+                        max_text_length: 6
+
+                        mode: "rectangle"
+
+                        size_hint_y: None
+
+                        height: dp(76)
+
+                        size_hint_x: 1
+
+                        line_color_focus: app.theme_cls.primary_color
+
+                        helper_text: "Enter 6-digit code"
+
+                        helper_text_mode: "on_focus"
+
+                        required: True
+
+                    
+
+                    MDBoxLayout:
+
+                        orientation: 'horizontal'
+
+                        spacing: dp(10)
+
+                        size_hint_y: None
+
+                        height: dp(40)
+
+                        
+
+                        MDTextButton:
+
+                            text: "Resend OTP"
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
+
+                            on_release: app.resend_otp()
+
+                        
+
+                        Widget:
+
+                            size_hint_x: 0.5
+
+                        
+
+                        MDTextButton:
+
+                            text: "Change Email/Phone"
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
+
+                            on_release: app.root.current = "register"
+
+                
+
+                # Verify button
+
+                MDRaisedButton:
+
+                    text: "VERIFY"
+
+                    on_release: app.verify_otp(otp_input.text)
+
+                    pos_hint: {'center_x': 0.5}
+
+                    size_hint_x: 0.9
+
+                    md_bg_color: app.theme_cls.primary_color
+
+                    elevation_normal: 5
+
+                    font_size: '16sp'
+
+                Widget:
+                    size_hint_y: None
+                    height: dp(40)
+
+                # Back button
+
+                MDTextButton:
+
+                    text: "Back to Login"
+
+                    on_release: app.root.current = "login"
 
                     pos_hint: {'center_x': 0.5}
 
                     theme_text_color: "Custom"
 
                     text_color: app.theme_cls.primary_color
-
-                
-
-                MDLabel:
-
-                    text: "Verify Your Account"
-
-                    font_style: "H5"
-
-                    halign: "center"
-
-                    bold: True
-
-                    theme_text_color: "Primary"
-
-            
-
-            # OTP form in a card
-
-            MDCard:
-
-                orientation: 'vertical'
-
-                padding: dp(25)
-
-                spacing: dp(20)
-
-                size_hint: (0.9, None)
-
-                height: dp(200)
-
-                pos_hint: {'center_x': 0.5}
-
-                elevation: 5
-
-                radius: [dp(15),]
-
-                md_bg_color: app.theme_cls.bg_light
-
-                
-
-                MDLabel:
-
-                    text: "Enter the 6-digit OTP sent to:"
-
-                    font_style: "Body1"
-
-                    halign: "center"
-
-                    theme_text_color: "Secondary"
-
-                
-
-                MDLabel:
-
-                    id: otp_email_or_phone
-
-                    text: ""
-
-                    font_style: "Subtitle1"
-
-                    halign: "center"
-
-                    bold: True
-
-                    theme_text_color: "Primary"
-
-                
-
-                MDTextField:
-
-                    id: otp_input
-
-                    hint_text: "OTP Code"
-
-                    icon_left: "message-text-outline"
-
-                    input_type: 'number'
-
-                    max_text_length: 6
-
-                    mode: "rectangle"
-
-                    size_hint_y: None
-
-                    height: dp(76)
-
-                    size_hint_x: 1
-
-                    line_color_focus: app.theme_cls.primary_color
-
-                    helper_text: "Enter 6-digit code"
-
-                    helper_text_mode: "on_focus"
-
-                    required: True
-
-                
-
-                MDBoxLayout:
-
-                    orientation: 'horizontal'
-
-                    spacing: dp(10)
-
-                    size_hint_y: None
-
-                    height: dp(40)
-
-                    
-
-                    MDTextButton:
-
-                        text: "Resend OTP"
-
-                        theme_text_color: "Custom"
-
-                        text_color: app.theme_cls.primary_color
-
-                        on_release: app.resend_otp()
-
-                    
-
-                    Widget:
-
-                        size_hint_x: 0.5
-
-                    
-
-                    MDTextButton:
-
-                        text: "Change Email/Phone"
-
-                        theme_text_color: "Custom"
-
-                        text_color: app.theme_cls.primary_color
-
-                        on_release: app.root.current = "register"
-
-            
-
-            # Verify button
-
-            MDRaisedButton:
-
-                text: "VERIFY"
-
-                on_release: app.verify_otp(otp_input.text)
-
-                pos_hint: {'center_x': 0.5}
-
-                size_hint_x: 0.9
-
-                md_bg_color: app.theme_cls.primary_color
-
-                elevation_normal: 5
-
-                font_size: '16sp'
-
-            Widget:
-                size_hint_y: 0.3             
-
-            # Back button
-
-            MDTextButton:
-
-                text: "Back to Login"
-
-                on_release: app.root.current = "login"
-
-                pos_hint: {'center_x': 0.5}
-
-                theme_text_color: "Custom"
-
-                text_color: app.theme_cls.primary_color
             
                 
 
@@ -4177,7 +4184,7 @@ LazyScreenManager:
 
                 size_hint_x: 0.9
 
-                font_size: '13sp'
+                font_size: '10sp' if Window.width < dp(360) else '13sp'
 
                 theme_text_color: "Custom"
 
@@ -4479,7 +4486,7 @@ LazyScreenManager:
 
                         size_hint_y: None
 
-                        height: dp(150)
+                        height: self.minimum_height
 
                         canvas.before:
 
@@ -4523,6 +4530,10 @@ LazyScreenManager:
 
                             halign: "left"
 
+                            size_hint_y: None
+
+                            height: self.texture_size[1]
+
                             
 
                         MDLabel:
@@ -4540,6 +4551,12 @@ LazyScreenManager:
                             bold: True
 
                             halign: "left"
+
+                            text_size: self.width, None
+
+                            size_hint_y: None
+
+                            height: self.texture_size[1]
 
 
 
@@ -4585,6 +4602,8 @@ LazyScreenManager:
 
                                 halign: "right"
 
+                                text_size: self.width, None
+
                                 size_hint_x: 0.6
 
 
@@ -4598,7 +4617,7 @@ LazyScreenManager:
                         radius: [15]
                         elevation: 2
                         size_hint_y: None
-                        height: dp(100)
+                        height: self.minimum_height
                         md_bg_color: app.theme_cls.bg_light
 
                         MDLabel:
@@ -4607,12 +4626,14 @@ LazyScreenManager:
                             bold: True
                             theme_text_color: "Custom"
                             text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
+                            size_hint_y: None
+                            height: self.texture_size[1]
 
                         MDBoxLayout:
                             orientation: 'horizontal'
                             spacing: dp(10)
                             size_hint_y: None
-                            height: dp(40)
+                            height: self.minimum_height
 
                             MDIconButton:
                                 icon: "content-copy"
@@ -4626,6 +4647,9 @@ LazyScreenManager:
                                 text: f"{app. virtual_bank_name} - {app. virtual_account_number}" if app.  virtual_account_number else "Loading  account..."
                                 theme_text_color: "Custom"
                                 text_color: [0.35, 0.35, 0.35, 1] if app.theme_cls.theme_style == "Light" else [0.85, 0.85, 0.85, 1]
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: self.texture_size[1]
             
             
                     MDLabel:
@@ -4652,7 +4676,15 @@ LazyScreenManager:
 
                     MDGridLayout:
 
-                        cols: 4
+                        # Responsive column count instead of a fixed 4 -
+                        # keeps each card at roughly a comfortable dp(95)
+                        # wide regardless of actual screen width, so
+                        # captions like "Transfer to Cheap4U" never get
+                        # squeezed into an unreadably narrow column on
+                        # small/budget phones, while wider screens (large
+                        # phones, tablets) automatically get more columns
+                        # instead of leaving oversized empty-looking cards.
+                        cols: max(2, int(self.width / dp(95)))
 
                         spacing: dp(6)
 
@@ -4719,6 +4751,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -4788,6 +4822,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -4854,6 +4890,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -4917,6 +4955,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -4978,6 +5018,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5041,6 +5083,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5102,6 +5146,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5165,6 +5211,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5226,6 +5274,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5289,6 +5339,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5350,6 +5402,8 @@ LazyScreenManager:
                                     font_style: "Caption"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     theme_text_color: "Custom"
 
@@ -5413,6 +5467,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     theme_text_color: "Custom"
 
                                     text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
@@ -5449,7 +5505,11 @@ LazyScreenManager:
 
                     GridLayout:
 
-                        cols: 3
+                        # Responsive column count instead of a fixed 3 -
+                        # see the Quick Actions grid above for why. These
+                        # cards are a bit richer (icon + label, dp(105)
+                        # tall), so they get a slightly wider target.
+                        cols: max(2, int(self.width / dp(115)))
 
                         spacing: dp(10)
 
@@ -5513,6 +5573,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5572,6 +5634,8 @@ LazyScreenManager:
                                     text: "Data"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -5633,6 +5697,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5692,6 +5758,8 @@ LazyScreenManager:
                                     text: "Electricity"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -5753,6 +5821,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5812,6 +5882,8 @@ LazyScreenManager:
                                     text: "Bulk SMS"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -5879,6 +5951,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5940,6 +6014,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -5999,6 +6075,8 @@ LazyScreenManager:
                                     text: "Beneficiary"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -6060,6 +6138,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -6120,6 +6200,8 @@ LazyScreenManager:
 
                                     halign: "center"
 
+                                    text_size: self.width, None
+
                                     font_style: "Subtitle1"
 
                                     theme_text_color: "Custom"
@@ -6179,6 +6261,8 @@ LazyScreenManager:
                                     text: "Betting"
 
                                     halign: "center"
+
+                                    text_size: self.width, None
 
                                     font_style: "Subtitle1"
 
@@ -6435,276 +6519,276 @@ LazyScreenManager:
 
             # Main content area
 
-            MDBoxLayout:
-
-                orientation: 'vertical'
-
-                padding: dp(40)
-
-                spacing: dp(30)
-
+            ScrollView:
                 size_hint_y: 0.7
-
-                
-
-                # App logo and title
-
+                do_scroll_x: False
                 MDBoxLayout:
-
                     orientation: 'vertical'
-
-                    spacing: dp(10)
-
+                    padding: dp(40)
+                    spacing: dp(30)
                     size_hint_y: None
-
-                    height: dp(100)
-
-                    pos_hint: {'center_x': 0.5}
+                    height: self.minimum_height
 
                     
 
-                    MDIcon:
-
-                        icon: "wallet"
-
-                        size_hint: (None, None)
-
-                        size: [dp(60), dp(60)]
-
-                        pos_hint: {'center_x': 0.5}
-
-                        theme_text_color: "Custom"
-
-                        text_color: app.theme_cls.primary_color
-
-                    
-
-                    MDLabel:
-
-                        text: "[size=54][b]Welcome Back![/b][/size]"
-
-                        font_style: "H4"
-
-                        halign: "center"
-
-                        markup: True
-
-                        theme_text_color: "Primary"
-
-                
-
-                # Login form in a card
-
-                MDCard:
-
-                    orientation: 'vertical'
-
-                    padding: dp(25)
-
-                    spacing: dp(20)
-
-                    size_hint: (0.9, None)
-
-                    height: dp(300)
-
-                    pos_hint: {'center_x': 0.5}
-
-                    elevation: 5
-
-                    radius: [dp(15),]
-
-                    md_bg_color: app.theme_cls.bg_light
-
-                    
-
-                    # Email field
-
-                    MDTextField:
-
-                        id: login_email
-
-                        hint_text: "Email Address"
-
-                        icon_left: "email"
-
-                        mode: "rectangle"
-
-                        size_hint_y: None
-
-                        height: dp(76)
-
-                        size_hint_x: 1
-
-                        line_color_focus: app.theme_cls.primary_color
-
-                        helper_text_mode: "on_focus"
-
-                        helper_text: "Enter your registered email"
-
-                        required: True
-
-                    
-
-                    # Password field
-
-                    MDTextField:
-
-                        id: login_password
-
-                        hint_text: "Password"
-
-                        icon_left: "key"
-
-                        mode: "rectangle"
-
-                        size_hint_y: None
-
-                        height: dp(76)
-
-                        size_hint_x: 1
-
-                        password: True
-
-                        line_color_focus: app.theme_cls.primary_color
-
-                        helper_text_mode: "on_focus"
-                        
-
-                        helper_text: "Enter your password"
-
-                        required: True
-
-                    
-
-                    # Forgot password link
-
-                    MDTextButton:
-
-                        text: "[color=#1976D2]Forgot Password?[/color]"
-
-                        markup: True
-
-                        theme_text_color: "Custom"
-
-                        text_color: app.theme_cls.primary_color
-
-                        halign: "right"
-
-                        on_release: app.show_forgot_password()
-
-                    
-
-                    # Login button
-
-                    MDRaisedButton:
-
-                        text: "SIGN IN"
-
-                        on_release: app.login_user(login_email.text, login_password.text)
-
-                        pos_hint: {'center_x': 0.5}
-
-                        size_hint_x: 0.9
-
-                        md_bg_color: app.theme_cls.primary_color
-
-                        elevation_normal: 5
-
-                        font_size: '16sp'
-
-                
-
-                # Register link section with arrow
-
-                MDBoxLayout:
-
-                    orientation: 'vertical'
-
-                    spacing: dp(0)
-
-                    size_hint_y: None
-
-                    height: dp(80)
-
-                    pos_hint: {'center_x': 0.5}
-
-                    size_hint_x: 0.9
-
-                    
-
-                    # Text and button row
+                    # App logo and title
 
                     MDBoxLayout:
 
-                        orientation: 'horizontal'
+                        orientation: 'vertical'
 
                         spacing: dp(10)
 
                         size_hint_y: None
 
-                        height: dp(40)
+                        height: dp(100)
+
+                        pos_hint: {'center_x': 0.5}
+
+                        
+
+                        MDIcon:
+
+                            icon: "wallet"
+
+                            size_hint: (None, None)
+
+                            size: [dp(60), dp(60)]
+
+                            pos_hint: {'center_x': 0.5}
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
 
                         
 
                         MDLabel:
 
-                            text: "New to our app?"
+                            text: "[size=54][b]Welcome Back![/b][/size]"
 
-                            font_style: "Body1"
-
-                            markup: True
+                            font_style: "H4"
 
                             halign: "center"
 
-                            size_hint_x:5
+                            markup: True
 
-                            size_hint_y: 1
+                            theme_text_color: "Primary"
 
-                            valign: "center"
+                    
 
-                            
+                    # Login form in a card
 
-                    MDIcon:
+                    MDCard:
 
-                        icon: "arrow-down"
+                        orientation: 'vertical'
 
-                        size_hint: (None, None)
+                        padding: dp(25)
 
-                        size: [dp(24), dp(24)]
+                        spacing: dp(20)
+
+                        size_hint: (0.9, None)
+
+                        height: dp(300)
 
                         pos_hint: {'center_x': 0.5}
 
-                        theme_text_color: "Custom"
+                        elevation: 5
 
-                        text_color: app.theme_cls.primary_color    
+                        radius: [dp(15),]
 
-                                                
+                        md_bg_color: app.theme_cls.bg_light
 
-                    MDBoxLayout:
+                        
 
-                        orientation: 'horizontal'
+                        # Email field
 
-                        spacing: dp(10)
+                        MDTextField:
 
-                        size_hint_y: None
+                            id: login_email
 
-                        height: dp(40)
+                            hint_text: "Email Address"
 
-                                     
+                            icon_left: "email"
+
+                            mode: "rectangle"
+
+                            size_hint_y: None
+
+                            height: dp(76)
+
+                            size_hint_x: 1
+
+                            line_color_focus: app.theme_cls.primary_color
+
+                            helper_text_mode: "on_focus"
+
+                            helper_text: "Enter your registered email"
+
+                            required: True
+
+                        
+
+                        # Password field
+
+                        MDTextField:
+
+                            id: login_password
+
+                            hint_text: "Password"
+
+                            icon_left: "key"
+
+                            mode: "rectangle"
+
+                            size_hint_y: None
+
+                            height: dp(76)
+
+                            size_hint_x: 1
+
+                            password: True
+
+                            line_color_focus: app.theme_cls.primary_color
+
+                            helper_text_mode: "on_focus"
+                            
+
+                            helper_text: "Enter your password"
+
+                            required: True
+
+                        
+
+                        # Forgot password link
 
                         MDTextButton:
 
-                            text: "[b][color=#1976D2]Create Account[/color][/b]"
+                            text: "[color=#1976D2]Forgot Password?[/color]"
 
                             markup: True
 
-                            halign: "left"
+                            theme_text_color: "Custom"
 
-                            size_hint_x: 0.5
+                            text_color: app.theme_cls.primary_color
 
-                            valign: "center"
+                            halign: "right"
 
-                            on_release: app.root.current = "register"
+                            on_release: app.show_forgot_password()
+
+                        
+
+                        # Login button
+
+                        MDRaisedButton:
+
+                            text: "SIGN IN"
+
+                            on_release: app.login_user(login_email.text, login_password.text)
+
+                            pos_hint: {'center_x': 0.5}
+
+                            size_hint_x: 0.9
+
+                            md_bg_color: app.theme_cls.primary_color
+
+                            elevation_normal: 5
+
+                            font_size: '16sp'
+
+                    
+
+                    # Register link section with arrow
+
+                    MDBoxLayout:
+
+                        orientation: 'vertical'
+
+                        spacing: dp(0)
+
+                        size_hint_y: None
+
+                        height: dp(80)
+
+                        pos_hint: {'center_x': 0.5}
+
+                        size_hint_x: 0.9
+
+                        
+
+                        # Text and button row
+
+                        MDBoxLayout:
+
+                            orientation: 'horizontal'
+
+                            spacing: dp(10)
+
+                            size_hint_y: None
+
+                            height: dp(40)
+
+                            
+
+                            MDLabel:
+
+                                text: "New to our app?"
+
+                                font_style: "Body1"
+
+                                markup: True
+
+                                halign: "center"
+
+                                size_hint_x:5
+
+                                size_hint_y: 1
+
+                                valign: "center"
+
+                                
+
+                        MDIcon:
+
+                            icon: "arrow-down"
+
+                            size_hint: (None, None)
+
+                            size: [dp(24), dp(24)]
+
+                            pos_hint: {'center_x': 0.5}
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color    
+
+                                                    
+
+                        MDBoxLayout:
+
+                            orientation: 'horizontal'
+
+                            spacing: dp(10)
+
+                            size_hint_y: None
+
+                            height: dp(40)
+
+                                         
+
+                            MDTextButton:
+
+                                text: "[b][color=#1976D2]Create Account[/color][/b]"
+
+                                markup: True
+
+                                halign: "left"
+
+                                size_hint_x: 0.5
+
+                                valign: "center"
+
+                                on_release: app.root.current = "register"
 
                                   
 
@@ -6744,107 +6828,107 @@ LazyScreenManager:
 
                 radius: [0, 0, dp(50), dp(50)]
 
-            MDBoxLayout:
-
-                orientation: 'vertical'
-
-                padding: dp(40)
-
-                spacing: dp(25)
-
+            ScrollView:
                 size_hint_y: 0.7
-
+                do_scroll_x: False
                 MDBoxLayout:
-
                     orientation: 'vertical'
-
-                    spacing: dp(10)
-
+                    padding: dp(40)
+                    spacing: dp(25)
                     size_hint_y: None
+                    height: self.minimum_height
 
-                    height: dp(100)
+                    MDBoxLayout:
 
-                    pos_hint: {'center_x': 0.5}
+                        orientation: 'vertical'
 
-                    MDIcon:
+                        spacing: dp(10)
 
-                        icon: "lock"
+                        size_hint_y: None
 
-                        size_hint: (None, None)
-
-                        size: [dp(60), dp(60)]
+                        height: dp(100)
 
                         pos_hint: {'center_x': 0.5}
 
-                        theme_text_color: "Custom"
+                        MDIcon:
 
-                        text_color: app.theme_cls.primary_color
+                            icon: "lock"
 
-                    MDLabel:
+                            size_hint: (None, None)
 
-                        id: pin_welcome_label
+                            size: [dp(60), dp(60)]
 
-                        text: "Welcome back!"
+                            pos_hint: {'center_x': 0.5}
 
-                        font_style: "H5"
+                            theme_text_color: "Custom"
 
-                        halign: "center"
+                            text_color: app.theme_cls.primary_color
 
-                        theme_text_color: "Primary"
+                        MDLabel:
 
-                MDCard:
+                            id: pin_welcome_label
 
-                    orientation: 'vertical'
+                            text: "Welcome back!"
 
-                    padding: dp(25)
+                            font_style: "H5"
 
-                    spacing: dp(20)
+                            halign: "center"
 
-                    size_hint: (0.9, None)
+                            theme_text_color: "Primary"
 
-                    height: dp(260)
+                    MDCard:
 
-                    pos_hint: {'center_x': 0.5}
+                        orientation: 'vertical'
 
-                    MDTextField:
+                        padding: dp(25)
 
-                        id: pin_input
+                        spacing: dp(20)
 
-                        hint_text: "Enter your PIN"
+                        size_hint: (0.9, None)
 
-                        icon_left: "shield-key-outline"
+                        height: dp(260)
 
-                        password: True
+                        pos_hint: {'center_x': 0.5}
 
-                        input_filter: "int"
+                        MDTextField:
 
-                        max_text_length: 6
+                            id: pin_input
 
-                        halign: "center"
+                            hint_text: "Enter your PIN"
 
-                        font_size: "24sp"
+                            icon_left: "shield-key-outline"
 
-                        on_text_validate: app.attempt_pin_login()
+                            password: True
 
-                    MDRaisedButton:
+                            input_filter: "int"
 
-                        text: "UNLOCK"
+                            max_text_length: 6
 
-                        size_hint_x: 1
+                            halign: "center"
 
-                        height: dp(50)
+                            font_size: "24sp"
 
-                        md_bg_color: app.theme_cls.primary_color
+                            on_text_validate: app.attempt_pin_login()
 
-                        on_release: app.attempt_pin_login()
+                        MDRaisedButton:
 
-                    MDFlatButton:
+                            text: "UNLOCK"
 
-                        text: "Not you? Use email & password"
+                            size_hint_x: 1
 
-                        size_hint_x: 1
+                            height: dp(50)
 
-                        on_release: app.switch_to_full_login()
+                            md_bg_color: app.theme_cls.primary_color
+
+                            on_release: app.attempt_pin_login()
+
+                        MDFlatButton:
+
+                            text: "Not you? Use email & password"
+
+                            size_hint_x: 1
+
+                            on_release: app.switch_to_full_login()
 
             MDBoxLayout:
 
@@ -6874,171 +6958,175 @@ LazyScreenManager:
                 radius: [0, 0, dp(50), dp(50)]
 
             # Main content area
-            MDBoxLayout:
-                orientation: 'vertical'
-                padding: dp(30)
-                spacing: dp(20)
+            ScrollView:
                 size_hint_y: 0.75
-
-                # App logo and title
+                do_scroll_x: False
                 MDBoxLayout:
                     orientation: 'vertical'
-                    spacing: dp(10)
+                    padding: dp(30)
+                    spacing: dp(20)
                     size_hint_y: None
-                    height: dp(80)
-                    pos_hint: {'center_x': 0.5}
-                    MDIcon:
-                        icon: "account-plus"
-                        size_hint: (None, None)
-                        size: [dp(50), dp(50)]
+                    height: self.minimum_height
+
+                    # App logo and title
+                    MDBoxLayout:
+                        orientation: 'vertical'
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: dp(80)
                         pos_hint: {'center_x': 0.5}
-                        theme_text_color: "Custom"
-                        text_color: app.theme_cls.primary_color
-                    MDLabel:
-                       # text: "[size=54][c]Create Account![/c][/size]"
-                        text: "Create Account"
-                        font_style: "H5"
-                        halign: "center"
-                        bold: True
-                        theme_text_color: "Primary"
+                        MDIcon:
+                            icon: "account-plus"
+                            size_hint: (None, None)
+                            size: [dp(50), dp(50)]
+                            pos_hint: {'center_x': 0.5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                        MDLabel:
+                           # text: "[size=54][c]Create Account![/c][/size]"
+                            text: "Create Account"
+                            font_style: "H5"
+                            halign: "center"
+                            bold: True
+                            theme_text_color: "Primary"
 
-                # Register form in a card
-                MDCard:
-                    orientation: 'vertical'
-                    padding: dp(25)
-                    spacing: dp(15)
-                    size_hint: (0.9, None)
-                    height: dp(380)  # Increased height to accommodate referral field
-                    pos_hint: {'center_x': 0.5}
-                    elevation: 5
-                    radius: [dp(15),]
-                    md_bg_color: app.theme_cls.bg_light
+                    # Register form in a card
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(25)
+                        spacing: dp(15)
+                        size_hint: (0.9, None)
+                        height: dp(380)  # Increased height to accommodate referral field
+                        pos_hint: {'center_x': 0.5}
+                        elevation: 5
+                        radius: [dp(15),]
+                        md_bg_color: app.theme_cls.bg_light
 
-                    ScrollView:
-                        do_scroll_x: False
-                        MDBoxLayout:
-                            orientation: 'vertical'
-                            spacing: dp(15)
-                            size_hint_y: None
-                            height: dp(490)  # Increased height
-
-                            # Name field
-                            MDTextField:
-                                id: reg_name
-                                hint_text: "Full Name"
-                                icon_left: "account"
-                                mode: "rectangle"
+                        ScrollView:
+                            do_scroll_x: False
+                            MDBoxLayout:
+                                orientation: 'vertical'
+                                spacing: dp(15)
                                 size_hint_y: None
-                                height: dp(76)
-                                size_hint_x: 1
-                                line_color_focus: app.theme_cls.primary_color
-                                helper_text_mode: "on_focus"
-                                helper_text: "Enter your full name"
-                                required: True
+                                height: dp(490)  # Increased height
 
-                            # Email field
-                            MDTextField:
-                                id: reg_email
-                                hint_text: "Email"
-                                icon_left: "email"
-                                mode: "rectangle"
-                                size_hint_y: None
-                                height: dp(76)
-                                size_hint_x: 1
-                                line_color_focus: app.theme_cls.primary_color
-                                helper_text_mode: "on_focus"
-                                helper_text: "Enter a valid email"
-                                required: True
+                                # Name field
+                                MDTextField:
+                                    id: reg_name
+                                    hint_text: "Full Name"
+                                    icon_left: "account"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Enter your full name"
+                                    required: True
 
-                            # Phone field
-                            MDTextField:
-                                id: reg_phone
-                                hint_text: "Phone Number"
-                                icon_left: "phone"
-                                mode: "rectangle"
-                                size_hint_y: None
-                                height: dp(76)
-                                size_hint_x: 1
-                                input_type: 'number'
-                                max_text_length: 11
-                                line_color_focus: app.theme_cls.primary_color
-                                helper_text_mode: "on_focus"
-                                helper_text: "Enter your phone number"
-                                required: True
+                                # Email field
+                                MDTextField:
+                                    id: reg_email
+                                    hint_text: "Email"
+                                    icon_left: "email"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Enter a valid email"
+                                    required: True
 
-                            # Referral Code field (OPTIONAL)
-                            MDTextField:
-                                id: reg_referral_code
-                                hint_text: "Referral Code (Optional)"
-                                icon_left: "account-group"
-                                mode: "rectangle"
-                                size_hint_y: None
-                                height: dp(76)
-                                size_hint_x: 1
-                                line_color_focus: app.theme_cls.primary_color
-                                helper_text_mode: "on_focus"
-                                helper_text: "Enter referral code if you have one"
-                                required: False
+                                # Phone field
+                                MDTextField:
+                                    id: reg_phone
+                                    hint_text: "Phone Number"
+                                    icon_left: "phone"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    input_type: 'number'
+                                    max_text_length: 11
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Enter your phone number"
+                                    required: True
 
-                            # Password field
-                            MDTextField:
-                                id: reg_password
-                                hint_text: "Password"
-                                icon_left: "key"
-                                mode: "rectangle"
-                                size_hint_y: None
-                                height: dp(76)
-                                size_hint_x: 1
-                                password: True
-                                line_color_focus: app.theme_cls.primary_color
-                                helper_text_mode: "on_focus"
-                                helper_text: "Create a strong password (min 6 chars)"
-                                required: True
+                                # Referral Code field (OPTIONAL)
+                                MDTextField:
+                                    id: reg_referral_code
+                                    hint_text: "Referral Code (Optional)"
+                                    icon_left: "account-group"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Enter referral code if you have one"
+                                    required: False
 
-                            # Confirm Password field
-                            MDTextField:
-                                id: reg_confirm_password
-                                hint_text: "Confirm Password"
-                                icon_left: "key-change"
-                                mode: "rectangle"
-                                size_hint_y: None
-                                height: dp(76)
-                                size_hint_x: 1
-                                password: True
-                                line_color_focus: app.theme_cls.primary_color
-                                helper_text_mode: "on_focus"
-                                helper_text: "Re-enter your password"
-                                required: True
+                                # Password field
+                                MDTextField:
+                                    id: reg_password
+                                    hint_text: "Password"
+                                    icon_left: "key"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    password: True
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Create a strong password (min 6 chars)"
+                                    required: True
 
-                # Register button
-                MDRaisedButton:
-                    text: "REGISTER"
-                    on_release: app.register_user(reg_name.text, reg_email.text, reg_phone.text, reg_referral_code.text, reg_password.text, reg_confirm_password.text)
-                    pos_hint: {'center_x': 0.5}
-                    size_hint_x: 0.9
-                    md_bg_color: app.theme_cls.primary_color
-                    elevation_normal: 5
-                    font_size: '16sp'
+                                # Confirm Password field
+                                MDTextField:
+                                    id: reg_confirm_password
+                                    hint_text: "Confirm Password"
+                                    icon_left: "key-change"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    password: True
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Re-enter your password"
+                                    required: True
 
-                # Login link
-                MDBoxLayout:
-                    orientation: 'horizontal'
-                    spacing: dp(5)
-                    size_hint_y: None
-                    height: dp(15)
-                    pos_hint: {'center_x': 0.35}
-                    MDLabel:
-                        text: "Already have an account?"
-                        font_style: "Body1"
-                        halign: "right"
-                    MDTextButton:
-                        text: "Login Here"
-                        theme_text_color: "Custom"
-                        text_color: app.theme_cls.primary_color
-                        bold: True
-                        on_release: app.root.current = "login"
+                    # Register button
+                    MDRaisedButton:
+                        text: "REGISTER"
+                        on_release: app.register_user(reg_name.text, reg_email.text, reg_phone.text, reg_referral_code.text, reg_password.text, reg_confirm_password.text)
+                        pos_hint: {'center_x': 0.5}
+                        size_hint_x: 0.9
+                        md_bg_color: app.theme_cls.primary_color
+                        elevation_normal: 5
+                        font_size: '16sp'
 
-            # Bottom decorative curve
+                    # Login link
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        spacing: dp(5)
+                        size_hint_y: None
+                        height: dp(15)
+                        pos_hint: {'center_x': 0.35}
+                        MDLabel:
+                            text: "Already have an account?"
+                            font_style: "Body1"
+                            halign: "right"
+                        MDTextButton:
+                            text: "Login Here"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            bold: True
+                            on_release: app.root.current = "login"
+
+                # Bottom decorative curve
             MDBoxLayout:
                 size_hint_y: 0.25
                 md_bg_color: app.theme_cls.primary_color
@@ -8453,7 +8541,7 @@ LazyScreenManager:
                         SpinWheelWidget:
                             id: spin_wheel
                             size_hint: [None, None]
-                            size: [dp(280), dp(280)]
+                            size: [min(dp(280), Window.width - dp(80)), min(dp(280), Window.width - dp(80))]
                             pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
                         MDIcon:
@@ -13498,8 +13586,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 
                 card = MDCard(
                     orientation='vertical',
-                    size_hint=(None, None),
-                    size=(dp(75), dp(75)),
+                    size_hint=(1, None),
+                    height=dp(75),
                     elevation=2,
                     on_release=lambda x, n=network: self.select_airtime_network(n),
                     md_bg_color=[0.95, 0.95, 0.95, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.2, 1],
@@ -15284,12 +15372,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                 theme_text_color="Secondary"
             ))
 
-        content.add_widget(MDLabel(
+        ref_label = MDLabel(
             text=f"Reference: {ussd_details.get('reference', 'N/A')}",
             size_hint_y=None,
             height=dp(30),
             bold=True
-        ))
+        )
+        ref_label.bind(width=lambda inst, w: setattr(inst, 'text_size', (w, None)))
+        ref_label.bind(texture_size=lambda inst, ts: setattr(inst, 'height', max(dp(30), ts[1])))
+        content.add_widget(ref_label)
 
         # Copy reference button
         copy_btn = MDRaisedButton(
@@ -15850,8 +15941,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             # Create card with logo
             card = MDCard(
                 orientation='vertical',
-                size_hint=(None, None),
-                size=(dp(75), dp(75)),
+                size_hint=(1, None),
+                height=dp(75),
                 elevation=2,
                 on_release=lambda x, e=exam["name"]: self.select_exam_type(e),
                 md_bg_color=[0.95, 0.95, 0.95, 1] if self.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.2, 1],
@@ -17954,9 +18045,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                     orientation='vertical',
 
-                    size_hint=(None, None),
+                    size_hint=(1, None),
 
-                    size=(dp(75), dp(75)),
+                    height=dp(75),
 
                     elevation=2,
 
@@ -18873,9 +18964,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 orientation='vertical',
 
-                size_hint=(None, None),
+                size_hint=(1, None),
 
-                size=(dp(75), dp(75)),
+                height=dp(75),
 
                 elevation=2,
 
@@ -18956,9 +19047,7 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 text=meter_type["name"],
 
-                size_hint=(None, None),
-
-                width=dp(150),
+                size_hint=(1, None),
 
                 height=dp(50),
 
@@ -19712,9 +19801,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 orientation='vertical',
 
-                size_hint=(None, None),
+                size_hint=(1, None),
 
-                size=(dp(75), dp(75)),
+                height=dp(75),
 
                 elevation=2,
 
@@ -20441,9 +20530,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 orientation='vertical',
 
-                size_hint=(None, None),
+                size_hint=(1, None),
 
-                size=(dp(75), dp(75)),
+                height=dp(75),
 
                 elevation=2,
                 
