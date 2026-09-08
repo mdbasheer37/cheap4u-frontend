@@ -6866,50 +6866,144 @@ LazyScreenManager:
                             theme_text_color: "Primary"
 
                     MDCard:
-
                         orientation: 'vertical'
-
-                        padding: dp(25)
-
-                        spacing: dp(20)
-
-                        size_hint: (0.9, None)
-
-                        height: dp(260)
-
+                        padding: [dp(20), dp(24), dp(20), dp(16)]
+                        spacing: dp(16)
+                        size_hint: (0.92, None)
+                        height: self.minimum_height
                         pos_hint: {'center_x': 0.5}
+                        radius: [20]
+                        elevation: 2
 
-                        MDTextField:
-
-                            id: pin_input
-
-                            hint_text: "Enter your PIN"
-
-                            icon_left: "shield-key-outline"
-
-                            password: True
-
-                            input_filter: "int"
-
-                            max_text_length: 6
-
+                        MDLabel:
+                            text: "Enter your PIN"
                             halign: "center"
+                            theme_text_color: "Secondary"
+                            font_style: "Subtitle1"
+                            size_hint_y: None
+                            height: self.texture_size[1]
 
-                            font_size: "24sp"
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            size_hint: (None, None)
+                            size: [dp(280), dp(28)]
+                            spacing: dp(8)
+                            pos_hint: {'center_x': 0.5}
 
-                            on_text_validate: app.attempt_pin_login()
+                            MDIcon:
+                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 1 else "checkbox-blank-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.theme_cls.primary_color
+                                font_size: "20sp"
+                                halign: "center"
+                            MDIcon:
+                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 2 else "checkbox-blank-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.theme_cls.primary_color
+                                font_size: "20sp"
+                                halign: "center"
+                            MDIcon:
+                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 3 else "checkbox-blank-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.theme_cls.primary_color
+                                font_size: "20sp"
+                                halign: "center"
+                            MDIcon:
+                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 4 else "checkbox-blank-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.theme_cls.primary_color
+                                font_size: "20sp"
+                                halign: "center"
+                            MDIcon:
+                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 5 else "checkbox-blank-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.theme_cls.primary_color
+                                font_size: "20sp"
+                                halign: "center"
+                            MDIcon:
+                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 6 else "checkbox-blank-circle-outline"
+                                theme_text_color: "Custom"
+                                text_color: app.theme_cls.primary_color
+                                font_size: "20sp"
+                                halign: "center"
 
-                        MDRaisedButton:
+                        MDLabel:
+                            id: pin_error_hint
+                            text: ""
+                            halign: "center"
+                            theme_text_color: "Error"
+                            font_style: "Caption"
+                            size_hint_y: None
+                            height: dp(16)
 
-                            text: "UNLOCK"
+                        MDGridLayout:
+                            cols: 3
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(2)
+                            row_default_height: dp(58)
+                            row_force_default: True
 
-                            size_hint_x: 1
+                            MDFlatButton:
+                                text: "1"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("1")
+                            MDFlatButton:
+                                text: "2"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("2")
+                            MDFlatButton:
+                                text: "3"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("3")
+                            MDFlatButton:
+                                text: "4"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("4")
+                            MDFlatButton:
+                                text: "5"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("5")
+                            MDFlatButton:
+                                text: "6"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("6")
+                            MDFlatButton:
+                                text: "7"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("7")
+                            MDFlatButton:
+                                text: "8"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("8")
+                            MDFlatButton:
+                                text: "9"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("9")
+                            MDFlatButton:
+                                text: "Clear"
+                                font_size: "14sp"
+                                theme_text_color: "Secondary"
+                                on_release: app.pin_keypad_clear()
+                            MDFlatButton:
+                                text: "0"
+                                font_size: "22sp"
+                                on_release: app.pin_keypad_press("0")
+                            MDIconButton:
+                                icon: "backspace-outline"
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                on_release: app.pin_keypad_backspace()
 
-                            height: dp(50)
-
-                            md_bg_color: app.theme_cls.primary_color
-
-                            on_release: app.attempt_pin_login()
+                        MDIconButton:
+                            id: pin_fingerprint_btn
+                            icon: "fingerprint"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            icon_size: "36sp"
+                            pos_hint: {'center_x': 0.5}
+                            opacity: 1 if app.pin_biometric_available else 0
+                            disabled: not app.pin_biometric_available
+                            on_release: app.attempt_pin_fingerprint()
 
                         MDFlatButton:
 
@@ -10616,6 +10710,10 @@ class DashboardApp(ChallengeMixin, MDApp):
     current_selected_item = ObjectProperty("", allownone=True)
 
     current_user = ObjectProperty("", allownone=True)
+
+    pin_entry_length = NumericProperty(0)
+
+    pin_biometric_available = BooleanProperty(False)
 
     selected_airtime_amount = NumericProperty(0)
 
@@ -14717,6 +14815,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.pending_user_email = None
         self.pending_user_phone = None
         self.current_user = None
+        self.pin_entry_buffer = ""
         
         self.payment_processing = False
         self.current_payment_reference = ""
@@ -22818,13 +22917,17 @@ class DashboardApp(ChallengeMixin, MDApp):
     def route_to_login_or_pin(self):
         """Go to the PIN quick-unlock screen if one is configured, else full login."""
         if self.quick_pin_data and self.quick_pin_data.get('pin_hash'):
+            self.pin_entry_buffer = ""
+            self.pin_entry_length = 0
             try:
                 pin_screen = self.root.get_screen("pin_login")
                 cached_user = self.quick_pin_data.get('user') or {}
                 name = cached_user.get('name') or self.quick_pin_data.get('email', '')
                 pin_screen.ids.pin_welcome_label.text = f"Welcome back, {name}!"
+                pin_screen.ids.pin_error_hint.text = ""
             except Exception as e:
                 print(f"pin welcome label error: {e}")
+            self._check_biometric_available()
             self.root.current = "pin_login"
         else:
             self.root.current = "login"
@@ -23226,41 +23329,186 @@ class DashboardApp(ChallengeMixin, MDApp):
         except Exception as e:
             print(f"prompt_setup_quick_pin error: {e}")
 
-    def attempt_pin_login(self):
-        """Validate the entered PIN against the saved hash and restore the session."""
+    def _pin_login_success(self):
+        """Shared success path for both PIN entry and fingerprint unlock."""
+        try:
+            self.session_token = self.quick_pin_data.get("session_token") or ""
+            self.current_user = self.quick_pin_data.get("user") or {}
+            self.virtual_account_number = self.current_user.get('virtual_account_number') or ''
+            self.virtual_bank_name = self.current_user.get('virtual_bank_name') or ''
+            self.virtual_account_name = self.current_user.get('virtual_account_name') or ''
+            self.pin_entry_buffer = ""
+            self.pin_entry_length = 0
+            self.update_dashboard()
+            self.update_dashboard_virtual_account()
+            self.fetch_virtual_account_details()
+            self.root.current = "dashboard"
+        except Exception as e:
+            print(f"_pin_login_success error: {e}")
+
+    def _pin_login_fail(self):
+        """Wrong PIN - clear the buffer and show a brief inline error."""
+        self.pin_entry_buffer = ""
+        self.pin_entry_length = 0
         try:
             screen = self.root.get_screen("pin_login")
-            pin = screen.ids.pin_input.text.strip()
-            if not self.quick_pin_data:
-                self.switch_to_full_login()
-                return
-            expected_hash = hashlib.sha256(
-                f"{pin}:{self.quick_pin_data.get('email', '')}".encode()
-            ).hexdigest()
-            if pin and expected_hash == self.quick_pin_data.get("pin_hash"):
-                self.session_token = self.quick_pin_data.get("session_token") or ""
-                self.current_user = self.quick_pin_data.get("user") or {}
-                self.virtual_account_number = self.current_user.get('virtual_account_number') or ''
-                self.virtual_bank_name = self.current_user.get('virtual_bank_name') or ''
-                self.virtual_account_name = self.current_user.get('virtual_account_name') or ''
-                screen.ids.pin_input.text = ""
-                self.update_dashboard()
-                self.update_dashboard_virtual_account()
-                self.fetch_virtual_account_details()
-                self.root.current = "dashboard"
-            else:
-                screen.ids.pin_input.text = ""
-                self.show_error_dialog("Incorrect PIN")
+            screen.ids.pin_error_hint.text = "Incorrect PIN - try again"
         except Exception as e:
-            print(f"attempt_pin_login error: {e}")
+            print(f"_pin_login_fail error: {e}")
+
+    def pin_keypad_press(self, digit):
+        """Called by each numeric keypad button on the PIN screen."""
+        if len(self.pin_entry_buffer) >= 6:
+            return
+        try:
+            screen = self.root.get_screen("pin_login")
+            screen.ids.pin_error_hint.text = ""
+        except Exception:
+            pass
+        self.pin_entry_buffer += digit
+        self.pin_entry_length = len(self.pin_entry_buffer)
+        self._pin_try_auto()
+
+    def pin_keypad_backspace(self):
+        self.pin_entry_buffer = self.pin_entry_buffer[:-1]
+        self.pin_entry_length = len(self.pin_entry_buffer)
+
+    def pin_keypad_clear(self):
+        self.pin_entry_buffer = ""
+        self.pin_entry_length = 0
+        try:
+            screen = self.root.get_screen("pin_login")
+            screen.ids.pin_error_hint.text = ""
+        except Exception:
+            pass
+
+    def _pin_try_auto(self):
+        """Check the PIN as soon as enough digits are in - PINs here can be
+        4, 5, or 6 digits (see prompt_setup_quick_pin), so we check after
+        every digit once there are at least 4, and only show an error once
+        all 6 slots are used up without a match."""
+        pin = self.pin_entry_buffer
+        if len(pin) < 4:
+            return
+        if not self.quick_pin_data:
+            self.switch_to_full_login()
+            return
+        expected_hash = hashlib.sha256(
+            f"{pin}:{self.quick_pin_data.get('email', '')}".encode()
+        ).hexdigest()
+        if expected_hash == self.quick_pin_data.get("pin_hash"):
+            self._pin_login_success()
+        elif len(pin) >= 6:
+            self._pin_login_fail()
 
     def switch_to_full_login(self):
+        self.pin_entry_buffer = ""
+        self.pin_entry_length = 0
         try:
             screen = self.root.get_screen("pin_login")
-            screen.ids.pin_input.text = ""
+            screen.ids.pin_error_hint.text = ""
         except Exception:
             pass
         self.root.current = "login"
+
+    # ─────────────────────────────────────────────────────────────
+    # Fingerprint / biometric unlock (Android only)
+    #
+    # Uses the AndroidX FingerprintManagerCompat API via pyjnius rather
+    # than the newer BiometricPrompt, deliberately: BiometricPrompt's
+    # constructor requires a FragmentActivity, and Kivy's own
+    # PythonActivity (python-for-android's SDL2 bootstrap) extends plain
+    # Activity, not FragmentActivity - so BiometricPrompt would fail at
+    # runtime without a custom Activity subclass. FingerprintManagerCompat
+    # works with a plain Activity/Context instead.
+    #
+    # Every JNI lookup happens lazily inside these methods (not at import
+    # time) and is wrapped in try/except, so if anything about this
+    # doesn't line up on a given device or AndroidX version, it fails
+    # into "fingerprint not available" instead of crashing the app or
+    # blocking PIN entry. This is the one part of this change I could not
+    # test myself - there's no Android device/emulator in this environment
+    # - so please verify it on a real phone with a fingerprint enrolled.
+    # ─────────────────────────────────────────────────────────────
+
+    def _fingerprint_manager(self):
+        from kivy.utils import platform
+        if platform != "android":
+            return None
+        try:
+            from jnius import autoclass
+            FingerprintManagerCompat = autoclass(
+                "androidx.core.hardware.fingerprint.FingerprintManagerCompat"
+            )
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            activity = PythonActivity.mActivity
+            return FingerprintManagerCompat.from_(activity)
+        except Exception as e:
+            print(f"fingerprint manager unavailable: {e}")
+            return None
+
+    def _check_biometric_available(self):
+        """Best-effort check, called each time the PIN screen is shown."""
+        self.pin_biometric_available = False
+        try:
+            fm = self._fingerprint_manager()
+            if fm is not None and fm.isHardwareDetected() and fm.hasEnrolledFingerprints():
+                self.pin_biometric_available = True
+        except Exception as e:
+            print(f"biometric availability check error: {e}")
+
+    def attempt_pin_fingerprint(self):
+        """Start listening for a fingerprint scan to unlock."""
+        if not self.quick_pin_data:
+            self.switch_to_full_login()
+            return
+        from kivy.utils import platform
+        if platform != "android":
+            self.show_error_dialog("Fingerprint unlock is only available on Android devices.")
+            return
+        try:
+            from jnius import autoclass, PythonJavaClass, java_method
+
+            fm = self._fingerprint_manager()
+            if fm is None:
+                self.show_error_dialog("Fingerprint unlock isn't available on this device.")
+                return
+
+            CancellationSignal = autoclass("android.os.CancellationSignal")
+            self._fp_cancel_signal = CancellationSignal()
+
+            app_ref = self
+
+            class FPCallback(PythonJavaClass):
+                __javainterfaces__ = [
+                    "androidx/core/hardware/fingerprint/FingerprintManagerCompat$AuthenticationCallback"
+                ]
+                __javacontext__ = "app"
+
+                @java_method("()V")
+                def onAuthenticationFailed(self):
+                    Clock.schedule_once(lambda dt: app_ref.show_toast("Fingerprint not recognized - try again"), 0)
+
+                @java_method("(ILjava/lang/CharSequence;)V")
+                def onAuthenticationError(self, errMsgId, errString):
+                    Clock.schedule_once(lambda dt: app_ref.show_toast(f"Fingerprint: {errString}"), 0)
+
+                @java_method("(ILjava/lang/CharSequence;)V")
+                def onAuthenticationHelp(self, helpMsgId, helpString):
+                    pass
+
+                @java_method(
+                    "(Landroidx/core/hardware/fingerprint/FingerprintManagerCompat$AuthenticationResult;)V"
+                )
+                def onAuthenticationSucceeded(self, result):
+                    Clock.schedule_once(lambda dt: app_ref._pin_login_success(), 0)
+
+            self._fp_callback = FPCallback()
+            self.show_toast("Touch the fingerprint sensor")
+            fm.authenticate(None, 0, self._fp_cancel_signal, self._fp_callback, None)
+        except Exception as e:
+            print(f"attempt_pin_fingerprint error: {e}")
+            self.show_error_dialog("Fingerprint unlock isn't available right now - please use your PIN.")
 
     def setup_a2c_network_screen(self):
         try:

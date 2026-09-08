@@ -109,7 +109,7 @@ android.presplash_color = #0D285A
 # (list) Permissions
 # (See https://python-for-android.readthedocs.io/en/latest/buildoptions.html for all the supported syntaxes and properties)
 #android.permissions = android.permission.INTERNET, (name=android.permission.WRITE_EXTERNAL_STORAGE;maxSdkVersion=18)
-android.permissions = INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS
+android.permissions = INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS, USE_BIOMETRIC, USE_FINGERPRINT
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
 
@@ -218,7 +218,7 @@ android.accept_sdk_license = True
 #android.add_resources =
 
 # (list) Gradle dependencies to add
-#android.gradle_dependencies =
+android.gradle_dependencies = androidx.core:core:1.12.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
