@@ -11119,34 +11119,124 @@ class DashboardApp(ChallengeMixin, MDApp):
             
    
     def verify_transaction_pin(self, on_success):
-        """Show PIN entry dialog and call on_success if PIN verified."""
+        """Show PIN entry dialog and call on_success if PIN verified.
+        This PIN is checked server-side (auth/verify-pin), unlike the local
+        quick-unlock PIN on the login screen - so unlike that screen, this
+        one does NOT auto-submit on every keystroke once 4+ digits are in.
+        Doing that here would fire a real API call (and count as a failed
+        attempt against whatever rate-limiting the backend has) for every
+        digit typed by someone who has a legitimate 5 or 6-digit PIN, before
+        they've finished typing it. Instead there's an explicit checkmark to
+        submit, and it only auto-submits once all 6 slots are filled (the
+        hard cap, so there's nothing ambiguous left to wait for). For the
+        same reason, there's no fingerprint shortcut here either - that's a
+        local, on-device check, and using it to skip a server-verified PIN
+        that guards real money movement isn't a substitution to make
+        without knowing what your backend actually expects for that.
+        """
+        self._pending_pin_on_success = on_success
+        self._txn_pin_buffer = ""
+        self._txn_pin_dots = []
+
         content = MDBoxLayout(
             orientation='vertical',
-            spacing=dp(15),
-            padding=dp(20),
+            spacing=dp(14),
+            padding=[dp(10), dp(6), dp(10), dp(4)],
             size_hint_y=None,
-            height=dp(150)
+            height=dp(420),
         )
-        
-        self.pin_input = MDTextField(
-            hint_text="Enter 4-6 digit PIN",
-            icon_left="shield-key-outline",
-            password=True,
-            input_type='number',
-            max_text_length=6,
-            mode="rectangle"
+
+        dots_row = MDBoxLayout(
+            orientation='horizontal',
+            spacing=dp(10),
+            size_hint=(None, None),
+            size=(dp(210), dp(28)),
+            pos_hint={'center_x': 0.5},
         )
-        content.add_widget(self.pin_input)
-        
-        # Add error label
+        for _ in range(6):
+            dot = MDIcon(
+                icon="checkbox-blank-circle-outline",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                font_size="20sp",
+                halign="center",
+                size_hint_x=None,
+                width=dp(26),
+            )
+            dots_row.add_widget(dot)
+            self._txn_pin_dots.append(dot)
+        content.add_widget(dots_row)
+
         self.pin_error_label = MDLabel(
             text="",
             theme_text_color="Error",
+            font_style="Caption",
+            halign="center",
             size_hint_y=None,
-            height=dp(30),
+            height=dp(18),
             opacity=0
         )
         content.add_widget(self.pin_error_label)
+
+        def _key_bg_color():
+            return (
+                [0.93, 0.96, 1, 1] if self.theme_cls.theme_style == "Light"
+                else [0.16, 0.18, 0.22, 1]
+            )
+
+        def make_digit_key(label_text, callback):
+            wrap = MDBoxLayout(
+                size_hint=(None, None),
+                size=(dp(58), dp(58)),
+                radius=[dp(29)],
+                md_bg_color=_key_bg_color(),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            )
+            btn = MDFlatButton(
+                text=label_text,
+                font_size="20sp",
+                size_hint=(None, None),
+                size=(dp(58), dp(58)),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                on_release=callback,
+            )
+            wrap.add_widget(btn)
+            return wrap
+
+        keypad = MDGridLayout(
+            cols=3,
+            spacing=dp(6),
+            size_hint_y=None,
+            height=dp(4 * 62),
+            row_default_height=dp(62),
+            row_force_default=True,
+        )
+        for d in "123456789":
+            keypad.add_widget(make_digit_key(d, lambda x, d=d: self._txn_pin_press(d)))
+        keypad.add_widget(MDFlatButton(
+            text="Clear",
+            font_size="12sp",
+            theme_text_color="Secondary",
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            on_release=lambda x: self._txn_pin_clear(),
+        ))
+        keypad.add_widget(make_digit_key("0", lambda x: self._txn_pin_press("0")))
+        keypad.add_widget(MDIconButton(
+            icon="backspace-outline",
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            on_release=lambda x: self._txn_pin_backspace(),
+        ))
+        content.add_widget(keypad)
+
+        confirm_btn = MDIconButton(
+            icon="check-circle",
+            theme_text_color="Custom",
+            text_color=self.theme_cls.primary_color,
+            icon_size="34sp",
+            pos_hint={'center_x': 0.5},
+            on_release=lambda x: self._submit_pin_verification(self._pending_pin_on_success),
+        )
+        content.add_widget(confirm_btn)
 
         self.pin_dialog = MDDialog(
             title="Transaction PIN Required",
@@ -11158,26 +11248,52 @@ class DashboardApp(ChallengeMixin, MDApp):
                     theme_text_color="Custom",
                     text_color=self.theme_cls.primary_color,
                     on_release=lambda x: self._cancel_pin_verification()
-                ),
-                MDRaisedButton(
-                    text="VERIFY",
-                    md_bg_color=self.theme_cls.primary_color,
-                    on_release=lambda x: self._submit_pin_verification(on_success)
                 )
             ],
             radius=[20, 7, 20, 7]
         )
         self.pin_dialog.open()
 
+    def _txn_pin_press(self, digit):
+        if len(self._txn_pin_buffer) >= 6:
+            return
+        self._txn_pin_buffer += digit
+        self._update_txn_pin_dots()
+        if self.pin_error_label:
+            self.pin_error_label.opacity = 0
+        if len(self._txn_pin_buffer) == 6:
+            self._submit_pin_verification(self._pending_pin_on_success)
+
+    def _txn_pin_backspace(self):
+        self._txn_pin_buffer = self._txn_pin_buffer[:-1]
+        self._update_txn_pin_dots()
+
+    def _txn_pin_clear(self):
+        self._txn_pin_buffer = ""
+        self._update_txn_pin_dots()
+        if self.pin_error_label:
+            self.pin_error_label.opacity = 0
+
+    def _update_txn_pin_dots(self):
+        filled = len(self._txn_pin_buffer)
+        for i, dot in enumerate(self._txn_pin_dots):
+            if i < filled:
+                dot.icon = "checkbox-blank-circle"
+                dot.font_size = "26sp"
+            else:
+                dot.icon = "checkbox-blank-circle-outline"
+                dot.font_size = "20sp"
+
     def _cancel_pin_verification(self):
         """Cancel PIN verification"""
         if hasattr(self, 'pin_dialog'):
             self.pin_dialog.dismiss()
         self.pin_error_label = None
-        self.pin_input = None
+        self._txn_pin_buffer = ""
+        self._txn_pin_dots = []
 
     def _submit_pin_verification(self, on_success):
-        pin = self.pin_input.text if self.pin_input else ""
+        pin = self._txn_pin_buffer
         if not pin or len(pin) < 4:
             self._show_pin_error("PIN must be 4-6 digits")
             return
@@ -11195,6 +11311,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self.verified_pin = pin
                 on_success()
             else:
+                self._txn_pin_buffer = ""
+                self._update_txn_pin_dots()
                 self._show_pin_error(result.get('message', 'PIN verification failed'))
 
         def on_failure(req, error):
@@ -11219,12 +11337,17 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def _prompt_coupon_then_pin(self, category, amount, on_ready):
         """Optional 'have a coupon?' step shown before PIN verification.
-        Works the same for airtime/data/electricity/cable/exam-pin — pass
-        the purchase category + amount so the backend can validate the
-        coupon against the right rules before the PIN dialog opens."""
+        Works the same for data/electricity/cable/exam-pin — pass the
+        purchase category + amount so the backend can validate the coupon
+        against the right rules before the PIN dialog opens. Airtime skips
+        this step entirely and goes straight to the PIN prompt."""
         self.pending_coupon_code = None
         self.pending_coupon_category = category
         self.pending_coupon_amount = amount
+
+        if category == "airtime":
+            self.verify_transaction_pin(on_ready)
+            return
 
         content = MDBoxLayout(
             orientation='vertical', spacing=dp(10),
@@ -14981,7 +15104,8 @@ class DashboardApp(ChallengeMixin, MDApp):
         
         self.filter_menu = None
         self.pin_dialog = None
-        self.pin_input = None
+        self._txn_pin_buffer = ""
+        self._txn_pin_dots = []
         self.pin_error_label = None
         self.balance_dialog = None
         self.code_grid = None
