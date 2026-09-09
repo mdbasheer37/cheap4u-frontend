@@ -523,28 +523,6 @@ KV = '''
 
 #:import Window kivy.core.window.Window
 
-#:import CircularRippleBehavior kivymd.uix.behaviors.CircularRippleBehavior
-
-#:import ButtonBehavior kivy.uix.behaviors.ButtonBehavior
-
-
-# Round, ripple-enabled numeric keypad button used on the PIN unlock screen.
-<PinKeyButton@CircularRippleBehavior+ButtonBehavior+MDBoxLayout>:
-    text: ""
-    size_hint: None, None
-    size: [dp(68), dp(68)]
-    radius: [dp(34)]
-    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-    md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-    ripple_color: app.theme_cls.primary_color[:3] + [0.25]
-    MDLabel:
-        text: root.text
-        halign: "center"
-        valign: "center"
-        font_size: "24sp"
-        bold: True
-        theme_text_color: "Primary"
-
 
 # Applies to EVERY MDTextField in the app (both KV-defined and
 # Python-instantiated ones pick this up automatically) -- explicitly fixes
@@ -6978,42 +6956,142 @@ LazyScreenManager:
                             row_default_height: dp(78)
                             row_force_default: True
 
-                            PinKeyButton:
-                                text: "1"
-                                on_release: app.pin_keypad_press("1")
-                            PinKeyButton:
-                                text: "2"
-                                on_release: app.pin_keypad_press("2")
-                            PinKeyButton:
-                                text: "3"
-                                on_release: app.pin_keypad_press("3")
-                            PinKeyButton:
-                                text: "4"
-                                on_release: app.pin_keypad_press("4")
-                            PinKeyButton:
-                                text: "5"
-                                on_release: app.pin_keypad_press("5")
-                            PinKeyButton:
-                                text: "6"
-                                on_release: app.pin_keypad_press("6")
-                            PinKeyButton:
-                                text: "7"
-                                on_release: app.pin_keypad_press("7")
-                            PinKeyButton:
-                                text: "8"
-                                on_release: app.pin_keypad_press("8")
-                            PinKeyButton:
-                                text: "9"
-                                on_release: app.pin_keypad_press("9")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "1"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("1")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "2"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("2")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "3"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("3")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "4"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("4")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "5"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("5")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "6"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("6")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "7"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("7")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "8"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("8")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "9"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("9")
                             MDFlatButton:
                                 text: "Clear"
                                 font_size: "13sp"
                                 theme_text_color: "Secondary"
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 on_release: app.pin_keypad_clear()
-                            PinKeyButton:
-                                text: "0"
-                                on_release: app.pin_keypad_press("0")
+                            MDBoxLayout:
+                                size_hint: None, None
+                                size: dp(68), dp(68)
+                                radius: [dp(34)]
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+                                MDFlatButton:
+                                    text: "0"
+                                    font_size: "22sp"
+                                    size_hint: None, None
+                                    size: dp(68), dp(68)
+                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                                    on_release: app.pin_keypad_press("0")
                             MDIconButton:
                                 icon: "backspace-outline"
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
