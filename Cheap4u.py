@@ -523,6 +523,28 @@ KV = '''
 
 #:import Window kivy.core.window.Window
 
+#:import CircularRippleBehavior kivymd.uix.behaviors.CircularRippleBehavior
+
+#:import ButtonBehavior kivy.uix.behaviors.ButtonBehavior
+
+
+# Round, ripple-enabled numeric keypad button used on the PIN unlock screen.
+<PinKeyButton@CircularRippleBehavior+ButtonBehavior+MDBoxLayout>:
+    text: ""
+    size_hint: None, None
+    size: [dp(68), dp(68)]
+    radius: [dp(34)]
+    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+    md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
+    ripple_color: app.theme_cls.primary_color[:3] + [0.25]
+    MDLabel:
+        text: root.text
+        halign: "center"
+        valign: "center"
+        font_size: "24sp"
+        bold: True
+        theme_text_color: "Primary"
+
 
 # Applies to EVERY MDTextField in the app (both KV-defined and
 # Python-instantiated ones pick this up automatically) -- explicitly fixes
@@ -6867,13 +6889,13 @@ LazyScreenManager:
 
                     MDCard:
                         orientation: 'vertical'
-                        padding: [dp(20), dp(24), dp(20), dp(16)]
-                        spacing: dp(16)
+                        padding: [dp(20), dp(26), dp(20), dp(18)]
+                        spacing: dp(18)
                         size_hint: (0.92, None)
                         height: self.minimum_height
                         pos_hint: {'center_x': 0.5}
-                        radius: [20]
-                        elevation: 2
+                        radius: [24]
+                        elevation: 3
 
                         MDLabel:
                             text: "Enter your PIN"
@@ -6886,46 +6908,58 @@ LazyScreenManager:
                         MDBoxLayout:
                             orientation: 'horizontal'
                             size_hint: (None, None)
-                            size: [dp(280), dp(28)]
-                            spacing: dp(8)
+                            size: [self.minimum_width, dp(32)]
+                            spacing: dp(12)
                             pos_hint: {'center_x': 0.5}
 
                             MDIcon:
                                 icon: "checkbox-blank-circle" if app.pin_entry_length >= 1 else "checkbox-blank-circle-outline"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
-                                font_size: "20sp"
+                                font_size: "26sp" if app.pin_entry_length >= 1 else "20sp"
                                 halign: "center"
+                                size_hint_x: None
+                                width: dp(26)
                             MDIcon:
                                 icon: "checkbox-blank-circle" if app.pin_entry_length >= 2 else "checkbox-blank-circle-outline"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
-                                font_size: "20sp"
+                                font_size: "26sp" if app.pin_entry_length >= 2 else "20sp"
                                 halign: "center"
+                                size_hint_x: None
+                                width: dp(26)
                             MDIcon:
                                 icon: "checkbox-blank-circle" if app.pin_entry_length >= 3 else "checkbox-blank-circle-outline"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
-                                font_size: "20sp"
+                                font_size: "26sp" if app.pin_entry_length >= 3 else "20sp"
                                 halign: "center"
+                                size_hint_x: None
+                                width: dp(26)
                             MDIcon:
                                 icon: "checkbox-blank-circle" if app.pin_entry_length >= 4 else "checkbox-blank-circle-outline"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
-                                font_size: "20sp"
+                                font_size: "26sp" if app.pin_entry_length >= 4 else "20sp"
                                 halign: "center"
+                                size_hint_x: None
+                                width: dp(26)
                             MDIcon:
                                 icon: "checkbox-blank-circle" if app.pin_entry_length >= 5 else "checkbox-blank-circle-outline"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
-                                font_size: "20sp"
+                                font_size: "26sp" if app.pin_entry_length >= 5 else "20sp"
                                 halign: "center"
+                                size_hint_x: None
+                                width: dp(26)
                             MDIcon:
                                 icon: "checkbox-blank-circle" if app.pin_entry_length >= 6 else "checkbox-blank-circle-outline"
                                 theme_text_color: "Custom"
                                 text_color: app.theme_cls.primary_color
-                                font_size: "20sp"
+                                font_size: "26sp" if app.pin_entry_length >= 6 else "20sp"
                                 halign: "center"
+                                size_hint_x: None
+                                width: dp(26)
 
                         MDLabel:
                             id: pin_error_hint
@@ -6940,54 +6974,45 @@ LazyScreenManager:
                             cols: 3
                             size_hint_y: None
                             height: self.minimum_height
-                            spacing: dp(2)
-                            row_default_height: dp(58)
+                            spacing: dp(6)
+                            row_default_height: dp(78)
                             row_force_default: True
 
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "1"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("1")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "2"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("2")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "3"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("3")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "4"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("4")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "5"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("5")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "6"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("6")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "7"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("7")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "8"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("8")
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "9"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("9")
                             MDFlatButton:
                                 text: "Clear"
-                                font_size: "14sp"
+                                font_size: "13sp"
                                 theme_text_color: "Secondary"
+                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 on_release: app.pin_keypad_clear()
-                            MDFlatButton:
+                            PinKeyButton:
                                 text: "0"
-                                font_size: "22sp"
                                 on_release: app.pin_keypad_press("0")
                             MDIconButton:
                                 icon: "backspace-outline"
