@@ -6811,19 +6811,21 @@ LazyScreenManager:
 
             MDBoxLayout:
 
-                size_hint_y: 0.3
+                size_hint_y: None
+
+                height: dp(45)
 
                 md_bg_color: app.theme_cls.primary_color
 
-                radius: [0, 0, dp(50), dp(50)]
+                radius: [0, 0, dp(30), dp(30)]
 
             ScrollView:
-                size_hint_y: 0.7
+                size_hint_y: 1
                 do_scroll_x: False
                 MDBoxLayout:
                     orientation: 'vertical'
-                    padding: dp(40)
-                    spacing: dp(25)
+                    padding: dp(18)
+                    spacing: dp(12)
                     size_hint_y: None
                     height: self.minimum_height
 
@@ -6835,7 +6837,7 @@ LazyScreenManager:
 
                         size_hint_y: None
 
-                        height: dp(100)
+                        height: dp(64)
 
                         pos_hint: {'center_x': 0.5}
 
@@ -6845,7 +6847,7 @@ LazyScreenManager:
 
                             size_hint: (None, None)
 
-                            size: [dp(60), dp(60)]
+                            size: [dp(38), dp(38)]
 
                             pos_hint: {'center_x': 0.5}
 
@@ -6867,8 +6869,8 @@ LazyScreenManager:
 
                     MDCard:
                         orientation: 'vertical'
-                        padding: [dp(20), dp(26), dp(20), dp(18)]
-                        spacing: dp(18)
+                        padding: [dp(16), dp(10), dp(16), dp(8)]
+                        spacing: dp(10)
                         size_hint: (0.92, None)
                         height: self.minimum_height
                         pos_hint: {'center_x': 0.5}
@@ -6953,124 +6955,124 @@ LazyScreenManager:
                             size_hint_y: None
                             height: self.minimum_height
                             spacing: dp(6)
-                            row_default_height: dp(78)
+                            row_default_height: dp(56)
                             row_force_default: True
 
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "1"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("1")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "2"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("2")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "3"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("3")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "4"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("4")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "5"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("5")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "6"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("6")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "7"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("7")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "8"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("8")
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "9"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("9")
                             MDFlatButton:
@@ -7081,15 +7083,15 @@ LazyScreenManager:
                                 on_release: app.pin_keypad_clear()
                             MDBoxLayout:
                                 size_hint: None, None
-                                size: dp(68), dp(68)
-                                radius: [dp(34)]
+                                size: dp(56), dp(56)
+                                radius: [dp(28)]
                                 pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                 md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
                                 MDFlatButton:
                                     text: "0"
                                     font_size: "22sp"
                                     size_hint: None, None
-                                    size: dp(68), dp(68)
+                                    size: dp(56), dp(56)
                                     pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                                     on_release: app.pin_keypad_press("0")
                             MDIconButton:
@@ -7102,7 +7104,7 @@ LazyScreenManager:
                             icon: "fingerprint"
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
-                            icon_size: "36sp"
+                            icon_size: "30sp"
                             pos_hint: {'center_x': 0.5}
                             opacity: 1 if app.pin_biometric_available else 0
                             disabled: not app.pin_biometric_available
@@ -7118,11 +7120,13 @@ LazyScreenManager:
 
             MDBoxLayout:
 
-                size_hint_y: 0.3
+                size_hint_y: None
+
+                height: dp(45)
 
                 md_bg_color: app.theme_cls.primary_color
 
-                radius: [dp(50), dp(50), 0, 0]
+                radius: [dp(30), dp(30), 0, 0]
 
 
 
@@ -11108,9 +11112,10 @@ class DashboardApp(ChallengeMixin, MDApp):
         if old_pin:
             payload['old_pin'] = old_pin
         
-        def on_response(req, result):
+        def on_response(success, result):
             self.hide_loader()
-            if result.get('status') == 'success':
+            result = result if isinstance(result, dict) else {}
+            if success or result.get('status') == 'success':
                 self.show_success_dialog("Transaction PIN set successfully!")
             else:
                 self.show_error_dialog(result.get('message', 'Failed to set PIN'))
