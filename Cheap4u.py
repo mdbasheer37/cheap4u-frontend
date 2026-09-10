@@ -11275,19 +11275,26 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.pin_error_label.opacity = 0
 
     def _update_txn_pin_dots(self):
-        filled = len(self._txn_pin_buffer)
-        for i, dot in enumerate(self._txn_pin_dots):
-            if i < filled:
-                dot.icon = "checkbox-blank-circle"
-                dot.font_size = "26sp"
-            else:
-                dot.icon = "checkbox-blank-circle-outline"
-                dot.font_size = "20sp"
+        try:
+            filled = len(self._txn_pin_buffer)
+            for i, dot in enumerate(self._txn_pin_dots):
+                if i < filled:
+                    dot.icon = "checkbox-blank-circle"
+                    dot.font_size = "26sp"
+                else:
+                    dot.icon = "checkbox-blank-circle-outline"
+                    dot.font_size = "20sp"
+        except Exception as e:
+            print(f"_update_txn_pin_dots error: {e}")
 
     def _cancel_pin_verification(self):
         """Cancel PIN verification"""
-        if hasattr(self, 'pin_dialog'):
-            self.pin_dialog.dismiss()
+        try:
+            if getattr(self, 'pin_dialog', None):
+                self.pin_dialog.dismiss()
+        except Exception as e:
+            print(f"_cancel_pin_verification error: {e}")
+        self.pin_dialog = None
         self.pin_error_label = None
         self._txn_pin_buffer = ""
         self._txn_pin_dots = []
@@ -11303,30 +11310,51 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         self.show_loader("Verifying PIN...")
 
-        def on_response(req, result):
+        def on_response(success, result):
             self.hide_loader()
-            if result.get('status') == 'success':
-                if hasattr(self, 'pin_dialog') and self.pin_dialog:
-                    self.pin_dialog.dismiss()
-                self.verified_pin = pin
-                on_success()
-            else:
-                self._txn_pin_buffer = ""
-                self._update_txn_pin_dots()
-                self._show_pin_error(result.get('message', 'PIN verification failed'))
-
-        def on_failure(req, error):
-            self.hide_loader()
-            self._show_pin_error(f"Network error: {error}")
+            try:
+                result = result if isinstance(result, dict) else {}
+                if success or result.get('status') == 'success':
+                    if getattr(self, 'pin_dialog', None):
+                        self.pin_dialog.dismiss()
+                    self.pin_dialog = None
+                    self.verified_pin = pin
+                    on_success()
+                else:
+                    self._txn_pin_buffer = ""
+                    self._update_txn_pin_dots()
+                    self._show_pin_error(result.get('message', 'PIN verification failed'))
+            except Exception as e:
+                print(f"verify_transaction_pin on_response error: {e}")
+                self._show_pin_error("Something went wrong - please try again")
 
         self.backend_api_request('auth/verify-pin', 'POST', {'pin': pin}, on_response)
 
     def _show_pin_error(self, message):
-        """Show error message in PIN dialog"""
-        if hasattr(self, 'pin_error_label'):
-            self.pin_error_label.text = message
-            self.pin_error_label.opacity = 1
-            Clock.schedule_once(lambda dt: setattr(self.pin_error_label, 'opacity', 0), 3)
+        """Show error message in PIN dialog. Defensive against the dialog
+        having already been closed (e.g. user tapped Cancel right after a
+        wrong-PIN response came back) - both right now and 3 seconds from
+        now when the scheduled fade-out fires, since that used to reach for
+        self.pin_error_label without checking it was still there, which
+        would throw inside a Clock callback and take the whole app down."""
+        label = self.pin_error_label
+        if label is None:
+            return
+        try:
+            label.text = message
+            label.opacity = 1
+        except Exception as e:
+            print(f"_show_pin_error error: {e}")
+            return
+
+        def _fade(_dt):
+            try:
+                if self.pin_error_label is label:
+                    label.opacity = 0
+            except Exception as e:
+                print(f"_show_pin_error fade error: {e}")
+
+        Clock.schedule_once(_fade, 3)
 
     def _clear_verified_pin(self):
         """Clear the temporarily stored PIN after transaction"""
@@ -18705,15 +18733,22 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             
 
-            # Validate phone number matches selected network
+            # Validate phone number matches selected network. Only block on a
+            # confident mismatch (a recognized prefix that belongs to a
+            # different network) - an unrecognized prefix (detected_network
+            # is None) is NOT treated as an error: Nigeria has had mobile
+            # number portability since 2013, so a prefix not in our table
+            # doesn't mean the number is invalid, just that we don't know
+            # its original network. This also matches the more lenient
+            # check validate_phone_input() already uses elsewhere.
 
             detected_network = self.determine_network(phone)
 
-            if detected_network != self.selected_data_network:
+            if detected_network and detected_network != self.selected_data_network:
 
                 screen.ids.data_phone_input.error = True
 
-                screen.ids.data_phone_input.helper_text = f"Number belongs to {detected_network}"
+                screen.ids.data_phone_input.helper_text = f"Number belongs to {detected_network}, not {self.selected_data_network}"
 
                 return False
 
@@ -19120,15 +19155,23 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         
 
-        # Network prefixes in Nigeria (updated as of 2023)
-
+        # Network prefixes in Nigeria. Expanded from the previous list, which
+        # was missing several prefixes added since 2020 (including 0913,
+        # which is what triggered "Number belongs to None" for a genuine
+        # MTN number) - cross-checked against multiple current sources.
+        # Note: Nigeria has had mobile number portability since 2013, so
+        # even a fully accurate prefix table can't guarantee a number is
+        # still on its original network - a ported number can fail this
+        # match while still being completely valid. That's why the callers
+        # of this function only treat a *recognized* mismatch as an error;
+        # an unrecognized prefix is never treated as invalid.
         network_prefixes = {
 
-            'MTN': ['0803', '0806', '0703', '0706', '0813', '0816', '0810', '0814', '0903', '0906'],
+            'MTN': ['0803', '0806', '0703', '0706', '0704', '0813', '0816', '0810', '0814', '0903', '0906', '0913', '0916'],
 
-            'Airtel': ['0802', '0808', '0708', '0812', '0701', '0902', '0907'],
+            'Airtel': ['0802', '0808', '0708', '0812', '0701', '0902', '0901', '0904', '0907', '0911', '0912'],
 
-            'Glo': ['0805', '0807', '0705', '0815', '0811', '0905'],
+            'Glo': ['0805', '0807', '0705', '0815', '0811', '0905', '0915'],
 
             '9mobile': ['0809', '0818', '0817', '0909', '0908']
 
