@@ -6837,7 +6837,7 @@ LazyScreenManager:
 
                         size_hint_y: None
 
-                        height: dp(76)
+                        height: self.minimum_height
 
                         pos_hint: {'center_x': 0.5}
 
@@ -6866,6 +6866,12 @@ LazyScreenManager:
                             halign: "center"
 
                             theme_text_color: "Primary"
+
+                            text_size: self.width, None
+
+                            size_hint_y: None
+
+                            height: self.texture_size[1]
 
                     MDCard:
                         orientation: 'vertical'
@@ -7105,6 +7111,8 @@ LazyScreenManager:
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
                             icon_size: "34sp"
+                            size_hint: (None, None)
+                            size: [dp(48), dp(48)]
                             pos_hint: {'center_x': 0.5}
                             opacity: 1 if app.pin_biometric_available else 0
                             disabled: not app.pin_biometric_available
