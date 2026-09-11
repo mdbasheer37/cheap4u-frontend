@@ -6798,20 +6798,6 @@ LazyScreenManager:
     MDScreen:
         md_bg_color: [1, 1, 1, 1] if app.theme_cls.theme_style == "Light" else [0.07, 0.08, 0.11, 1]
 
-        Widget:
-            size_hint: 1, 1
-            canvas.before:
-                Color:
-                    rgba: [0.88, 0.94, 1, 1] if app.theme_cls.theme_style == "Light" else [0.09, 0.16, 0.27, 1]
-                Ellipse:
-                    pos: self.center_x - dp(160), self.top - dp(300)
-                    size: dp(320), dp(320)
-                Color:
-                    rgba: [1, 1, 1, 1] if app.theme_cls.theme_style == "Light" else [0.07, 0.08, 0.11, 1]
-                Ellipse:
-                    pos: self.center_x - dp(220), self.top - dp(420)
-                    size: dp(440), dp(440)
-
         ScrollView:
             size_hint: 1, 1
             do_scroll_x: False
@@ -6824,12 +6810,18 @@ LazyScreenManager:
 
                 MDCard:
                     size_hint: None, None
-                    size: dp(92), dp(92)
+                    size: dp(96), dp(96)
                     pos_hint: {'center_x': 0.5}
-                    radius: [26]
-                    elevation: 6
-                    padding: dp(16)
+                    radius: [24]
+                    elevation: 0
+                    padding: dp(4)
                     md_bg_color: [1, 1, 1, 1] if app.theme_cls.theme_style == "Light" else [0.13, 0.15, 0.19, 1]
+                    canvas.after:
+                        Color:
+                            rgba: [0.88, 0.88, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.26, 0.28, 0.32, 1]
+                        Line:
+                            rounded_rectangle: [self.x, self.y, self.width, self.height, dp(24)]
+                            width: dp(1)
 
                     Image:
                         source: "data/icon.png"
@@ -7018,119 +7010,134 @@ LazyScreenManager:
                     size_hint_y: None
                     height: dp(8)
 
-                MDGridLayout:
-                    cols: 3
+                MDBoxLayout:
+                    orientation: 'vertical'
                     size_hint_y: None
                     height: self.minimum_height
-                    spacing: dp(2)
-                    row_default_height: dp(64)
-                    row_force_default: True
+                    spacing: dp(4)
 
-                    MDFlatButton:
-                        text: "1"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("1")
-                    MDFlatButton:
-                        text: "2"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("2")
-                    MDFlatButton:
-                        text: "3"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("3")
-                    MDFlatButton:
-                        text: "4"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("4")
-                    MDFlatButton:
-                        text: "5"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("5")
-                    MDFlatButton:
-                        text: "6"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("6")
-                    MDFlatButton:
-                        text: "7"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("7")
-                    MDFlatButton:
-                        text: "8"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("8")
-                    MDFlatButton:
-                        text: "9"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("9")
-                    MDFlatButton:
-                        text: "Clear"
-                        font_size: "13sp"
-                        theme_text_color: "Secondary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_clear()
-                    MDFlatButton:
-                        text: "0"
-                        font_size: "26sp"
-                        bold: True
-                        theme_text_color: "Primary"
-                        size_hint: None, None
-                        size: dp(64), dp(64)
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_press("0")
-                    MDIconButton:
-                        icon: "backspace-outline"
-                        theme_text_color: "Custom"
-                        text_color: app.theme_cls.primary_color
-                        icon_size: "24sp"
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        on_release: app.pin_keypad_backspace()
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(64)
+                        spacing: dp(4)
+
+                        MDFlatButton:
+                            text: "1"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("1")
+                        MDFlatButton:
+                            text: "2"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("2")
+                        MDFlatButton:
+                            text: "3"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("3")
+
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(64)
+                        spacing: dp(4)
+
+                        MDFlatButton:
+                            text: "4"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("4")
+                        MDFlatButton:
+                            text: "5"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("5")
+                        MDFlatButton:
+                            text: "6"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("6")
+
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(64)
+                        spacing: dp(4)
+
+                        MDFlatButton:
+                            text: "7"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("7")
+                        MDFlatButton:
+                            text: "8"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("8")
+                        MDFlatButton:
+                            text: "9"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("9")
+
+                    MDBoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_y: None
+                        height: dp(64)
+                        spacing: dp(4)
+
+                        MDFlatButton:
+                            text: "Clear"
+                            font_size: "13sp"
+                            theme_text_color: "Secondary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_clear()
+                        MDFlatButton:
+                            text: "0"
+                            font_size: "26sp"
+                            bold: True
+                            theme_text_color: "Primary"
+                            size_hint: 1, 1
+                            halign: "center"
+                            on_release: app.pin_keypad_press("0")
+                        MDIconButton:
+                            icon: "backspace-outline"
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            icon_size: "24sp"
+                            size_hint: 1, 1
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                            on_release: app.pin_keypad_backspace()
 
                 Widget:
                     size_hint_y: None
