@@ -6794,347 +6794,386 @@ LazyScreenManager:
 
 
 <PinLoginScreen>:
-
     name: "pin_login"
-
     MDScreen:
+        md_bg_color: [1, 1, 1, 1] if app.theme_cls.theme_style == "Light" else [0.07, 0.08, 0.11, 1]
 
-        md_bg_color: app.theme_cls.bg_normal
+        Widget:
+            size_hint: 1, 1
+            canvas.before:
+                Color:
+                    rgba: [0.88, 0.94, 1, 1] if app.theme_cls.theme_style == "Light" else [0.09, 0.16, 0.27, 1]
+                Ellipse:
+                    pos: self.center_x - dp(160), self.top - dp(300)
+                    size: dp(320), dp(320)
+                Color:
+                    rgba: [1, 1, 1, 1] if app.theme_cls.theme_style == "Light" else [0.07, 0.08, 0.11, 1]
+                Ellipse:
+                    pos: self.center_x - dp(220), self.top - dp(420)
+                    size: dp(440), dp(440)
 
-        MDBoxLayout:
-
-            orientation: 'vertical'
-
-            size_hint: (1, 1)
-
-            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-
+        ScrollView:
+            size_hint: 1, 1
+            do_scroll_x: False
             MDBoxLayout:
-
+                orientation: 'vertical'
+                padding: dp(30), dp(56), dp(30), dp(30)
+                spacing: dp(4)
                 size_hint_y: None
+                height: self.minimum_height
 
-                height: dp(65)
+                MDCard:
+                    size_hint: None, None
+                    size: dp(92), dp(92)
+                    pos_hint: {'center_x': 0.5}
+                    radius: [26]
+                    elevation: 6
+                    padding: dp(16)
+                    md_bg_color: [1, 1, 1, 1] if app.theme_cls.theme_style == "Light" else [0.13, 0.15, 0.19, 1]
 
-                md_bg_color: app.theme_cls.primary_color
+                    Image:
+                        source: "data/icon.png"
+                        allow_stretch: True
+                        keep_ratio: True
 
-                radius: [0, 0, dp(30), dp(30)]
-
-            ScrollView:
-                size_hint_y: 1
-                do_scroll_x: False
-                MDBoxLayout:
-                    orientation: 'vertical'
-                    padding: dp(22)
-                    spacing: dp(16)
+                Widget:
                     size_hint_y: None
-                    height: self.minimum_height
+                    height: dp(18)
+
+                MDLabel:
+                    id: pin_welcome_label
+                    text: "Welcome back!"
+                    font_style: "H5"
+                    bold: True
+                    halign: "center"
+                    theme_text_color: "Primary"
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: self.texture_size[1]
+
+                MDLabel:
+                    text: "Use fingerprint or PIN to continue"
+                    halign: "center"
+                    theme_text_color: "Custom"
+                    text_color: app.theme_cls.primary_color
+                    font_style: "Body2"
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: self.texture_size[1] + dp(4)
+
+                Widget:
+                    size_hint_y: None
+                    height: dp(26)
+
+                MDBoxLayout:
+                    orientation: 'horizontal'
+                    size_hint: None, None
+                    size: self.minimum_width, dp(56)
+                    spacing: dp(10)
+                    pos_hint: {'center_x': 0.5}
 
                     MDBoxLayout:
-
-                        orientation: 'vertical'
-
-                        spacing: dp(10)
-
-                        size_hint_y: None
-
-                        height: self.minimum_height
-
-                        pos_hint: {'center_x': 0.5}
-
+                        size_hint: None, None
+                        size: dp(42), dp(54)
+                        canvas.before:
+                            Color:
+                                rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 1 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 1 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                width: dp(1.3)
                         MDIcon:
-
-                            icon: "lock"
-
-                            size_hint: (None, None)
-
-                            size: [dp(46), dp(46)]
-
-                            pos_hint: {'center_x': 0.5}
-
-                            theme_text_color: "Custom"
-
-                            text_color: app.theme_cls.primary_color
-
-                        MDLabel:
-
-                            id: pin_welcome_label
-
-                            text: "Welcome back!"
-
-                            font_style: "H5"
-
-                            halign: "center"
-
-                            theme_text_color: "Primary"
-
-                            text_size: self.width, None
-
-                            size_hint_y: None
-
-                            height: self.texture_size[1]
-
-                    MDCard:
-                        orientation: 'vertical'
-                        padding: [dp(22), dp(20), dp(22), dp(18)]
-                        spacing: dp(16)
-                        size_hint: (0.92, None)
-                        height: self.minimum_height
-                        pos_hint: {'center_x': 0.5}
-                        radius: [24]
-                        elevation: 3
-
-                        MDLabel:
-                            text: "Enter your PIN"
-                            halign: "center"
-                            theme_text_color: "Secondary"
-                            font_style: "Subtitle1"
-                            size_hint_y: None
-                            height: self.texture_size[1]
-
-                        MDBoxLayout:
-                            orientation: 'horizontal'
-                            size_hint: (None, None)
-                            size: [self.minimum_width, dp(38)]
-                            spacing: dp(14)
-                            pos_hint: {'center_x': 0.5}
-
-                            MDIcon:
-                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 1 else "checkbox-blank-circle-outline"
-                                theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
-                                font_size: "30sp" if app.pin_entry_length >= 1 else "22sp"
-                                halign: "center"
-                                size_hint_x: None
-                                width: dp(30)
-                            MDIcon:
-                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 2 else "checkbox-blank-circle-outline"
-                                theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
-                                font_size: "30sp" if app.pin_entry_length >= 2 else "22sp"
-                                halign: "center"
-                                size_hint_x: None
-                                width: dp(30)
-                            MDIcon:
-                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 3 else "checkbox-blank-circle-outline"
-                                theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
-                                font_size: "30sp" if app.pin_entry_length >= 3 else "22sp"
-                                halign: "center"
-                                size_hint_x: None
-                                width: dp(30)
-                            MDIcon:
-                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 4 else "checkbox-blank-circle-outline"
-                                theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
-                                font_size: "30sp" if app.pin_entry_length >= 4 else "22sp"
-                                halign: "center"
-                                size_hint_x: None
-                                width: dp(30)
-                            MDIcon:
-                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 5 else "checkbox-blank-circle-outline"
-                                theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
-                                font_size: "30sp" if app.pin_entry_length >= 5 else "22sp"
-                                halign: "center"
-                                size_hint_x: None
-                                width: dp(30)
-                            MDIcon:
-                                icon: "checkbox-blank-circle" if app.pin_entry_length >= 6 else "checkbox-blank-circle-outline"
-                                theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
-                                font_size: "30sp" if app.pin_entry_length >= 6 else "22sp"
-                                halign: "center"
-                                size_hint_x: None
-                                width: dp(30)
-
-                        MDLabel:
-                            id: pin_error_hint
-                            text: ""
-                            halign: "center"
-                            theme_text_color: "Error"
-                            font_style: "Caption"
-                            size_hint_y: None
-                            height: dp(16)
-
-                        MDGridLayout:
-                            cols: 3
-                            size_hint_y: None
-                            height: self.minimum_height
-                            spacing: dp(6)
-                            row_default_height: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                            row_force_default: True
-
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "1"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("1")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "2"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("2")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "3"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("3")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "4"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("4")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "5"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("5")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "6"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("6")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "7"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("7")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "8"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("8")
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "9"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("9")
-                            MDFlatButton:
-                                text: "Clear"
-                                font_size: "13sp"
-                                theme_text_color: "Secondary"
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                on_release: app.pin_keypad_clear()
-                            MDBoxLayout:
-                                size_hint: None, None
-                                size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                radius: [min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)) / 2]
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                md_bg_color: [0.93, 0.96, 1, 1] if app.theme_cls.theme_style == "Light" else [0.16, 0.18, 0.22, 1]
-                                MDFlatButton:
-                                    text: "0"
-                                    font_size: "25sp"
-                                    size_hint: None, None
-                                    size: min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075)), min(dp(64), max(dp(46), dp(46) + (Window.height - dp(560)) * 0.075))
-                                    pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                    on_release: app.pin_keypad_press("0")
-                            MDIconButton:
-                                icon: "backspace-outline"
-                                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                                on_release: app.pin_keypad_backspace()
-
-                        MDIconButton:
-                            id: pin_fingerprint_btn
-                            icon: "fingerprint"
+                            icon: "circle"
+                            font_size: "13sp"
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
-                            icon_size: "34sp"
-                            size_hint: (None, None)
-                            size: [dp(48), dp(48)]
-                            pos_hint: {'center_x': 0.5}
-                            opacity: 1 if app.pin_biometric_available else 0
-                            disabled: not app.pin_biometric_available
-                            on_release: app.attempt_pin_fingerprint()
+                            opacity: 1 if app.pin_entry_length >= 1 else 0
+                    MDBoxLayout:
+                        size_hint: None, None
+                        size: dp(42), dp(54)
+                        canvas.before:
+                            Color:
+                                rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 2 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 2 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                width: dp(1.3)
+                        MDIcon:
+                            icon: "circle"
+                            font_size: "13sp"
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            opacity: 1 if app.pin_entry_length >= 2 else 0
+                    MDBoxLayout:
+                        size_hint: None, None
+                        size: dp(42), dp(54)
+                        canvas.before:
+                            Color:
+                                rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 3 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 3 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                width: dp(1.3)
+                        MDIcon:
+                            icon: "circle"
+                            font_size: "13sp"
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            opacity: 1 if app.pin_entry_length >= 3 else 0
+                    MDBoxLayout:
+                        size_hint: None, None
+                        size: dp(42), dp(54)
+                        canvas.before:
+                            Color:
+                                rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 4 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 4 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                width: dp(1.3)
+                        MDIcon:
+                            icon: "circle"
+                            font_size: "13sp"
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            opacity: 1 if app.pin_entry_length >= 4 else 0
+                    MDBoxLayout:
+                        size_hint: None, None
+                        size: dp(42), dp(54)
+                        canvas.before:
+                            Color:
+                                rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 5 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 5 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                width: dp(1.3)
+                        MDIcon:
+                            icon: "circle"
+                            font_size: "13sp"
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            opacity: 1 if app.pin_entry_length >= 5 else 0
+                    MDBoxLayout:
+                        size_hint: None, None
+                        size: dp(42), dp(54)
+                        canvas.before:
+                            Color:
+                                rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 6 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 6 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
+                            Line:
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                width: dp(1.3)
+                        MDIcon:
+                            icon: "circle"
+                            font_size: "13sp"
+                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                            theme_text_color: "Custom"
+                            text_color: app.theme_cls.primary_color
+                            opacity: 1 if app.pin_entry_length >= 6 else 0
 
-                        MDFlatButton:
+                MDLabel:
+                    id: pin_error_hint
+                    text: ""
+                    halign: "center"
+                    theme_text_color: "Error"
+                    font_style: "Caption"
+                    size_hint_y: None
+                    height: dp(22)
 
-                            text: "Not you? Use email & password"
+                Widget:
+                    size_hint_y: None
+                    height: dp(8)
 
-                            size_hint_x: 1
+                MDGridLayout:
+                    cols: 3
+                    size_hint_y: None
+                    height: self.minimum_height
+                    spacing: dp(2)
+                    row_default_height: dp(64)
+                    row_force_default: True
 
-                            on_release: app.switch_to_full_login()
+                    MDFlatButton:
+                        text: "1"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("1")
+                    MDFlatButton:
+                        text: "2"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("2")
+                    MDFlatButton:
+                        text: "3"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("3")
+                    MDFlatButton:
+                        text: "4"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("4")
+                    MDFlatButton:
+                        text: "5"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("5")
+                    MDFlatButton:
+                        text: "6"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("6")
+                    MDFlatButton:
+                        text: "7"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("7")
+                    MDFlatButton:
+                        text: "8"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("8")
+                    MDFlatButton:
+                        text: "9"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("9")
+                    MDFlatButton:
+                        text: "Clear"
+                        font_size: "13sp"
+                        theme_text_color: "Secondary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_clear()
+                    MDFlatButton:
+                        text: "0"
+                        font_size: "26sp"
+                        bold: True
+                        theme_text_color: "Primary"
+                        size_hint: None, None
+                        size: dp(64), dp(64)
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_press("0")
+                    MDIconButton:
+                        icon: "backspace-outline"
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.primary_color
+                        icon_size: "24sp"
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.pin_keypad_backspace()
 
-            MDBoxLayout:
+                Widget:
+                    size_hint_y: None
+                    height: dp(16)
 
-                size_hint_y: None
+                MDBoxLayout:
+                    size_hint: None, None
+                    size: dp(64), dp(64)
+                    pos_hint: {'center_x': 0.5}
+                    opacity: 1 if app.pin_biometric_available else 0
+                    disabled: not app.pin_biometric_available
+                    canvas.before:
+                        Color:
+                            rgba: app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.10
+                        Ellipse:
+                            pos: self.pos
+                            size: self.size
+                        Color:
+                            rgba: app.theme_cls.primary_color
+                        Line:
+                            circle: self.center_x, self.center_y, self.width / 2
+                            width: dp(1.4)
 
-                height: dp(65)
+                    MDIconButton:
+                        id: pin_fingerprint_btn
+                        icon: "fingerprint"
+                        theme_text_color: "Custom"
+                        text_color: app.theme_cls.primary_color
+                        icon_size: "34sp"
+                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                        on_release: app.attempt_pin_fingerprint()
 
-                md_bg_color: app.theme_cls.primary_color
+                Widget:
+                    size_hint_y: None
+                    height: dp(6)
 
-                radius: [dp(30), dp(30), 0, 0]
+                MDFlatButton:
+                    text: "Not you? Use email & password"
+                    size_hint_x: 1
+                    theme_text_color: "Custom"
+                    text_color: app.theme_cls.primary_color
+                    on_release: app.switch_to_full_login()
+
 
 
 
