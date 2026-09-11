@@ -6860,138 +6860,138 @@ LazyScreenManager:
                 MDBoxLayout:
                     orientation: 'horizontal'
                     size_hint: None, None
-                    size: self.minimum_width, dp(56)
-                    spacing: dp(10)
+                    size: self.minimum_width, dp(42)
+                    spacing: dp(8)
                     pos_hint: {'center_x': 0.5}
 
                     MDBoxLayout:
                         size_hint: None, None
-                        size: dp(42), dp(54)
+                        size: dp(30), dp(38)
                         canvas.before:
                             Color:
                                 rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 1 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                                radius: [dp(10), dp(10), dp(10), dp(10)]
                             Color:
                                 rgba: app.theme_cls.primary_color if app.pin_entry_length >= 1 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
                             Line:
-                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
                         MDIcon:
                             icon: "circle"
-                            font_size: "13sp"
+                            font_size: "9sp"
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
                             opacity: 1 if app.pin_entry_length >= 1 else 0
                     MDBoxLayout:
                         size_hint: None, None
-                        size: dp(42), dp(54)
+                        size: dp(30), dp(38)
                         canvas.before:
                             Color:
                                 rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 2 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                                radius: [dp(10), dp(10), dp(10), dp(10)]
                             Color:
                                 rgba: app.theme_cls.primary_color if app.pin_entry_length >= 2 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
                             Line:
-                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
                         MDIcon:
                             icon: "circle"
-                            font_size: "13sp"
+                            font_size: "9sp"
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
                             opacity: 1 if app.pin_entry_length >= 2 else 0
                     MDBoxLayout:
                         size_hint: None, None
-                        size: dp(42), dp(54)
+                        size: dp(30), dp(38)
                         canvas.before:
                             Color:
                                 rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 3 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                                radius: [dp(10), dp(10), dp(10), dp(10)]
                             Color:
                                 rgba: app.theme_cls.primary_color if app.pin_entry_length >= 3 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
                             Line:
-                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
                         MDIcon:
                             icon: "circle"
-                            font_size: "13sp"
+                            font_size: "9sp"
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
                             opacity: 1 if app.pin_entry_length >= 3 else 0
                     MDBoxLayout:
                         size_hint: None, None
-                        size: dp(42), dp(54)
+                        size: dp(30), dp(38)
                         canvas.before:
                             Color:
                                 rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 4 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                                radius: [dp(10), dp(10), dp(10), dp(10)]
                             Color:
                                 rgba: app.theme_cls.primary_color if app.pin_entry_length >= 4 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
                             Line:
-                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
                         MDIcon:
                             icon: "circle"
-                            font_size: "13sp"
+                            font_size: "9sp"
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
                             opacity: 1 if app.pin_entry_length >= 4 else 0
                     MDBoxLayout:
                         size_hint: None, None
-                        size: dp(42), dp(54)
+                        size: dp(30), dp(38)
                         canvas.before:
                             Color:
                                 rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 5 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                                radius: [dp(10), dp(10), dp(10), dp(10)]
                             Color:
                                 rgba: app.theme_cls.primary_color if app.pin_entry_length >= 5 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
                             Line:
-                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
                         MDIcon:
                             icon: "circle"
-                            font_size: "13sp"
+                            font_size: "9sp"
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
                             opacity: 1 if app.pin_entry_length >= 5 else 0
                     MDBoxLayout:
                         size_hint: None, None
-                        size: dp(42), dp(54)
+                        size: dp(30), dp(38)
                         canvas.before:
                             Color:
                                 rgba: (app.theme_cls.primary_color[0], app.theme_cls.primary_color[1], app.theme_cls.primary_color[2], 0.12) if app.pin_entry_length >= 6 else ([0.96, 0.96, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.21, 1])
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
-                                radius: [dp(14), dp(14), dp(14), dp(14)]
+                                radius: [dp(10), dp(10), dp(10), dp(10)]
                             Color:
                                 rgba: app.theme_cls.primary_color if app.pin_entry_length >= 6 else ([0.83, 0.85, 0.9, 1] if app.theme_cls.theme_style == "Light" else [0.28, 0.3, 0.36, 1])
                             Line:
-                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(14)]
+                                rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
                         MDIcon:
                             icon: "circle"
-                            font_size: "13sp"
+                            font_size: "9sp"
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
                             theme_text_color: "Custom"
                             text_color: app.theme_cls.primary_color
