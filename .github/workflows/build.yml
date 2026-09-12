@@ -26,7 +26,7 @@ env:
   # invalidate the .buildozer cache even though buildozer.spec itself
   # didn't change - otherwise stale, already-Cythonized C files from a
   # previous run get silently reused.
-  CACHE_VERSION: "v3-api36"
+  CACHE_VERSION: "v4-16kb-align"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "25.1.8937393"   # = NDK 25b
   ANDROID_HOME: /home/runner/android-sdk
@@ -261,6 +261,20 @@ jobs:
           P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           P4A_RELEASE_KEYALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # ---------------------------------------------------------------
+          # 16 KB native library page-size alignment (Google Play warning:
+          # "Recompile your app with 16 KB native library alignment").
+          # NDK r27+ page-aligns to 16 KB by default; we're pinned to NDK
+          # 25b (see the comment on android.ndk above - deliberately, for
+          # build stability), which does NOT. Rather than risk re-breaking
+          # the build by bumping the NDK, we pass the linker flag Google
+          # itself documents for exactly this case, so libraries that p4a
+          # compiles from source (Python, OpenSSL, SQLite, Kivy's own C
+          # extensions, etc.) get built 16 KB-aligned without changing the
+          # NDK/toolchain version. This does NOT cover prebuilt .so files
+          # from a wheel that's already compiled - if any recipe pulls in
+          # binaries it didn't build itself, those won't be touched by this.
+          LDFLAGS: "-Wl,-z,max-page-size=16384"
         run: |
           set -euo pipefail
           BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
