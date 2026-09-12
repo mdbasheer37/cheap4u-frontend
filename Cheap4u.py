@@ -6685,6 +6685,23 @@ LazyScreenManager:
 
                             font_size: '16sp'
 
+                        # Login with PIN instead — lets a reinstalled app or
+                        # a new device sign in with the account's Login PIN
+                        # (server-verified) instead of the password.
+                        MDTextButton:
+
+                            text: "[color=#1976D2]Log in with PIN instead[/color]"
+
+                            markup: True
+
+                            theme_text_color: "Custom"
+
+                            text_color: app.theme_cls.primary_color
+
+                            pos_hint: {'center_x': 0.5}
+
+                            on_release: app.show_login_with_pin_dialog()
+
                     
 
                     # Register link section with arrow
@@ -23363,6 +23380,9 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self.update_dashboard()
                 self.show_success_dialog("Account verified successfully!")
                 self.root.current = "dashboard"
+                email = self.current_user.get('email')
+                if email and not self.current_user.get('login_pin_set'):
+                    Clock.schedule_once(lambda dt: self.prompt_setup_quick_pin(email, self.session_token, self.current_user), 1)
                 # Clear pending data
                 self.pending_user_id = None
                 self.pending_user_email = None
@@ -23634,12 +23654,26 @@ class DashboardApp(ChallengeMixin, MDApp):
                 if pin != confirm:
                     self.show_error_dialog("PINs do not match")
                     return
-                if self.save_quick_pin(pin, email, session_token, user):
-                    dialog.dismiss()
-                    self.show_success_dialog("Quick PIN login enabled!")
-                else:
-                    dialog.dismiss()
-                    self.show_error_dialog("Couldn't save PIN - please try again")
+
+                # Save to the backend FIRST — the backend is the source of
+                # truth for the Login PIN (this is what makes it survive a
+                # reinstall or work on a new device). Only cache it locally
+                # once the server has confirmed it, so the local cache never
+                # claims a PIN the account doesn't actually have.
+                def on_server_response(success, response):
+                    if success and response.get('status') == 'success':
+                        if self.save_quick_pin(pin, email, session_token, user):
+                            self.current_user['login_pin_set'] = True
+                            dialog.dismiss()
+                            self.show_success_dialog("Quick PIN login enabled!")
+                        else:
+                            dialog.dismiss()
+                            self.show_error_dialog("PIN saved to your account, but couldn't cache it on this device. You can still use 'Log in with PIN' from the login screen.")
+                    else:
+                        msg = response.get('message', 'Could not set up PIN login') if response else 'Connection failed'
+                        self.show_error_dialog(msg)
+
+                self.backend_api_request('auth/set-login-pin', 'POST', {'new_pin': pin}, on_server_response)
 
             def do_skip(*a):
                 dialog.dismiss()
@@ -23657,6 +23691,157 @@ class DashboardApp(ChallengeMixin, MDApp):
             dialog.open()
         except Exception as e:
             print(f"prompt_setup_quick_pin error: {e}")
+
+    def prompt_enable_quick_pin_on_device(self, email):
+        """
+        The account already has a Login PIN set server-side (this is a
+        reinstall / new device), so don't offer to create a new one — just
+        offer to cache the EXISTING PIN on this device for fast unlock next
+        time. Verifies against the backend (login-with-pin) before caching
+        anything locally.
+        """
+        try:
+            pin_field = MDTextField(
+                hint_text="Enter your existing PIN",
+                icon_left="shield-key-outline",
+                password=True,
+                input_filter="int",
+                max_text_length=6,
+            )
+            content = MDBoxLayout(
+                orientation="vertical",
+                spacing=dp(15),
+                size_hint_y=None,
+                height=dp(60),
+                padding=[dp(10), dp(10), dp(10), dp(10)],
+            )
+            content.add_widget(pin_field)
+
+            def do_link(*a):
+                pin = pin_field.text.strip()
+                if len(pin) < 4:
+                    self.show_error_dialog("Enter your PIN")
+                    return
+
+                def on_response(success, response):
+                    if success and response.get('status') == 'success':
+                        data = response.get('data', {})
+                        token = data.get('session_token') or self.session_token
+                        user = data.get('user') or self.current_user
+                        if self.save_quick_pin(pin, email, token, user):
+                            dialog.dismiss()
+                            self.show_success_dialog("Quick PIN login enabled on this device!")
+                        else:
+                            dialog.dismiss()
+                            self.show_error_dialog("Couldn't cache PIN on this device - please try again")
+                    else:
+                        msg = response.get('message', 'Incorrect PIN') if response else 'Connection failed'
+                        self.show_error_dialog(msg)
+
+                self.backend_api_request('auth/login-with-pin', 'POST', {'identifier': email, 'pin': pin}, on_response)
+
+            def do_skip(*a):
+                dialog.dismiss()
+
+            dialog = MDDialog(
+                title="Enable quick PIN on this device?",
+                text="You already have a Login PIN on your account. Enter it once to enable quick unlock here too.",
+                type="custom",
+                content_cls=content,
+                buttons=[
+                    MDFlatButton(text="SKIP", on_release=do_skip),
+                    MDRaisedButton(text="ENABLE", on_release=do_link),
+                ],
+            )
+            dialog.open()
+        except Exception as e:
+            print(f"prompt_enable_quick_pin_on_device error: {e}")
+
+    def show_login_with_pin_dialog(self):
+        """
+        'Log in with PIN instead' on the login screen — for a reinstalled
+        app or a new device where there's no local quick-PIN cache yet, but
+        the account already has a Login PIN set on the backend. Identifies
+        the user by phone or email + PIN, no password needed.
+        """
+        try:
+            identifier_field = MDTextField(
+                hint_text="Phone or email",
+                icon_left="account-outline",
+            )
+            pin_field = MDTextField(
+                hint_text="PIN",
+                icon_left="shield-key-outline",
+                password=True,
+                input_filter="int",
+                max_text_length=6,
+            )
+            content = MDBoxLayout(
+                orientation="vertical",
+                spacing=dp(15),
+                size_hint_y=None,
+                height=dp(120),
+                padding=[dp(10), dp(10), dp(10), dp(10)],
+            )
+            content.add_widget(identifier_field)
+            content.add_widget(pin_field)
+
+            def do_submit(*a):
+                identifier = identifier_field.text.strip()
+                pin = pin_field.text.strip()
+                if not identifier or len(pin) < 4:
+                    self.show_error_dialog("Enter your phone/email and PIN")
+                    return
+                dialog.dismiss()
+                self.login_with_pin(identifier, pin)
+
+            def do_cancel(*a):
+                dialog.dismiss()
+
+            dialog = MDDialog(
+                title="Log in with PIN",
+                type="custom",
+                content_cls=content,
+                buttons=[
+                    MDFlatButton(text="CANCEL", on_release=do_cancel),
+                    MDRaisedButton(text="LOG IN", on_release=do_submit),
+                ],
+            )
+            dialog.open()
+        except Exception as e:
+            print(f"show_login_with_pin_dialog error: {e}")
+
+    def login_with_pin(self, identifier, pin):
+        """
+        Signs the user in using just their Login PIN (server-verified) plus
+        phone/email — no password, no local cache required. This is what
+        makes the PIN actually work across reinstalls and new devices.
+        """
+        self.show_loader("Signing in...")
+
+        def callback(success, response):
+            self.hide_loader()
+            if success and response.get('status') == 'success':
+                data = response.get('data', {})
+                self.session_token = data.get('session_token') or ''
+                self.current_user = data.get('user', {})
+                self.virtual_account_number = self.current_user.get('virtual_account_number') or ''
+                self.virtual_bank_name = self.current_user.get('virtual_bank_name') or ''
+                self.virtual_account_name = self.current_user.get('virtual_account_name') or ''
+                self.update_dashboard()
+                self.update_dashboard_virtual_account()
+                self.fetch_virtual_account_details()
+                self.show_success_dialog("Login successful!")
+                self.root.current = "dashboard"
+                # Cache it locally on this device too, so next time is instant.
+                email = self.current_user.get('email')
+                if email:
+                    self.save_quick_pin(pin, email, self.session_token, self.current_user)
+            else:
+                msg = response.get('message', 'Login failed') if response else 'Connection failed'
+                self.show_error_dialog(msg)
+
+        self.backend_api_request('auth/login-with-pin', 'POST', {'identifier': identifier, 'pin': pin}, callback)
 
     def _pin_login_success(self):
         """Shared success path for both PIN entry and fingerprint unlock."""
@@ -24054,7 +24239,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self.show_success_dialog("Login successful!")
                 self.root.current = "dashboard"
                 if not self.quick_pin_data or self.quick_pin_data.get('email') != email.lower():
-                    Clock.schedule_once(lambda dt: self.prompt_setup_quick_pin(email, self.session_token, self.current_user), 1)
+                    # Only offer to CREATE a PIN if the account doesn't
+                    # already have one server-side — otherwise we'd be
+                    # asking the user to make a new PIN when theirs already
+                    # exists (e.g. reinstall / new device). In that case they
+                    # already have "Log in with PIN instead" on this screen.
+                    if not self.current_user.get('login_pin_set'):
+                        Clock.schedule_once(lambda dt: self.prompt_setup_quick_pin(email, self.session_token, self.current_user), 1)
+                    else:
+                        Clock.schedule_once(lambda dt: self.prompt_enable_quick_pin_on_device(email), 1)
 
             elif response and response.get('requires_verification'):
                 self.pending_user_id = response.get('user_id')
