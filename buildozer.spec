@@ -309,7 +309,11 @@ android.archs = arm64-v8a
 # accepted upload) regardless of how the archs/version-string formula
 # would otherwise compute it. Bump this by at least 1 for every future
 # release.
-android.numeric_version = 10251
+# Bumped past 10251: that code was already attempted in a Play Console
+# draft that failed with "must target API level 36" (built before
+# android.api was raised to 36, above) - reusing 10251 risks Play Console
+# treating the new, fixed upload as a duplicate version code.
+android.numeric_version = 10252
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
