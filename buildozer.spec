@@ -36,7 +36,7 @@ source.exclude_dirs = tests, bin, venv, android-sdk, .buildozer, .git, .github
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 0.8
+version = 1.1
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -313,7 +313,7 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-android.numeric_version = 10254
+android.numeric_version = 10252
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
