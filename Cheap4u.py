@@ -11622,9 +11622,18 @@ class DashboardApp(ChallengeMixin, MDApp):
             code = data.get('referral_code', '')
             if hasattr(ids, 'referral_code_label'):
                 ids.referral_code_label.text = code
+            # FIX: was "https://cheap4u.technology/register?ref={code}" — that
+            # domain doesn't resolve and the backend never had a matching
+            # /register route, so anyone without the app already installed
+            # (the entire audience a referral link is for) hit a dead link.
+            # This doesn't auto-fill the code on install either (that needs
+            # Android's Play Install Referrer API, not wired up here) — the
+            # registration screen's optional referral-code field is still
+            # how it actually gets applied, so the share message below
+            # spells that out.
             if hasattr(ids, 'referral_link_label'):
                 ids.referral_link_label.text = (
-                    f"https://cheap4u.technology/register?ref={code}"
+                    "https://play.google.com/store/apps/details?id=com.cheap4u"
                 )
 
             # Counts
@@ -11709,10 +11718,20 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.load_referral_data()
             return
 
-        link = f"https://cheap4u.technology/register?ref={code}"
-        Clipboard.copy(link)
+        # FIX: was a dead "cheap4u.technology" link with no working page
+        # behind it — see the comment on referral_link_label above for why.
+        # The link alone can't carry the referral code into the app (no
+        # Play Install Referrer wiring here), so the message spells out
+        # the code explicitly instead of relying on the link to do it.
+        link = "https://play.google.com/store/apps/details?id=com.cheap4u"
+        share_text = (
+            f"Join me on Cheap4U for cheap airtime, data, electricity & TV subscriptions!\n\n"
+            f"Download: {link}\n\n"
+            f"After signing up, enter my referral code to link us: {code}"
+        )
+        Clipboard.copy(share_text)
         self.show_success_dialog(
-            f"Referral link copied!\n\n{link}\n\n"
+            f"Referral message copied!\n\n{share_text}\n\n"
             f"Share this with friends. You earn ₦50 when they sign up and fund their wallet."
         )
 
