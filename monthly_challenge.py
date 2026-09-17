@@ -437,26 +437,41 @@ CHALLENGE_KV = '''
                         radius: [15]
                         elevation: 2
                         size_hint_y: None
-                        height: dp(280)
+                        height: dp(420)
 
                         MDLabel:
                             text: "Reward Settings"
                             bold: True
                             font_style: "Subtitle1"
 
+                        MDLabel:
+                            text: "Each rank keeps this % of THEIR OWN total monthly spend as cashback."
+                            theme_text_color: "Secondary"
+                            font_style: "Caption"
+
                         MDTextField:
-                            id: first_place_field
-                            hint_text: "1st Place — Cashback % of total spend"
+                            id: rank1_field
+                            hint_text: "1st Place — Cashback % of own spend"
                             input_filter: "float"
 
                         MDTextField:
-                            id: second_place_field
-                            hint_text: "2nd Place — Fixed Wallet Bonus (₦)"
+                            id: rank2_field
+                            hint_text: "2nd Place — Cashback % of own spend"
                             input_filter: "float"
 
                         MDTextField:
-                            id: third_place_field
-                            hint_text: "3rd Place — Fixed Wallet Bonus (₦)"
+                            id: rank3_field
+                            hint_text: "3rd Place — Cashback % of own spend"
+                            input_filter: "float"
+
+                        MDTextField:
+                            id: rank4_field
+                            hint_text: "4th Place — Cashback % of own spend"
+                            input_filter: "float"
+
+                        MDTextField:
+                            id: rank5_field
+                            hint_text: "5th Place — Cashback % of own spend"
                             input_filter: "float"
 
                         MDTextField:
@@ -775,9 +790,11 @@ class ChallengeMixin:
                 return
             cfg = result.get('data', {})
             screen.ids.enabled_switch.active = bool(cfg.get('is_enabled', True))
-            screen.ids.first_place_field.text = str(cfg.get('first_place_percent', 50))
-            screen.ids.second_place_field.text = str(cfg.get('second_place_bonus', 10000))
-            screen.ids.third_place_field.text = str(cfg.get('third_place_bonus', 5000))
+            screen.ids.rank1_field.text = str(cfg.get('rank1_percent', 10))
+            screen.ids.rank2_field.text = str(cfg.get('rank2_percent', 8))
+            screen.ids.rank3_field.text = str(cfg.get('rank3_percent', 6))
+            screen.ids.rank4_field.text = str(cfg.get('rank4_percent', 4))
+            screen.ids.rank5_field.text = str(cfg.get('rank5_percent', 2))
             screen.ids.min_qualify_field.text = str(cfg.get('min_qualifying_amount', 0))
             screen.ids.last_processed_label.text = f"Last processed month: {cfg.get('last_processed_month') or '—'}"
 
@@ -788,9 +805,11 @@ class ChallengeMixin:
         try:
             payload = {
                 'is_enabled': screen.ids.enabled_switch.active,
-                'first_place_percent': float(screen.ids.first_place_field.text or 0),
-                'second_place_bonus': float(screen.ids.second_place_field.text or 0),
-                'third_place_bonus': float(screen.ids.third_place_field.text or 0),
+                'rank1_percent': float(screen.ids.rank1_field.text or 0),
+                'rank2_percent': float(screen.ids.rank2_field.text or 0),
+                'rank3_percent': float(screen.ids.rank3_field.text or 0),
+                'rank4_percent': float(screen.ids.rank4_field.text or 0),
+                'rank5_percent': float(screen.ids.rank5_field.text or 0),
                 'min_qualifying_amount': float(screen.ids.min_qualify_field.text or 0),
             }
         except ValueError:
@@ -808,7 +827,7 @@ class ChallengeMixin:
     def admin_process_month_confirm(self):
         dialog = MDDialog(
             title="Process month now?",
-            text="This will archive the Top 3 winners for the last completed month "
+            text="This will archive the Top 5 winners for the last completed month "
                  "and credit their wallets immediately (safe to run more than once — "
                  "already-processed months are skipped).",
             buttons=[
