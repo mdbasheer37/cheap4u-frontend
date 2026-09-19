@@ -14525,7 +14525,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 orientation='vertical',
                 spacing=dp(6),
                 size_hint_y=None,
-                height=dp(max(len(users) * 85, 80)),
+                height=dp(max(len(users) * 140, 80)),
             )
 
             if not users:
@@ -14542,7 +14542,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                         card = MDCard(
                             orientation='vertical',
                             size_hint_y=None,
-                            height=dp(78),
+                            height=dp(132),
                             padding=dp(8),
                             spacing=dp(4),
                             radius=[8],
@@ -14568,6 +14568,26 @@ class DashboardApp(ChallengeMixin, MDApp):
                             height=dp(24),
                         ))
                         card.add_widget(info)
+
+                        # Phone + verification row
+                        row_phone = MDBoxLayout(orientation='horizontal', spacing=dp(5))
+                        row_phone.add_widget(MDLabel(
+                            text=f"📞 {u.get('phone', '—')}",
+                            font_style="Caption",
+                            theme_text_color="Secondary",
+                            size_hint_x=0.6,
+                            size_hint_y=None,
+                            height=dp(20),
+                        ))
+                        row_phone.add_widget(MDLabel(
+                            text="✅ Verified" if u.get('is_verified') else "⏳ Unverified",
+                            font_style="Caption",
+                            theme_text_color="Secondary",
+                            size_hint_x=0.4,
+                            size_hint_y=None,
+                            height=dp(20),
+                        ))
+                        card.add_widget(row_phone)
 
                         # Balance + status row
                         row2 = MDBoxLayout(orientation='horizontal', spacing=dp(5))
@@ -14599,6 +14619,41 @@ class DashboardApp(ChallengeMixin, MDApp):
                         )
                         row2.add_widget(btn)
                         card.add_widget(row2)
+
+                        # PIN status row — status only (set/not set, locked
+                        # or not). The actual PIN can't be shown here or
+                        # anywhere: both are bcrypt-hashed, which is
+                        # mathematically one-way, so there's no digits to
+                        # retrieve — that's what makes hashing them secure
+                        # in the first place. If a user is genuinely locked
+                        # out, the proper fix is their in-app "Forgot PIN"
+                        # flow (OTP-verified reset), not an admin reading
+                        # it back to them.
+                        row3 = MDBoxLayout(orientation='horizontal', spacing=dp(5))
+                        login_pin_text = "🔒 Login PIN: LOCKED" if u.get('login_pin_locked') else (
+                            "🔑 Login PIN: Set" if u.get('login_pin_set') else "Login PIN: Not set"
+                        )
+                        txn_pin_text = "🔒 Txn PIN: LOCKED" if u.get('transaction_pin_locked') else (
+                            "🔑 Txn PIN: Set" if u.get('transaction_pin_set') else "Txn PIN: Not set"
+                        )
+                        row3.add_widget(MDLabel(
+                            text=login_pin_text,
+                            font_style="Caption",
+                            theme_text_color="Secondary",
+                            size_hint_x=0.5,
+                            size_hint_y=None,
+                            height=dp(20),
+                        ))
+                        row3.add_widget(MDLabel(
+                            text=txn_pin_text,
+                            font_style="Caption",
+                            theme_text_color="Secondary",
+                            size_hint_x=0.5,
+                            size_hint_y=None,
+                            height=dp(20),
+                        ))
+                        card.add_widget(row3)
+
                         user_list.add_widget(card)
 
                     except Exception as e:
