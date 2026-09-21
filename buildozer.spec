@@ -313,7 +313,7 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-android.numeric_version = 10252
+android.numeric_version = 10253
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
