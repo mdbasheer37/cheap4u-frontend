@@ -252,7 +252,21 @@ android.enable_androidx = True
 # can be necessary to solve conflicts in gradle_dependencies
 # please enclose in double quotes 
 # e.g. android.add_packaging_options = "exclude 'META-INF/common.kotlin_module'", "exclude 'META-INF/*.kotlin_module'"
-#android.add_packaging_options =
+#
+# 16 KB PAGE SIZE FIX (part 1 of 2 - see p4a.source_dir below for part 2):
+# python-for-android's own Gradle template (build.tmpl.gradle, unconditional
+# for every app it builds) hardcodes:
+#     packagingOptions { jniLibs { useLegacyPackaging = true } }
+# "useLegacyPackaging = true" means native .so files are packaged the OLD,
+# COMPRESSED way. That is fundamentally incompatible with Google's 16 KB
+# page size requirement, regardless of how well the .so files themselves
+# are ELF-aligned - Play Console reads it straight off the AAB's bundle
+# config. This is emitted as a *second* packagingOptions{} block inside the
+# same android{} closure, so Gradle evaluates it after the template's own
+# block and the later assignment wins, overriding true -> false.
+# (Confirmed against python-for-android's own repo, "develop" branch,
+#  pythonforandroid/bootstraps/common/build/templates/build.tmpl.gradle.)
+android.add_packaging_options = "jniLibs { useLegacyPackaging = false }"
 
 # (list) Java classes to add as activities to the manifest.
 #android.add_activities = com.example.ExampleActivity
@@ -378,6 +392,24 @@ p4a.branch = v2026.05.09
 #p4a.commit = HEAD
 
 # (str) python-for-android git clone directory
+#
+# 16 KB PAGE SIZE FIX (part 2 of 2 - see android.add_packaging_options above
+# for part 1):
+# NDK r28+ compiles 16 KB-aligned by default for recipes built through the
+# standard autotools/distutils path (python3, openssl, sqlite3, libffi, ...),
+# but the SDL2 bootstrap (libSDL2.so, libSDL2_image.so, libSDL2_mixer.so,
+# libSDL2_ttf.so, and p4a's own libmain.so) is built by directly invoking
+# `ndk-build` against pythonforandroid/bootstraps/sdl2/build/jni/Application.mk,
+# which does NOT reliably inherit that default - confirmed by many people
+# still getting 4 KB-aligned SDL2 libraries in 2026 even with NDK r28 and
+# p4a's "develop" branch (https://github.com/kivy/python-for-android/issues/3165).
+# The CI workflow (.github/workflows/build.yml) clones python-for-android
+# itself at p4a.branch above into a local folder, appends the missing
+# APP_LDFLAGS/-Wl,-z,max-page-size=16384 line to that one Application.mk
+# file, and points this option at that patched local checkout - leave this
+# line commented for local/manual builds (they'll just fall back to p4a's
+# normal auto-clone behaviour, without the SDL2 patch); CI overwrites it via
+# sed before every build.
 #p4a.source_dir =
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
