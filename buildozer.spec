@@ -242,6 +242,8 @@ android.enable_androidx = True
 # see https://developer.android.com/studio/write/java8-support for further information
 # android.add_compile_options = "sourceCompatibility = 1.8", "targetCompatibility = 1.8"
 
+android.extra_ldflags = -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384 
+
 # (list) Gradle repositories to add {can be necessary for some android.gradle_dependencies}
 # please enclose in double quotes 
 # e.g. android.gradle_repositories = "maven { url 'https://repo.spring.io/release' }"
