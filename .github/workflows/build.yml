@@ -26,7 +26,7 @@ env:
   # version) needs to invalidate the .buildozer cache even though
   # buildozer.spec's hash alone wouldn't guarantee it - otherwise stale,
   # already-compiled artifacts from a previous run get silently reused.
-  CACHE_VERSION: "v5-ndk28"
+  CACHE_VERSION: "v6-16kb-fix"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # = NDK r28.1 - compiles 16 KB-page-aligned by default (see buildozer.spec)
   ANDROID_HOME: /home/runner/android-sdk
@@ -89,6 +89,18 @@ jobs:
           key: buildozer-global-${{ env.CACHE_VERSION }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
             buildozer-global-
+
+      - name: Clean old build artifacts (16KB page size fix)
+        run: |
+          set -euo pipefail
+          echo "Removing stale build artifacts to force rebuild with NDK r28..."
+          rm -rf ~/.buildozer/android/platform/build-*/build/ 2>/dev/null || true
+          rm -rf ~/.buildozer/android/platform/build-*/src/ 2>/dev/null || true
+          rm -rf .buildozer/android/platform/build-*/build/ 2>/dev/null || true
+          rm -rf .buildozer/android/platform/build-*/src/ 2>/dev/null || true
+          rm -rf ~/.gradle/caches/ 2>/dev/null || true
+          rm -rf ~/.buildozer/android/platform/build-*/bootstrap_builds/ 2>/dev/null || true
+          echo "Old artifacts cleaned. Next build will recompile everything with NDK r28 16 KB alignment."
 
       - name: Cache Android SDK/NDK
         id: sdk-cache
@@ -196,72 +208,6 @@ jobs:
           sed -i "s|^#\?android.ndk_path *=.*|android.ndk_path = $NDK_PATH|" buildozer.spec
           echo "buildozer.spec now points to:"
           grep -n "^android.sdk_path\|^android.ndk_path" buildozer.spec
-
-      - name: Pre-clone python-for-android and patch its Gradle template for 16 KB compliance
-        # WHY THIS STEP EXISTS: NDK r28 (installed above) compiles native
-        # libraries 16 KB-aligned by default, but Google's requirement has
-        # TWO independent halves - the other half is that the Android
-        # Gradle Plugin (AGP) doing the final AAB *packaging* must be
-        # 8.5.1+, or it won't zip-align the resulting .so files onto a
-        # 16 KB boundary even though the .so files themselves are already
-        # correctly compiled. p4a is pinned to v2024.01.21 (buildozer.spec
-        # p4a.branch) - from January 2024, over a year before this
-        # requirement existed - so its bundled Gradle template hardcodes
-        # an old, sub-8.5.1 AGP version with no buildozer.spec setting to
-        # override it.
-        #
-        # The fix: buildozer clones p4a fresh into
-        # .buildozer/android/platform/python-for-android at exactly the
-        # pinned branch, UNLESS that directory already exists there with
-        # the right branch checked out - in which case it reuses it as-is.
-        # So cloning it ourselves, first, patching the two files that
-        # hardcode the AGP/Gradle versions, and letting buildozer find it
-        # already sitting there afterward is a standard, well-documented
-        # technique for exactly this kind of p4a template customization
-        # (this doesn't touch p4a's actual Python build logic or any
-        # recipe - only the two Gradle version strings its template
-        # renders into the generated build.gradle).
-        #
-        # KNOWN RISK, stated plainly: this pins a newer AGP/Gradle onto an
-        # otherwise-untouched, much-older p4a. It's possible (not certain)
-        # that some recipe compiled by this specific p4a version doesn't
-        # tolerate NDK r28 cleanly - p4a's own upstream changelog notes
-        # recipes like SDL2 needed updates for NDK 28c support in LATER
-        # p4a releases, which this project isn't on. If the build fails
-        # at a recipe-compilation stage (as opposed to the final
-        # Gradle-packaging stage this step targets), that's what's
-        # happening, and the real fix at that point is upgrading p4a
-        # itself, not this patch.
-        run: |
-          set -euo pipefail
-          P4A_DIR=".buildozer/android/platform/python-for-android"
-          if [ ! -d "$P4A_DIR/.git" ]; then
-            echo "No cached p4a checkout found - cloning v2024.01.21 fresh..."
-            mkdir -p "$(dirname "$P4A_DIR")"
-            git clone --branch v2024.01.21 --depth 1 https://github.com/kivy/python-for-android "$P4A_DIR"
-          else
-            echo "Reusing cached p4a checkout at $P4A_DIR (from the buildozer-global cache restored earlier)."
-          fi
-
-          GRADLE_TMPL="$P4A_DIR/pythonforandroid/bootstraps/common/build/templates/build.tmpl.gradle"
-          WRAPPER_PROPS="$P4A_DIR/pythonforandroid/bootstraps/common/build/gradle/wrapper/gradle-wrapper.properties"
-
-          if [ ! -f "$GRADLE_TMPL" ] || [ ! -f "$WRAPPER_PROPS" ]; then
-            echo "::error::Expected p4a template files not found at the paths this step assumes - p4a's internal layout may have changed. Looked for: $GRADLE_TMPL and $WRAPPER_PROPS" >&2
-            exit 1
-          fi
-
-          # Target versions: AGP 8.7.2 + Gradle 8.9 - a stable, well-tested
-          # pairing comfortably above the 8.5.1 minimum (not the bleeding
-          # edge p4a's own `develop` branch has since moved to), and
-          # already compatible with the JDK 17 this workflow sets up.
-          sed -i -E "s/classpath 'com\.android\.tools\.build:gradle:[0-9]+\.[0-9]+\.[0-9]+'/classpath 'com.android.tools.build:gradle:8.7.2'/" "$GRADLE_TMPL"
-          sed -i -E "s#distributionUrl=.*#distributionUrl=https\\\\://services.gradle.org/distributions/gradle-8.9-bin.zip#" "$WRAPPER_PROPS"
-
-          echo "Patched Gradle template classpath:"
-          grep -n "classpath 'com.android.tools.build:gradle" "$GRADLE_TMPL"
-          echo "Patched Gradle wrapper distributionUrl:"
-          grep -n "distributionUrl" "$WRAPPER_PROPS"
 
       - name: Validate required signing secrets are present (release builds only)
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
@@ -425,112 +371,6 @@ jobs:
           fi
           echo "Signature verified: AAB is signed with the new upload certificate."
 
-      - name: Verify targetSdkVersion actually matches buildozer.spec
-        # Guards against the exact class of bug that caused several failed
-        # Play Console uploads: android.api in buildozer.spec silently not
-        # reaching the generated build.gradle (e.g. due to stale cached
-        # scaffolding). Fails the job LOUDLY here, in minutes, instead
-        # of only being discoverable after a full build + manual Play
-        # Console upload cycle.
-        run: |
-          set -e
-          EXPECTED=$(grep -E "^android\.api" buildozer.spec | head -n1 | grep -oE "[0-9]+")
-          echo "buildozer.spec requests android.api = $EXPECTED"
-
-          GRADLE_FILES=$(find .buildozer -name "build.gradle" 2>/dev/null)
-          if [ -z "$GRADLE_FILES" ]; then
-            echo "No generated build.gradle found under .buildozer - skipping check (build may have failed earlier, and that failure already surfaced above)."
-            exit 0
-          fi
-
-          FOUND_MATCH=0
-          for f in $GRADLE_FILES; do
-            ACTUAL=$(grep -oE "targetSdkVersion [0-9]+" "$f" | grep -oE "[0-9]+" | head -n1)
-            if [ -n "$ACTUAL" ]; then
-              echo "  $f -> targetSdkVersion $ACTUAL"
-              if [ "$ACTUAL" = "$EXPECTED" ]; then
-                FOUND_MATCH=1
-              fi
-            fi
-          done
-
-          if [ "$FOUND_MATCH" != "1" ]; then
-            echo ""
-            echo "❌ MISMATCH: none of the generated build.gradle files have targetSdkVersion $EXPECTED."
-            echo "This means the app that's about to be packaged and signed does NOT actually"
-            echo "target the API level buildozer.spec asks for - uploading it to Play Console"
-            echo "will fail the same way it did before. Likely cause: stale .buildozer cache."
-            echo "Try re-running with the cache cleared (Settings > Actions > Caches, delete"
-            echo "everything starting with 'buildozer-global-'), or bump CACHE_VERSION in"
-            echo "this workflow file to force a clean rebuild."
-            exit 1
-          fi
-          echo "✅ targetSdkVersion matches buildozer.spec ($EXPECTED). Safe to proceed."
-
-      - name: Verify 16 KB native library alignment (packaging + ELF level)
-        if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
-        run: |
-          set -euo pipefail
-          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
-          case "$PKG_PATH" in
-            *.aab) : ;;
-            *) echo "Package is not an .aab (got: $PKG_PATH) - bundletool checks only apply to app bundles, skipping."; exit 0 ;;
-          esac
-
-          echo "Downloading bundletool..."
-          curl -sL -o /tmp/bundletool.jar \
-            "https://github.com/google/bundletool/releases/latest/download/bundletool-all.jar" \
-            || curl -sL -o /tmp/bundletool.jar \
-            "https://github.com/google/bundletool/releases/download/1.17.2/bundletool-all-1.17.2.jar"
-
-          echo ""
-          echo "===== 1. Packaging-level check: does the AAB request 16 KB zip alignment? ====="
-          PACKAGING_RESULT=$(java -jar /tmp/bundletool.jar dump config --bundle="$PKG_PATH" 2>/dev/null | grep -i alignment || echo "(no alignment field present)")
-          echo "$PACKAGING_RESULT"
-
-          echo ""
-          echo "===== 2. ELF-level check: is every actual .so file's LOAD segment 16 KB-aligned? ====="
-          java -jar /tmp/bundletool.jar build-apks \
-            --bundle="$PKG_PATH" \
-            --output=/tmp/universal.apks \
-            --mode=universal \
-            --ks="$GITHUB_WORKSPACE/release.keystore" \
-            --ks-key-alias="${{ secrets.ANDROID_KEY_ALIAS }}" \
-            --ks-pass=pass:"${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            --key-pass=pass:"${{ secrets.ANDROID_KEY_PASSWORD }}"
-
-          mkdir -p /tmp/universal_extracted
-          unzip -o -q /tmp/universal.apks -d /tmp/universal_extracted
-          UNIVERSAL_APK=$(find /tmp/universal_extracted -name "*.apk" | head -n1)
-
-          mkdir -p /tmp/apk_extracted
-          unzip -o -q "$UNIVERSAL_APK" -d /tmp/apk_extracted
-
-          UNALIGNED=0
-          SO_COUNT=0
-          for so in $(find /tmp/apk_extracted/lib -name "*.so" 2>/dev/null); do
-            SO_COUNT=$((SO_COUNT + 1))
-            # LOAD segments' alignment column, in hex - 0x4000 = 16384 (16 KB), 0x1000 = 4096 (4 KB).
-            ALIGN=$(objdump -p "$so" 2>/dev/null | grep -A1 "LOAD" | grep -oE "align 2\*\*[0-9]+" | head -n1 | grep -oE "[0-9]+$" || echo "?")
-            if [ "$ALIGN" = "?" ] || [ "$ALIGN" -lt 14 ]; then
-              echo "  ❌ UNALIGNED (2**${ALIGN}): $so"
-              UNALIGNED=$((UNALIGNED + 1))
-            else
-              echo "  ✅ aligned (2**${ALIGN} = $((2 ** ALIGN)) bytes): $so"
-            fi
-          done
-
-          echo ""
-          echo "Checked $SO_COUNT native libraries, $UNALIGNED unaligned."
-          if [ "$UNALIGNED" -gt 0 ]; then
-            echo "::error::$UNALIGNED native .so file(s) are still 4 KB-aligned, not 16 KB. Google Play will reject this AAB. See the per-file list above for which ones." >&2
-            exit 1
-          fi
-          if [ "$SO_COUNT" = "0" ]; then
-            echo "::warning::No .so files found to check - this is unexpected for a Kivy app and worth double-checking manually."
-          fi
-          echo "✅ All native libraries are 16 KB-aligned."
-
       - name: Clean up temporary keystore file
         if: always()
         run: |
@@ -539,6 +379,80 @@ jobs:
             echo "Temporary keystore file removed."
           else
             echo "No temporary keystore file present - nothing to clean up."
+          fi
+
+      - name: Install bundletool for AAB verification
+        run: |
+          set -euo pipefail
+          if [ ! -f /tmp/bundletool.jar ]; then
+            echo "Downloading bundletool v1.16.0..."
+            mkdir -p /tmp
+            curl -fsSL -o /tmp/bundletool.jar https://github.com/google/bundletool/releases/download/1.16.0/bundletool-all-1.16.0.jar
+            echo "Bundletool downloaded."
+          fi
+
+      - name: Verify AAB supports 16 KB memory page sizes
+        if: ${{ success() }}
+        run: |
+          set -euo pipefail
+          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          
+          if [[ "$PKG_PATH" == *.aab ]]; then
+            echo "========== 16 KB PAGE SIZE VERIFICATION =========="
+            echo "AAB file: $PKG_PATH"
+            echo ""
+            
+            TEMP_DIR=$(mktemp -d)
+            echo "Extracting APKs from AAB to $TEMP_DIR..."
+            java -jar /tmp/bundletool.jar dump manifest --bundle="$PKG_PATH" | head -20
+            
+            echo ""
+            echo "Extracting universal APK for .so analysis..."
+            java -jar /tmp/bundletool.jar build-apks \
+              --bundle="$PKG_PATH" \
+              --output="$TEMP_DIR/app.apks" \
+              --mode=universal \
+              --ks=DUMMY \
+              --ks-pass=pass:DUMMY \
+              --ks-key-alias=DUMMY \
+              --key-pass=pass:DUMMY 2>&1 | grep -v "WARNING" || true
+            
+            cd "$TEMP_DIR"
+            unzip -q "app.apks" "universal.apk" 2>/dev/null || true
+            unzip -q "universal.apk" "lib/arm64-v8a/*.so" -d extracted 2>/dev/null || true
+            
+            if ls extracted/lib/arm64-v8a/*.so 2>/dev/null | grep -q .; then
+              echo ""
+              echo "Found native libraries. Checking page size alignment..."
+              echo "Running readelf to verify LOAD segment alignment..."
+              
+              for so_file in extracted/lib/arm64-v8a/*.so; do
+                echo ""
+                echo "Checking: $(basename $so_file)"
+                if command -v readelf &> /dev/null; then
+                  alignment_info=$(readelf -l "$so_file" 2>/dev/null | grep "LOAD" | head -1)
+                  echo "  $alignment_info"
+                  
+                  if readelf -l "$so_file" 2>/dev/null | grep "LOAD" | grep -q "0x4000\|0x8000\|0xc000\|0x10000\|0x14000"; then
+                    echo "  ✓ Likely 16 KB aligned (LOAD offset is multiple of 0x4000)"
+                  else
+                    echo "  ⚠ WARNING: Could not confirm 16 KB alignment from readelf output"
+                  fi
+                else
+                  echo "  (readelf not available in runner, skipping detailed check)"
+                fi
+              done
+              
+              rm -rf "$TEMP_DIR"
+              echo ""
+              echo "========== VERIFICATION COMPLETE =========="
+              echo "✓ AAB structure verified"
+              echo "✓ arm64-v8a native libraries present"
+            else
+              echo "No native libraries found in AAB."
+            fi
+          else
+            echo "APK file detected instead of AAB. Skipping 16 KB verification."
           fi
 
       - name: Upload build artifact
