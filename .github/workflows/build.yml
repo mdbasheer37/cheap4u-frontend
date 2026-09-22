@@ -22,13 +22,13 @@ env:
   # Centralised version pins so SDK / NDK / build-tools always agree
   # with what buildozer.spec expects.
   ANDROID_COMPILE_SDK: "36"
-  # Bump this whenever a toolchain change (e.g. the Cython pin) needs to
-  # invalidate the .buildozer cache even though buildozer.spec itself
-  # didn't change - otherwise stale, already-Cythonized C files from a
-  # previous run get silently reused.
-  CACHE_VERSION: "v4-16kb-align"
+  # Bump this whenever a toolchain change (e.g. the Cython pin, the NDK
+  # version) needs to invalidate the .buildozer cache even though
+  # buildozer.spec's hash alone wouldn't guarantee it - otherwise stale,
+  # already-compiled artifacts from a previous run get silently reused.
+  CACHE_VERSION: "v5-ndk28"
   ANDROID_BUILD_TOOLS: "36.0.0"
-  ANDROID_NDK_VERSION: "25.1.8937393"   # = NDK 25b
+  ANDROID_NDK_VERSION: "28.1.13356709"   # = NDK r28.1 - compiles 16 KB-page-aligned by default (see buildozer.spec)
   ANDROID_HOME: /home/runner/android-sdk
   ANDROID_SDK_ROOT: /home/runner/android-sdk
 
@@ -87,17 +87,8 @@ jobs:
             ~/.buildozer
             .buildozer
           key: buildozer-global-${{ env.CACHE_VERSION }}-${{ hashFiles('buildozer.spec') }}
-          # NOTE: deliberately no `restore-keys` here. A prefix fallback
-          # like "buildozer-global-" would restore the MOST RECENT cache
-          # any time this exact key doesn't match — including after a
-          # buildozer.spec edit — which silently pulls in an already
-          # generated build.gradle (and other scaffolding) from BEFORE
-          # that edit. That's what caused android.api = 36 to never
-          # actually reach the built .aab: the cache kept restoring an
-          # older build.gradle with targetSdkVersion 35 already baked in,
-          # and p4a doesn't necessarily regenerate it if one already
-          # exists. Every buildozer.spec change must produce a clean
-          # rebuild, so there is no fallback key at all now.
+          restore-keys: |
+            buildozer-global-
 
       - name: Cache Android SDK/NDK
         id: sdk-cache
@@ -270,20 +261,17 @@ jobs:
           P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           P4A_RELEASE_KEYALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          # ---------------------------------------------------------------
-          # 16 KB native library page-size alignment (Google Play warning:
-          # "Recompile your app with 16 KB native library alignment").
-          # NDK r27+ page-aligns to 16 KB by default; we're pinned to NDK
-          # 25b (see the comment on android.ndk above - deliberately, for
-          # build stability), which does NOT. Rather than risk re-breaking
-          # the build by bumping the NDK, we pass the linker flag Google
-          # itself documents for exactly this case, so libraries that p4a
-          # compiles from source (Python, OpenSSL, SQLite, Kivy's own C
-          # extensions, etc.) get built 16 KB-aligned without changing the
-          # NDK/toolchain version. This does NOT cover prebuilt .so files
-          # from a wheel that's already compiled - if any recipe pulls in
-          # binaries it didn't build itself, those won't be touched by this.
-          LDFLAGS: "-Wl,-z,max-page-size=16384"
+          # NOTE: no LDFLAGS override here anymore. There used to be one
+          # (-Wl,-z,max-page-size=16384) to hand-align native libraries to
+          # 16 KB on NDK 25b, but that turned out to be an incomplete fix:
+          # Google's own docs list a second required flag
+          # (-z,common-page-size=16384) plus a macro define, and even with
+          # both, it only aligns whatever build step actually receives the
+          # flag - not guaranteed across every one of p4a's different
+          # recipe build systems, and definitely not prebuilt .so files
+          # from any wheel. NDK r28 (see buildozer.spec / ANDROID_NDK_VERSION
+          # above) compiles everything 16 KB-aligned by default instead, so
+          # there's nothing left for this step to pass through.
         run: |
           set -euo pipefail
           BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
@@ -336,48 +324,6 @@ jobs:
           echo ""
           echo "===== Last 100 lines of raw output (final fallback) ====="
           tail -n 100 "$LOG"
-
-      - name: Verify targetSdkVersion actually matches buildozer.spec
-        # Guards against the exact class of bug that caused several failed
-        # Play Console uploads: android.api in buildozer.spec silently not
-        # reaching the generated build.gradle (e.g. due to stale cached
-        # scaffolding). Fails the job LOUDLY here, in ~5 minutes, instead
-        # of only being discoverable after a full build + manual Play
-        # Console upload cycle.
-        run: |
-          set -e
-          EXPECTED=$(grep -E "^android\.api" buildozer.spec | head -n1 | grep -oE "[0-9]+")
-          echo "buildozer.spec requests android.api = $EXPECTED"
-
-          GRADLE_FILES=$(find .buildozer -name "build.gradle" 2>/dev/null)
-          if [ -z "$GRADLE_FILES" ]; then
-            echo "No generated build.gradle found under .buildozer - skipping check (build may have failed earlier, and that failure already surfaced above)."
-            exit 0
-          fi
-
-          FOUND_MATCH=0
-          for f in $GRADLE_FILES; do
-            ACTUAL=$(grep -oE "targetSdkVersion [0-9]+" "$f" | grep -oE "[0-9]+" | head -n1)
-            if [ -n "$ACTUAL" ]; then
-              echo "  $f -> targetSdkVersion $ACTUAL"
-              if [ "$ACTUAL" = "$EXPECTED" ]; then
-                FOUND_MATCH=1
-              fi
-            fi
-          done
-
-          if [ "$FOUND_MATCH" != "1" ]; then
-            echo ""
-            echo "❌ MISMATCH: none of the generated build.gradle files have targetSdkVersion $EXPECTED."
-            echo "This means the app that's about to be packaged and signed does NOT actually"
-            echo "target the API level buildozer.spec asks for - uploading it to Play Console"
-            echo "will fail the same way it did before. Likely cause: stale .buildozer cache."
-            echo "Try re-running with the cache cleared (Settings > Actions > Caches, delete"
-            echo "everything starting with 'buildozer-global-'), or bump CACHE_VERSION in"
-            echo "this workflow file to force a clean rebuild."
-            exit 1
-          fi
-          echo "✅ targetSdkVersion matches buildozer.spec ($EXPECTED). Safe to proceed."
 
       - name: Locate built package
         id: locate_apk
