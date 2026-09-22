@@ -28,7 +28,7 @@ env:
   # already-compiled artifacts from a previous run get silently reused.
   CACHE_VERSION: "v7-16kb-sdl2-and-packaging-fix"
   ANDROID_BUILD_TOOLS: "36.0.0"
-  ANDROID_NDK_VERSION: "28.1.13356709"   # = NDK r28.1 - compiles 16 KB-page-aligned by default (see buildozer.spec)
+  ANDROID_NDK_VERSION: "28.2.13676358"   # = NDK r28c - compiles 16 KB-page-aligned by default, and the revision p4a's sdl2 recipe was verified against (see buildozer.spec)
   ANDROID_HOME: /home/runner/android-sdk
   ANDROID_SDK_ROOT: /home/runner/android-sdk
 
@@ -207,23 +207,31 @@ jobs:
       #
       # python-for-android builds the SDL2 bootstrap (libSDL2.so,
       # libSDL2_image.so, libSDL2_mixer.so, libSDL2_ttf.so, and its own
-      # libmain.so) by invoking `ndk-build` directly against
-      # pythonforandroid/bootstraps/sdl2/build/jni/Application.mk. NDK
-      # r28's "16 KB by default" behaviour does not reliably reach that
-      # ndk-build invocation - this is a currently-open upstream gap
-      # (https://github.com/kivy/python-for-android/issues/3165), and
-      # multiple people report those exact 5 libraries staying 4 KB-aligned
-      # even on NDK r28 with p4a's "develop" branch. python3, openssl,
-      # sqlite3 and libffi are built via ordinary autotools/distutils and
-      # DO pick up NDK r28's default correctly, so they are not affected.
+      # libmain.so) by invoking `ndk-build` directly against an
+      # Application.mk. NDK r28's "16 KB by default" behaviour does not
+      # reliably reach that ndk-build invocation - this is a currently-open
+      # upstream gap (https://github.com/kivy/python-for-android/issues/3165).
       #
-      # Fix: clone python-for-android ourselves at the exact tag
-      # buildozer.spec pins (p4a.branch), append the two linker flags
-      # Google's own migration guide specifies for ndk-build
-      # (https://developer.android.com/guide/practices/page-sizes) to that
-      # one Application.mk, and point buildozer.spec at this patched
-      # checkout via p4a.source_dir instead of letting buildozer clone its
-      # own (unpatched) copy.
+      # THIS STEP PREVIOUSLY HARDCODED THE PATH
+      # pythonforandroid/bootstraps/sdl2/build/jni/Application.mk, WHICH
+      # DOES NOT EXIST - it broke the build with "Application.mk not
+      # found". The actual native project skeleton (jni/Application.mk,
+      # jni/application/src/start.c) lives under the *common* bootstrap
+      # directory (pythonforandroid/bootstraps/common/build/jni/), not
+      # under sdl2/build/jni/ - the sdl2 bootstrap only adds its own
+      # SDL-specific sources on top of that shared skeleton. Rather than
+      # hardcode that corrected path too (and risk breaking the same way
+      # again on a future p4a release), this now searches for every
+      # Application.mk anywhere under the checkout and patches all of
+      # them, and - importantly - does NOT fail the build if none are
+      # found. If p4a's layout has moved the linker-flag mechanism
+      # entirely (e.g. to a per-recipe get_recipe_env() override, as
+      # p4a PR #3164 suggests it may have for ndk28c support), there is
+      # nothing here to patch, and that's fine: NDK r28c's own default
+      # alignment plus the "Verify every native library is 16 KB
+      # page-size aligned" step later in this workflow is the real,
+      # authoritative check - this step is defense-in-depth on top of
+      # that, not the thing the build depends on to succeed.
       # ---------------------------------------------------------------
       - name: Prepare a 16 KB-page-size-patched python-for-android checkout
         run: |
@@ -239,18 +247,19 @@ jobs:
             https://github.com/kivy/python-for-android.git \
             "$GITHUB_WORKSPACE/p4a-src"
 
-          APP_MK="$GITHUB_WORKSPACE/p4a-src/pythonforandroid/bootstraps/sdl2/build/jni/Application.mk"
-          if [ ! -f "$APP_MK" ]; then
-            echo "::error::Expected $APP_MK not found - python-for-android's bootstrap layout may have changed. Update this workflow step to match the new location." >&2
-            exit 1
-          fi
-
-          if grep -q "max-page-size=16384" "$APP_MK"; then
-            echo "Application.mk already contains the 16 KB linker flags - nothing to patch."
+          mapfile -t APP_MKS < <(find "$GITHUB_WORKSPACE/p4a-src/pythonforandroid" -type f -name "Application.mk" | sort)
+          if [ "${#APP_MKS[@]}" -eq 0 ]; then
+            echo "::warning::No Application.mk found anywhere under pythonforandroid/ in $P4A_BRANCH - python-for-android's build system for this bootstrap has likely moved away from ndk-build/Application.mk entirely (or NDK r28c's default alignment plus this branch's own recipe fixes already cover it, per p4a PR #3164). Nothing to patch here; relying on NDK r28c's default 16 KB alignment and the downstream verification step instead."
           else
-            printf '\n# --- 16 KB memory page size support (Google Play requirement) ---\n# See buildozer.spec / this repo'"'"'s .github/workflows/build.yml for why this\n# is patched in here rather than relying on NDK r28'"'"'s default.\nAPP_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384\nAPP_CPPFLAGS += -D__BIONIC_NO_PAGE_SIZE_MACRO\n' >> "$APP_MK"
-            echo "Patched $APP_MK:"
-            tail -n 6 "$APP_MK"
+            echo "Found ${#APP_MKS[@]} Application.mk file(s) to check:"
+            for APP_MK in "${APP_MKS[@]}"; do
+              if grep -q "max-page-size=16384" "$APP_MK"; then
+                echo "  already patched: $APP_MK"
+              else
+                printf '\n# --- 16 KB memory page size support (Google Play requirement) ---\nAPP_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384\nAPP_CPPFLAGS += -D__BIONIC_NO_PAGE_SIZE_MACRO\n' >> "$APP_MK"
+                echo "  patched: $APP_MK"
+              fi
+            done
           fi
 
       - name: Point buildozer.spec at the pre-installed SDK/NDK and the patched p4a checkout
@@ -308,10 +317,12 @@ jobs:
       - name: Guarantee a clean rebuild whenever the native toolchain changes
         run: |
           set -euo pipefail
-          APP_MK_HASH="no-patched-app-mk"
-          if [ -f "$GITHUB_WORKSPACE/p4a-src/pythonforandroid/bootstraps/sdl2/build/jni/Application.mk" ]; then
-            APP_MK_HASH=$(sha256sum "$GITHUB_WORKSPACE/p4a-src/pythonforandroid/bootstraps/sdl2/build/jni/Application.mk" | cut -d' ' -f1)
-          fi
+          # Hash every Application.mk under the patched checkout (there may
+          # be zero, one, or several - see the previous step) rather than
+          # assuming one fixed path, for the same reason that step no
+          # longer hardcodes a path.
+          APP_MK_HASH=$(find "$GITHUB_WORKSPACE/p4a-src/pythonforandroid" -type f -name "Application.mk" 2>/dev/null | sort | xargs -r sha256sum | sha256sum | cut -d' ' -f1)
+          [ -n "$APP_MK_HASH" ] || APP_MK_HASH="no-application-mk-found"
           FINGERPRINT="ndk=${ANDROID_NDK_VERSION};sdk=${ANDROID_COMPILE_SDK};bt=${ANDROID_BUILD_TOOLS};spec=$(sha256sum buildozer.spec | cut -d' ' -f1);appmk=${APP_MK_HASH}"
           STAMP_FILE=".buildozer/.toolchain_fingerprint"
           if [ -f "$STAMP_FILE" ] && [ "$(cat "$STAMP_FILE")" = "$FINGERPRINT" ]; then
