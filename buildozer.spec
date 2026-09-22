@@ -325,14 +325,7 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-# Bumped past 10257: that code is the one shown rejected for the 16 KB
-# page-size error in Play Console (android.api=36 / ndk=28.1.13356709
-# were already in place for that build - the NDK version alone wasn't
-# the fix; see the "Force 16 KB alignment for ndk-build recipes" step in
-# the workflow for what was actually missing). Reusing 10257 for the
-# corrected AAB risks Play Console treating it as the same, already-seen
-# version code.
-android.numeric_version = 10258
+android.numeric_version = 10252
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -379,7 +372,7 @@ android.release_artifact = aab
 # "member reference type 'int' is not a pointer" in tesselator.c /
 # vertex_instructions.c). This release targets Python 3.11, which is
 # compatible with Kivy 2.3.0 and Cython 0.29.36.
-p4a.branch = v2026.05.09
+p4a.branch = v2024.01.21
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
