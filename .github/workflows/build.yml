@@ -26,7 +26,7 @@ env:
   # version) needs to invalidate the .buildozer cache even though
   # buildozer.spec's hash alone wouldn't guarantee it - otherwise stale,
   # already-compiled artifacts from a previous run get silently reused.
-  CACHE_VERSION: "v5-ndk28"
+  CACHE_VERSION: "v6-ndk28"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # = NDK r28.1 - compiles 16 KB-page-aligned by default (see buildozer.spec)
   ANDROID_HOME: /home/runner/android-sdk
