@@ -372,7 +372,8 @@ android.release_artifact = aab
 # "member reference type 'int' is not a pointer" in tesselator.c /
 # vertex_instructions.c). This release targets Python 3.11, which is
 # compatible with Kivy 2.3.0 and Cython 0.29.36.
-p4a.branch = v2026.05.09
+#p4a.branch = v2026.05.09
+p4a.branch = master
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
