@@ -487,8 +487,25 @@ jobs:
             *.aab)
               echo "=== Inspecting AAB via bundletool ==="
               BUNDLETOOL_JAR="$WORKDIR/bundletool.jar"
-              curl -fsSL -o "$BUNDLETOOL_JAR" \
-                "https://github.com/google/bundletool/releases/latest/download/bundletool-all.jar"
+              # bundletool's release asset name is versioned
+              # (bundletool-all-<version>.jar), so the generic
+              # "/releases/latest/download/bundletool-all.jar" URL 404s -
+              # it only works for an asset name that's identical on every
+              # release. Resolve the real, current download URL from the
+              # GitHub API instead, with a pinned last-known-good version
+              # as a fallback if the API call itself fails (rate limiting,
+              # network hiccup, etc).
+              BUNDLETOOL_FALLBACK_URL="https://github.com/google/bundletool/releases/download/1.16.0/bundletool-all-1.16.0.jar"
+              BUNDLETOOL_URL=$(curl -fsSL "https://api.github.com/repos/google/bundletool/releases/latest" \
+                | grep -o '"browser_download_url": *"[^"]*bundletool-all[^"]*\.jar"' \
+                | head -n1 \
+                | sed -E 's/.*"(https:[^"]+)"/\1/' || true)
+              if [ -z "$BUNDLETOOL_URL" ]; then
+                echo "Could not resolve latest bundletool release from the GitHub API - falling back to pinned 1.16.0."
+                BUNDLETOOL_URL="$BUNDLETOOL_FALLBACK_URL"
+              fi
+              echo "Using bundletool: $BUNDLETOOL_URL"
+              curl -fsSL -o "$BUNDLETOOL_JAR" "$BUNDLETOOL_URL"
 
               # Build real, installable split APKs the way Play would,
               # for a representative 64-bit device spec, then extract
