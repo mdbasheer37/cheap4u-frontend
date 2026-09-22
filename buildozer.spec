@@ -325,7 +325,7 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-android.numeric_version = 10257
+android.numeric_version = 10258
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -372,8 +372,9 @@ android.release_artifact = aab
 # "member reference type 'int' is not a pointer" in tesselator.c /
 # vertex_instructions.c). This release targets Python 3.11, which is
 # compatible with Kivy 2.3.0 and Cython 0.29.36.
-#p4a.branch = v2026.05.09
+p4a.branch = v2026.05.09
 p4a.branch = master
+p4a.fork = kivy
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
