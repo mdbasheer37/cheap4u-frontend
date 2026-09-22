@@ -26,9 +26,27 @@ env:
   # version) needs to invalidate the .buildozer cache even though
   # buildozer.spec's hash alone wouldn't guarantee it - otherwise stale,
   # already-compiled artifacts from a previous run get silently reused.
-  CACHE_VERSION: "v7-16kb"
+  # v7: NDK r28 alone does NOT make the build 16 KB-safe. NDK r28's
+  # "aligned by default" behaviour only applies to code compiled directly
+  # by the NDK's clang/lld toolchain (the recipes that use distutils,
+  # autotools, CMake, etc - e.g. python3, openssl, sqlite3, libffi all
+  # come out aligned for free). It does NOT apply to anything built with
+  # ndk-build/Android.mk, because ndk-build's own make-based build system
+  # does not opt in to the linker's new default and still emits 4 KB
+  # LOAD segments unless told otherwise. In a Kivy/SDL2 app that's
+  # exactly libSDL2.so, libSDL2_image.so, libSDL2_mixer.so,
+  # libSDL2_ttf.so, AND python-for-android's own bootstrap libmain.so -
+  # all four SDL2 recipes plus the app's native entry point are built via
+  # ndk-build. This is a confirmed, still-open upstream gap as of 2026
+  # (kivy/python-for-android#3165) - bumping the NDK version alone does
+  # not fix it, which is exactly what the previous v6-ndk28 attempt
+  # (NDK r28 with no further changes) got wrong: it fixed everything
+  # EXCEPT the SDL2 family and libmain.so, which is exactly the failure
+  # this pipeline was hitting. See the "Force 16 KB alignment for
+  # ndk-build recipes" step below for the actual fix.
+  CACHE_VERSION: "v7-ndkbuild-16k-align"
   ANDROID_BUILD_TOOLS: "36.0.0"
-  ANDROID_NDK_VERSION: "28.1.13356709"   # = NDK r28.1 - compiles 16 KB-page-aligned by default (see buildozer.spec)
+  ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
   ANDROID_SDK_ROOT: /home/runner/android-sdk
 
@@ -95,7 +113,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.ANDROID_HOME }}
-          key: android-sdk-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}-${{ env.ANDROID_NDK_VERSION }}
+          # CACHE_VERSION is included here too: it's what we bump whenever
+          # the *patch we apply to the installed NDK* changes (see the
+          # "Force 16 KB alignment for ndk-build recipes" step), not just
+          # when the NDK version string itself changes. Without this, a
+          # cache-hit would silently restore an old, unpatched ndk-build
+          # binary from before that step existed.
+          key: android-sdk-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}-${{ env.ANDROID_NDK_VERSION }}-${{ env.CACHE_VERSION }}
 
       # ---------------------------------------------------------------
       # Manually provision the Android SDK command-line tools.
@@ -179,6 +203,75 @@ jobs:
           test -d "$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}"
           echo "Android SDK looks good:"
           ls "$ANDROID_HOME"
+
+      # ---------------------------------------------------------------
+      # THE ACTUAL 16 KB FIX. NDK r28's toolchain compiles everything
+      # 16 KB-aligned by default, EXCEPT modules built with ndk-build
+      # (classic Android.mk/Application.mk GNU-make build system), which
+      # does not inherit that new default. python-for-android builds
+      # SDL2, SDL2_image, SDL2_mixer and SDL2_ttf - and its own bootstrap
+      # entry point, libmain.so - exclusively via ndk-build. That's a
+      # confirmed, still-open gap upstream (kivy/python-for-android#3165)
+      # as of 2026: switching the NDK version alone does not touch these
+      # five .so files, which is exactly why the previous NDK-r28-only
+      # fix in this pipeline still produced an AAB that Google Play
+      # rejected.
+      #
+      # Fix: intercept the actual ndk-build executable inside the
+      # installed NDK and force every invocation to additionally pass
+      #   APP_LDFLAGS      += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384
+      #   APP_SUPPORT_FLEXIBLE_PAGE_SIZES = true
+      # as GNU Make command-line variable overrides. Command-line
+      # overrides win over anything Application.mk/Android.mk set
+      # internally, and APP_LDFLAGS is applied by ndk-build to every
+      # module in that build (SDL2 and friends, plus libmain.so), so this
+      # is a single choke point that reliably reaches all five files
+      # regardless of exactly how p4a's recipe classes invoke ndk-build.
+      # It does not touch any non-ndk-build recipe (python3, openssl,
+      # sqlite3, libffi, Pillow, Kivy/KivyMD's Cython extensions), which
+      # NDK r28 already aligns correctly on its own - so this only
+      # changes the files that actually needed it.
+      - name: Force 16 KB alignment for ndk-build recipes (SDL2 family + bootstrap)
+        run: |
+          set -euo pipefail
+          NDK_DIR="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          REAL="$NDK_DIR/ndk-build"
+          WRAPPED_MARKER="$NDK_DIR/.ndk-build-16k-wrapped"
+
+          if [ -f "$WRAPPED_MARKER" ]; then
+            echo "ndk-build already wrapped for 16 KB alignment (cache hit) - skipping."
+            exit 0
+          fi
+
+          if [ ! -f "$REAL" ]; then
+            echo "::error::Expected ndk-build at $REAL but it does not exist." >&2
+            exit 1
+          fi
+
+          mv "$REAL" "$NDK_DIR/ndk-build.real"
+
+          # Written with printf (one line per argument) rather than a
+          # heredoc, so this step's own YAML indentation can't end up
+          # embedded in the generated script - a shebang line has to be
+          # the literal first two bytes of the file or it won't be
+          # honored.
+          printf '%s\n' \
+            '#!/usr/bin/env bash' \
+            '# Auto-generated wrapper: forces every ndk-build invocation p4a makes' \
+            '# (SDL2, SDL2_image, SDL2_mixer, SDL2_ttf, and the bootstrap'"'"'s' \
+            '# libmain.so) to link with 16 KB-aligned LOAD segments, since ndk-build' \
+            '# does not do this by default even on NDK r28. The += command-line' \
+            '# overrides append to (rather than replace) whatever the recipe'"'"'s own' \
+            '# Android.mk/Application.mk already sets.' \
+            'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' \
+            'exec "$DIR/ndk-build.real" "$@" \' \
+            '  APP_LDFLAGS+="-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384" \' \
+            '  APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true' \
+            > "$REAL"
+          chmod +x "$REAL"
+          touch "$WRAPPED_MARKER"
+          echo "Wrapped ndk-build at $REAL to force 16 KB alignment:"
+          cat "$REAL"
 
       - name: Point buildozer.spec at the pre-installed SDK/NDK
         run: |
@@ -335,6 +428,117 @@ jobs:
             exit 1
           fi
           echo "apk_path=$PKG_PATH" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------
+      # Hard verification gate: actually inspect the native libraries
+      # that ended up inside the built package and fail the job if any
+      # of them still has a 4 KB-aligned LOAD segment. This is what
+      # proves the fix worked, rather than trusting the toolchain
+      # versions in isolation - it's the same class of check Google Play
+      # itself runs. Uses bundletool for .aab (to extract the real
+      # installable APKs the way Play would) and readelf from the NDK we
+      # already installed to inspect ELF program headers. Also checks
+      # the AAB's own alignment metadata with `zipalign -c -P 16`, which
+      # is the second, independent thing Play checks (uncompressed .so
+      # entries must additionally sit at 16 KB-aligned offsets inside the
+      # package, on top of the LOAD segments inside the .so themselves
+      # being 16 KB-aligned).
+      - name: Verify 16 KB page-size alignment of native libraries
+        run: |
+          set -euo pipefail
+          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          NDK_DIR="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          READELF="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          ZIPALIGN="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/zipalign"
+          WORKDIR="$RUNNER_TEMP/16k-verify"
+          rm -rf "$WORKDIR"
+          mkdir -p "$WORKDIR"
+
+          check_so_dir() {
+            # $1 = directory to recursively search for .so files
+            local dir="$1"
+            local bad=0
+            while IFS= read -r -d '' so; do
+              # Only 64-bit ABI dirs are required to be 16 KB-aligned;
+              # Google does not require it for 32-bit arches. This repo
+              # only ships arm64-v8a anyway (android.archs), so every .so
+              # found here is in scope.
+              local aligns
+              aligns=$("$READELF" -lW "$so" 2>/dev/null | awk '/LOAD/ {print $NF}')
+              if [ -z "$aligns" ]; then
+                continue
+              fi
+              local min_align_hex
+              min_align_hex=$(echo "$aligns" | sort -u | head -n1)
+              local min_align_dec=$((min_align_hex))
+              if [ "$min_align_dec" -lt 16384 ]; then
+                echo "::error::NOT 16 KB-aligned: $so (smallest LOAD align: $min_align_hex)"
+                bad=1
+              else
+                echo "OK (16 KB-aligned): $so"
+              fi
+            done < <(find "$dir" -name "*.so" -print0)
+            return $bad
+          }
+
+          OVERALL_BAD=0
+
+          case "$PKG_PATH" in
+            *.aab)
+              echo "=== Inspecting AAB via bundletool ==="
+              BUNDLETOOL_JAR="$WORKDIR/bundletool.jar"
+              curl -fsSL -o "$BUNDLETOOL_JAR" \
+                "https://github.com/google/bundletool/releases/latest/download/bundletool-all.jar"
+
+              # Build real, installable split APKs the way Play would,
+              # for a representative 64-bit device spec, then extract
+              # them so we can inspect the actual .so files Play will
+              # ship to users.
+              java -jar "$BUNDLETOOL_JAR" build-apks \
+                --bundle="$PKG_PATH" \
+                --output="$WORKDIR/out.apks" \
+                --mode=universal \
+                --overwrite
+
+              mkdir -p "$WORKDIR/universal"
+              unzip -o "$WORKDIR/out.apks" universal.apk -d "$WORKDIR/universal" > /dev/null
+              mkdir -p "$WORKDIR/universal_extracted"
+              unzip -o "$WORKDIR/universal/universal.apk" "lib/*" -d "$WORKDIR/universal_extracted" > /dev/null || true
+
+              echo "--- LOAD segment alignment (readelf) ---"
+              check_so_dir "$WORKDIR/universal_extracted" || OVERALL_BAD=1
+
+              echo "--- Zip-entry alignment (zipalign -P 16) ---"
+              if "$ZIPALIGN" -c -v -P 16 4 "$WORKDIR/universal/universal.apk" > "$WORKDIR/zipalign.log" 2>&1; then
+                echo "zipalign: universal.apk is correctly 16 KB zip-aligned."
+              else
+                echo "::error::zipalign reports the built APK is NOT 16 KB zip-aligned:"
+                tail -n 40 "$WORKDIR/zipalign.log"
+                OVERALL_BAD=1
+              fi
+
+              echo "--- Cross-check: raw .so files inside the .aab itself ---"
+              mkdir -p "$WORKDIR/aab_raw"
+              unzip -o "$PKG_PATH" "base/lib/*" -d "$WORKDIR/aab_raw" > /dev/null || true
+              check_so_dir "$WORKDIR/aab_raw" || OVERALL_BAD=1
+              ;;
+            *.apk)
+              echo "=== Inspecting APK directly ==="
+              mkdir -p "$WORKDIR/apk_extracted"
+              unzip -o "$PKG_PATH" "lib/*" -d "$WORKDIR/apk_extracted" > /dev/null || true
+              check_so_dir "$WORKDIR/apk_extracted" || OVERALL_BAD=1
+              ;;
+            *)
+              echo "::error::Unrecognized package type: $PKG_PATH" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "$OVERALL_BAD" -ne 0 ]; then
+            echo "::error::One or more native libraries are still 4 KB-aligned. Google Play will reject this package for the 16 KB page-size requirement."
+            exit 1
+          fi
+          echo "All native libraries are 16 KB page-size aligned."
 
       - name: Verify release AAB is signed with the expected upload certificate
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
