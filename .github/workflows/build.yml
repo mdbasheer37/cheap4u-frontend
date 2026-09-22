@@ -26,7 +26,7 @@ env:
   # version) needs to invalidate the .buildozer cache even though
   # buildozer.spec's hash alone wouldn't guarantee it - otherwise stale,
   # already-compiled artifacts from a previous run get silently reused.
-  CACHE_VERSION: "v6-16kb-fix"
+  CACHE_VERSION: "v7-16kb-sdl2-and-packaging-fix"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # = NDK r28.1 - compiles 16 KB-page-aligned by default (see buildozer.spec)
   ANDROID_HOME: /home/runner/android-sdk
@@ -80,27 +80,36 @@ jobs:
           python -m pip install --upgrade pip wheel setuptools
           pip install --upgrade "buildozer>=1.5.0" "Cython==0.29.36"
 
+      # ---------------------------------------------------------------
+      # IMPORTANT: no `restore-keys` here, deliberately.
+      #
+      # A `restore-keys` prefix fallback means: if the exact key below
+      # doesn't exist yet (which is *always* true right after CACHE_VERSION
+      # or ANDROID_NDK_VERSION is bumped), actions/cache falls back to the
+      # most recent cache matching the prefix - i.e. a cache built by the
+      # *previous*, incompatible toolchain. python-for-android's own
+      # incremental-build tracking (which recipes are "already built") is
+      # keyed by recipe name/version/arch only, NOT by which NDK compiled
+      # them, so a restored-but-stale `.buildozer/android/platform/build-*`
+      # tree makes p4a skip rebuilding e.g. the SDL2 bootstrap entirely and
+      # silently repackage the OLD, 4 KB-aligned libSDL2.so etc. into a
+      # "new" build - even though buildozer.spec now says NDK r28+.
+      #
+      # This is exactly what happened: version code 10257 was already built
+      # with android.ndk = 28.1.13356709 and still failed Google Play's
+      # 16 KB check, because a warm cache from an older NDK never got
+      # discarded. The key below also bakes in ANDROID_NDK_VERSION and a
+      # hash of this workflow file itself, so a future toolchain edit
+      # invalidates the cache automatically even if nobody remembers to
+      # bump CACHE_VERSION by hand.
+      # ---------------------------------------------------------------
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer
             .buildozer
-          key: buildozer-global-${{ env.CACHE_VERSION }}-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-global-
-
-      - name: Clean old build artifacts (16KB page size fix)
-        run: |
-          set -euo pipefail
-          echo "Removing stale build artifacts to force rebuild with NDK r28..."
-          rm -rf ~/.buildozer/android/platform/build-*/build/ 2>/dev/null || true
-          rm -rf ~/.buildozer/android/platform/build-*/src/ 2>/dev/null || true
-          rm -rf .buildozer/android/platform/build-*/build/ 2>/dev/null || true
-          rm -rf .buildozer/android/platform/build-*/src/ 2>/dev/null || true
-          rm -rf ~/.gradle/caches/ 2>/dev/null || true
-          rm -rf ~/.buildozer/android/platform/build-*/bootstrap_builds/ 2>/dev/null || true
-          echo "Old artifacts cleaned. Next build will recompile everything with NDK r28 16 KB alignment."
+          key: buildozer-global-${{ env.CACHE_VERSION }}-ndk${{ env.ANDROID_NDK_VERSION }}-${{ hashFiles('buildozer.spec', '.github/workflows/build.yml') }}
 
       - name: Cache Android SDK/NDK
         id: sdk-cache
@@ -192,7 +201,59 @@ jobs:
           echo "Android SDK looks good:"
           ls "$ANDROID_HOME"
 
-      - name: Point buildozer.spec at the pre-installed SDK/NDK
+      # ---------------------------------------------------------------
+      # 16 KB PAGE SIZE FIX - part 2 of 2 (part 1 is the
+      # android.add_packaging_options override already in buildozer.spec).
+      #
+      # python-for-android builds the SDL2 bootstrap (libSDL2.so,
+      # libSDL2_image.so, libSDL2_mixer.so, libSDL2_ttf.so, and its own
+      # libmain.so) by invoking `ndk-build` directly against
+      # pythonforandroid/bootstraps/sdl2/build/jni/Application.mk. NDK
+      # r28's "16 KB by default" behaviour does not reliably reach that
+      # ndk-build invocation - this is a currently-open upstream gap
+      # (https://github.com/kivy/python-for-android/issues/3165), and
+      # multiple people report those exact 5 libraries staying 4 KB-aligned
+      # even on NDK r28 with p4a's "develop" branch. python3, openssl,
+      # sqlite3 and libffi are built via ordinary autotools/distutils and
+      # DO pick up NDK r28's default correctly, so they are not affected.
+      #
+      # Fix: clone python-for-android ourselves at the exact tag
+      # buildozer.spec pins (p4a.branch), append the two linker flags
+      # Google's own migration guide specifies for ndk-build
+      # (https://developer.android.com/guide/practices/page-sizes) to that
+      # one Application.mk, and point buildozer.spec at this patched
+      # checkout via p4a.source_dir instead of letting buildozer clone its
+      # own (unpatched) copy.
+      # ---------------------------------------------------------------
+      - name: Prepare a 16 KB-page-size-patched python-for-android checkout
+        run: |
+          set -euo pipefail
+          P4A_BRANCH=$(grep -E '^p4a\.branch' buildozer.spec | sed 's/.*=\s*//' | tr -d '[:space:]')
+          if [ -z "$P4A_BRANCH" ]; then
+            echo "::error::Could not read p4a.branch from buildozer.spec" >&2
+            exit 1
+          fi
+          echo "Cloning python-for-android @ $P4A_BRANCH ..."
+          rm -rf "$GITHUB_WORKSPACE/p4a-src"
+          git clone --quiet --depth 1 --branch "$P4A_BRANCH" \
+            https://github.com/kivy/python-for-android.git \
+            "$GITHUB_WORKSPACE/p4a-src"
+
+          APP_MK="$GITHUB_WORKSPACE/p4a-src/pythonforandroid/bootstraps/sdl2/build/jni/Application.mk"
+          if [ ! -f "$APP_MK" ]; then
+            echo "::error::Expected $APP_MK not found - python-for-android's bootstrap layout may have changed. Update this workflow step to match the new location." >&2
+            exit 1
+          fi
+
+          if grep -q "max-page-size=16384" "$APP_MK"; then
+            echo "Application.mk already contains the 16 KB linker flags - nothing to patch."
+          else
+            printf '\n# --- 16 KB memory page size support (Google Play requirement) ---\n# See buildozer.spec / this repo'"'"'s .github/workflows/build.yml for why this\n# is patched in here rather than relying on NDK r28'"'"'s default.\nAPP_LDFLAGS += -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384\nAPP_CPPFLAGS += -D__BIONIC_NO_PAGE_SIZE_MACRO\n' >> "$APP_MK"
+            echo "Patched $APP_MK:"
+            tail -n 6 "$APP_MK"
+          fi
+
+      - name: Point buildozer.spec at the pre-installed SDK/NDK and the patched p4a checkout
         run: |
           set -euo pipefail
           # Buildozer's own internal pre-flight check (the one that
@@ -206,8 +267,11 @@ jobs:
           NDK_PATH="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
           sed -i "s|^#\?android.sdk_path *=.*|android.sdk_path = $ANDROID_HOME|" buildozer.spec
           sed -i "s|^#\?android.ndk_path *=.*|android.ndk_path = $NDK_PATH|" buildozer.spec
+          # Use our patched python-for-android checkout instead of
+          # buildozer's own (unpatched) auto-clone - see the previous step.
+          sed -i "s|^#\?p4a.source_dir *=.*|p4a.source_dir = $GITHUB_WORKSPACE/p4a-src|" buildozer.spec
           echo "buildozer.spec now points to:"
-          grep -n "^android.sdk_path\|^android.ndk_path" buildozer.spec
+          grep -n "^android.sdk_path\|^android.ndk_path\|^p4a.source_dir" buildozer.spec
 
       - name: Validate required signing secrets are present (release builds only)
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
@@ -228,6 +292,38 @@ jobs:
             exit 1
           fi
           echo "All required signing secrets are present."
+
+      # ---------------------------------------------------------------
+      # Belt-and-braces on top of the fixed cache key above: stamp the
+      # restored .buildozer/ with a fingerprint of everything that affects
+      # native-code output (NDK/SDK/build-tools versions, buildozer.spec,
+      # this workflow file, and the p4a Application.mk patch). If it
+      # doesn't match - including "no stamp found", e.g. an old cache
+      # entry from before this step existed - wipe .buildozer and start
+      # that arch's recipe builds from scratch. This guarantees a stale
+      # 4 KB-aligned .so from a previous toolchain can never survive into
+      # a build, even if a future edit to this workflow forgets to change
+      # the cache key.
+      # ---------------------------------------------------------------
+      - name: Guarantee a clean rebuild whenever the native toolchain changes
+        run: |
+          set -euo pipefail
+          APP_MK_HASH="no-patched-app-mk"
+          if [ -f "$GITHUB_WORKSPACE/p4a-src/pythonforandroid/bootstraps/sdl2/build/jni/Application.mk" ]; then
+            APP_MK_HASH=$(sha256sum "$GITHUB_WORKSPACE/p4a-src/pythonforandroid/bootstraps/sdl2/build/jni/Application.mk" | cut -d' ' -f1)
+          fi
+          FINGERPRINT="ndk=${ANDROID_NDK_VERSION};sdk=${ANDROID_COMPILE_SDK};bt=${ANDROID_BUILD_TOOLS};spec=$(sha256sum buildozer.spec | cut -d' ' -f1);appmk=${APP_MK_HASH}"
+          STAMP_FILE=".buildozer/.toolchain_fingerprint"
+          if [ -f "$STAMP_FILE" ] && [ "$(cat "$STAMP_FILE")" = "$FINGERPRINT" ]; then
+            echo "Toolchain fingerprint unchanged since the last cached build - safe to reuse compiled recipes."
+          else
+            echo "Toolchain fingerprint changed (or none recorded yet) - wiping .buildozer for a guaranteed-clean rebuild."
+            echo "  previous: $( [ -f "$STAMP_FILE" ] && cat "$STAMP_FILE" || echo '(none)')"
+            echo "  current:  $FINGERPRINT"
+            rm -rf .buildozer
+            mkdir -p .buildozer
+            echo "$FINGERPRINT" > "$STAMP_FILE"
+          fi
 
       - name: Decode release keystore (release builds only)
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
@@ -348,6 +444,139 @@ jobs:
           fi
           echo "apk_path=$PKG_PATH" >> "$GITHUB_OUTPUT"
 
+      # ---------------------------------------------------------------
+      # 16 KB PAGE SIZE VERIFICATION - this is the actual proof, run fresh
+      # on every build, that the fixes above worked. It is a hard gate:
+      # the job fails here, before anything gets uploaded anywhere, if a
+      # single native library is misaligned or still packaged compressed.
+      # ---------------------------------------------------------------
+      - name: Verify every native library is 16 KB page-size aligned
+        id: verify_16kb
+        run: |
+          set -euo pipefail
+          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          WORK="$RUNNER_TEMP/pagesize-check"
+          rm -rf "$WORK"; mkdir -p "$WORK/extracted"
+          cp "$PKG_PATH" "$WORK/pkg.zip"
+          (cd "$WORK" && unzip -q pkg.zip -d extracted)
+
+          mapfile -t SO_FILES < <(find "$WORK/extracted" -name "*.so" | sort)
+          echo "Found ${#SO_FILES[@]} .so file(s) in $PKG_PATH"
+          if [ "${#SO_FILES[@]}" -eq 0 ]; then
+            echo "::error::No .so files found inside the package at all - something is badly wrong with this build, not just page size."
+            exit 1
+          fi
+
+          FAIL=0
+          printf "%-55s %-10s %s\n" "Library" "MinAlign" "Result"
+          printf -- "---------------------------------------------------------------------------\n"
+          for so in "${SO_FILES[@]}"; do
+            rel="${so#"$WORK"/extracted/}"
+            aligns=$(readelf -lW "$so" 2>/dev/null | awk '/LOAD/{print $NF}') || true
+            if [ -z "$aligns" ]; then
+              printf "%-55s %-10s %s\n" "$rel" "n/a" "SKIP (no LOAD segments - not a loadable ELF)"
+              continue
+            fi
+            minalign=999999999
+            for a in $aligns; do
+              d=$((a))
+              if [ "$d" -lt "$minalign" ]; then minalign=$d; fi
+            done
+            if [ "$minalign" -lt 16384 ]; then
+              printf "%-55s %-10s %s\n" "$rel" "$minalign" "FAIL (< 16384)"
+              FAIL=1
+            else
+              printf "%-55s %-10s %s\n" "$rel" "$minalign" "OK"
+            fi
+          done
+
+          echo ""
+          echo "== Zip packaging mode of native libraries (must be uncompressed) =="
+          BAD_COMPRESSION=$(unzip -v "$WORK/pkg.zip" | awk '$NF ~ /\.so$/' | grep -v ' Stored ' || true)
+          if [ -n "$BAD_COMPRESSION" ]; then
+            echo "::error::Some .so files are stored COMPRESSED inside the package - the useLegacyPackaging=false override (android.add_packaging_options in buildozer.spec) did not take effect:"
+            echo "$BAD_COMPRESSION"
+            FAIL=1
+          else
+            echo "All .so entries are stored uncompressed - useLegacyPackaging=false took effect."
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::16 KB page-size verification FAILED. See the table/messages above for exactly which file and why. Do NOT upload this package to Google Play."
+            exit 1
+          fi
+          echo ""
+          echo "16 KB page-size verification PASSED for every native library in $PKG_PATH."
+
+      # ---------------------------------------------------------------
+      # Best-effort cross-check with bundletool - this exercises the same
+      # split-APK generation logic Google Play itself runs, as an extra
+      # confirmation beyond the direct check above. It is NOT a hard gate
+      # (a bundletool/network hiccup here should not block a release that
+      # already passed the authoritative check above), and only applies to
+      # release .aab builds.
+      # ---------------------------------------------------------------
+      - name: Cross-check with bundletool (release AAB only, best-effort)
+        if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          case "$PKG_PATH" in
+            *.aab) ;;
+            *) echo "Not an .aab (got $PKG_PATH) - skipping bundletool cross-check."; exit 0 ;;
+          esac
+
+          BUNDLETOOL_VERSION="1.16.0"
+          WORK="$RUNNER_TEMP/bundletool-check"
+          rm -rf "$WORK"; mkdir -p "$WORK"
+          curl -fsSL -o "$WORK/bundletool.jar" \
+            "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
+
+          java -jar "$WORK/bundletool.jar" build-apks \
+            --bundle="$PKG_PATH" \
+            --output="$WORK/out.apks" \
+            --mode=universal \
+            --ks="$GITHUB_WORKSPACE/release.keystore" \
+            --ks-pass="pass:${P4A_RELEASE_KEYSTORE_PASSWD}" \
+            --ks-key-alias="${P4A_RELEASE_KEYALIAS}" \
+            --key-pass="pass:${P4A_RELEASE_KEYALIAS_PASSWD}"
+
+          mkdir -p "$WORK/apks_extracted"
+          unzip -q "$WORK/out.apks" -d "$WORK/apks_extracted"
+          UNIVERSAL_APK=$(find "$WORK/apks_extracted" -name "universal.apk" | head -n1)
+          if [ -z "$UNIVERSAL_APK" ]; then
+            echo "Could not find universal.apk in bundletool output - skipping (this does not affect the pass/fail result above)."
+            exit 0
+          fi
+
+          mkdir -p "$WORK/universal_extracted"
+          unzip -q "$UNIVERSAL_APK" -d "$WORK/universal_extracted"
+          echo "== bundletool-generated universal APK: native library alignment =="
+          BT_FAIL=0
+          while IFS= read -r -d '' so; do
+            aligns=$(readelf -lW "$so" 2>/dev/null | awk '/LOAD/{print $NF}') || true
+            minalign=999999999
+            for a in $aligns; do d=$((a)); [ "$d" -lt "$minalign" ] && minalign=$d; done
+            rel="${so#"$WORK"/universal_extracted/}"
+            if [ "$minalign" -lt 16384 ]; then
+              echo "FAIL  $rel  align=$minalign"
+              BT_FAIL=1
+            else
+              echo "OK    $rel  align=$minalign"
+            fi
+          done < <(find "$WORK/universal_extracted" -name "*.so" -print0)
+
+          if [ "$BT_FAIL" -ne 0 ]; then
+            echo "::warning::bundletool's own universal APK still shows a misaligned library - please re-check manually before uploading, even though the primary check above passed."
+          else
+            echo "bundletool cross-check confirms 16 KB alignment."
+          fi
+        env:
+          P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          P4A_RELEASE_KEYALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
       - name: Verify release AAB is signed with the expected upload certificate
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
         env:
@@ -379,80 +608,6 @@ jobs:
             echo "Temporary keystore file removed."
           else
             echo "No temporary keystore file present - nothing to clean up."
-          fi
-
-      - name: Install bundletool for AAB verification
-        run: |
-          set -euo pipefail
-          if [ ! -f /tmp/bundletool.jar ]; then
-            echo "Downloading bundletool v1.16.0..."
-            mkdir -p /tmp
-            curl -fsSL -o /tmp/bundletool.jar https://github.com/google/bundletool/releases/download/1.16.0/bundletool-all-1.16.0.jar
-            echo "Bundletool downloaded."
-          fi
-
-      - name: Verify AAB supports 16 KB memory page sizes
-        if: ${{ success() }}
-        run: |
-          set -euo pipefail
-          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
-          
-          if [[ "$PKG_PATH" == *.aab ]]; then
-            echo "========== 16 KB PAGE SIZE VERIFICATION =========="
-            echo "AAB file: $PKG_PATH"
-            echo ""
-            
-            TEMP_DIR=$(mktemp -d)
-            echo "Extracting APKs from AAB to $TEMP_DIR..."
-            java -jar /tmp/bundletool.jar dump manifest --bundle="$PKG_PATH" | head -20
-            
-            echo ""
-            echo "Extracting universal APK for .so analysis..."
-            java -jar /tmp/bundletool.jar build-apks \
-              --bundle="$PKG_PATH" \
-              --output="$TEMP_DIR/app.apks" \
-              --mode=universal \
-              --ks=DUMMY \
-              --ks-pass=pass:DUMMY \
-              --ks-key-alias=DUMMY \
-              --key-pass=pass:DUMMY 2>&1 | grep -v "WARNING" || true
-            
-            cd "$TEMP_DIR"
-            unzip -q "app.apks" "universal.apk" 2>/dev/null || true
-            unzip -q "universal.apk" "lib/arm64-v8a/*.so" -d extracted 2>/dev/null || true
-            
-            if ls extracted/lib/arm64-v8a/*.so 2>/dev/null | grep -q .; then
-              echo ""
-              echo "Found native libraries. Checking page size alignment..."
-              echo "Running readelf to verify LOAD segment alignment..."
-              
-              for so_file in extracted/lib/arm64-v8a/*.so; do
-                echo ""
-                echo "Checking: $(basename $so_file)"
-                if command -v readelf &> /dev/null; then
-                  alignment_info=$(readelf -l "$so_file" 2>/dev/null | grep "LOAD" | head -1)
-                  echo "  $alignment_info"
-                  
-                  if readelf -l "$so_file" 2>/dev/null | grep "LOAD" | grep -q "0x4000\|0x8000\|0xc000\|0x10000\|0x14000"; then
-                    echo "  ✓ Likely 16 KB aligned (LOAD offset is multiple of 0x4000)"
-                  else
-                    echo "  ⚠ WARNING: Could not confirm 16 KB alignment from readelf output"
-                  fi
-                else
-                  echo "  (readelf not available in runner, skipping detailed check)"
-                fi
-              done
-              
-              rm -rf "$TEMP_DIR"
-              echo ""
-              echo "========== VERIFICATION COMPLETE =========="
-              echo "✓ AAB structure verified"
-              echo "✓ arm64-v8a native libraries present"
-            else
-              echo "No native libraries found in AAB."
-            fi
-          else
-            echo "APK file detected instead of AAB. Skipping 16 KB verification."
           fi
 
       - name: Upload build artifact
