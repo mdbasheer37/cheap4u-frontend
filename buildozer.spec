@@ -127,7 +127,19 @@ android.minapi = 24
 #android.sdk = 35
 
 # (str) Android NDK version to use
-android.ndk = 25b
+# NDK r28+ compiles every .so file 16 KB-page-aligned BY DEFAULT — no
+# per-recipe linker flags needed. Previously pinned to 25b (see the
+# workflow's CACHE_VERSION history for that reasoning), but the flag-only
+# workaround for 16 KB alignment on NDK 25b (-Wl,-z,max-page-size=16384 in
+# the CI workflow) turned out to be incomplete: Google's own build-system
+# docs list a SECOND required flag (-Wl,-z,common-page-size=16384) plus a
+# macro define, and even with both, that approach only aligns whatever
+# actually receives the flag — which isn't guaranteed across every one of
+# p4a's different recipe build systems (autotools, distutils, etc.). NDK
+# r28's default-on alignment doesn't depend on any recipe forwarding a
+# flag correctly, which is why this was worth the version bump instead of
+# continuing to patch the flag list.
+android.ndk = 28.1.13356709
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 android.ndk_api = 24
@@ -313,7 +325,7 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-android.numeric_version = 10253
+android.numeric_version = 10252
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
