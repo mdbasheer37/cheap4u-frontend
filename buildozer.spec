@@ -46,7 +46,18 @@ version = 1.1
 # comma separated e.g. requirements = sqlite3,kivy
 # Versions are pinned to known-compatible releases so CI builds are
 # reproducible and don't suddenly break when a new Kivy/KivyMD drops.
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
+#
+# python3==3.11.9 / hostpython3==3.11.9 are pinned EXPLICITLY (not just
+# "python3"). This is deliberate and load-bearing: the p4a.branch bump
+# below (to v2026.05.09) brings in a newer python-for-android release
+# whose *default* hostpython3/python3 version may have moved past 3.11.
+# Cython 0.29.36 (pinned in the CI workflow, see build.yml) cannot compile
+# Kivy 2.3.0's graphics .pyx files against Python 3.12+/3.14 struct
+# layouts (this is the exact "member reference type 'int' is not a
+# pointer" failure documented in earlier commits to this file). Pinning
+# the version here means the p4a upgrade cannot change it out from under
+# us, whatever p4a's new default is.
+requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
 
 
 # (str) Custom source folders for requirements
@@ -127,19 +138,29 @@ android.minapi = 24
 #android.sdk = 35
 
 # (str) Android NDK version to use
-# NDK r28+ compiles every .so file 16 KB-page-aligned BY DEFAULT — no
-# per-recipe linker flags needed. Previously pinned to 25b (see the
-# workflow's CACHE_VERSION history for that reasoning), but the flag-only
-# workaround for 16 KB alignment on NDK 25b (-Wl,-z,max-page-size=16384 in
-# the CI workflow) turned out to be incomplete: Google's own build-system
-# docs list a SECOND required flag (-Wl,-z,common-page-size=16384) plus a
-# macro define, and even with both, that approach only aligns whatever
-# actually receives the flag — which isn't guaranteed across every one of
-# p4a's different recipe build systems (autotools, distutils, etc.). NDK
-# r28's default-on alignment doesn't depend on any recipe forwarding a
-# flag correctly, which is why this was worth the version bump instead of
-# continuing to patch the flag list.
-android.ndk = 28.1.13356709
+#
+# THIS ALONE DID NOT FIX THE "16 KB memory page sizes" REJECTION.
+# The previous fix attempt here bumped only this NDK line (to 28.1
+# "r28b") and shipped, still pinning p4a.branch to v2024.01.21 below.
+# That combination is exactly what produced the AAB (versionCode 10256)
+# that Play Console rejected. NDK r27+ does emit 16 KB-aligned ELF LOAD
+# segments by default (confirmed on the NDK release notes), so the
+# compiled .so files themselves were likely fine. The actual remaining
+# gap was on the PACKAGING side, not the compiler side: p4a v2024.01.21
+# (its last PyPI release before this fix, Jan 2024) bundles a Gradle
+# project template hardcoded to Android Gradle Plugin 8.1.1 (p4a commit
+# "Update Android gradle plugin to 8.1.1 and gradle to 8.0.2", #2887).
+# Google requires AGP >= 8.5.1 for the AAB's packaging metadata to tell
+# Play's own bundletool to 16 KB-zip-align uncompressed native libraries
+# when it splits the bundle into installable APKs — AGP 8.1.1 has no
+# concept of this at all, so the check failed regardless of NDK.
+# See p4a.branch below for the actual fix (upgrading p4a itself, which
+# ships AGP 8.11.0). This NDK line is bumped to match: r28c
+# (28.2.13676358) is the exact NDK revision that p4a's own SDL2 recipe
+# was verified/fixed against for 16 KB support (p4a PR #3164, "Update:
+# numpy, pandas, sdl2 to newer versions which support ndk28c") — r28b
+# (28.1.x, the previous pin) predates that recipe fix.
+android.ndk = 28.2.13676358
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 android.ndk_api = 24
@@ -325,7 +346,12 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-android.numeric_version = 10256
+# Bumped past 10256: that was the code on the AAB that Play Console
+# rejected with "does not support 16 KB memory page sizes" (see the
+# android.ndk / p4a.branch comments above for the actual fix). Reusing
+# 10256 for the corrected build risks Play Console treating it as a
+# duplicate/already-seen version code rather than a new upload.
+android.numeric_version = 10257
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -365,14 +391,33 @@ android.release_artifact = aab
 #p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-# Pinned to a known-stable release instead of master: master's python3
-# recipe has since moved to targeting Python 3.14 on-device, and that
-# version's changed internal C struct layout breaks Cython-generated
-# boilerplate in Kivy 2.3.0's graphics extensions (observed as
-# "member reference type 'int' is not a pointer" in tesselator.c /
-# vertex_instructions.c). This release targets Python 3.11, which is
-# compatible with Kivy 2.3.0 and Cython 0.29.36.
-p4a.branch = v2024.01.21
+#
+# THE REAL FIX for the 16 KB page size rejection lives on this line.
+# v2024.01.21 was python-for-android's last PyPI release before this fix
+# and predates the whole 16 KB page-size requirement's tooling story:
+# its bundled Gradle template is hardcoded to Android Gradle Plugin
+# 8.1.1 (needs >= 8.5.1, see android.ndk's comment above for why that
+# matters), and its SDL2/numpy/pandas recipes were never verified
+# against NDK r28.
+#
+# v2026.05.09 is the first official p4a release published after
+# v2024.01.21 (there was a ~2 year gap — see p4a issue #3248). It
+# specifically:
+#   - bumps the bundled Android Gradle Plugin to 8.11.0 and the Gradle
+#     wrapper to 8.14.3 (p4a PR #3172) — comfortably above the 8.5.1
+#     floor Google requires for 16 KB packaging support.
+#   - updates the sdl2 recipe (among others) "to newer versions which
+#     support ndk28c" (p4a PR #3164) — i.e. this is the release where
+#     the SDL2 native build that Kivy's sdl2 bootstrap depends on was
+#     actually fixed/tested against a 16 KB-default NDK, not just
+#     "should work in theory because the NDK changed".
+#   - still supports pinning python3/hostpython3 to 3.11 explicitly
+#     (see requirements= above), so switching to it does not reopen the
+#     Cython 0.29.36 / Kivy 2.3.0 / Python 3.14 incompatibility that the
+#     original v2024.01.21 pin was protecting against.
+# Pinned to this exact tag (not "master"/"develop") so the CI build stays
+# reproducible.
+p4a.branch = v2026.05.09
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
