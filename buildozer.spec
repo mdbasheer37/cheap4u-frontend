@@ -46,7 +46,18 @@ version = 1.1
 # comma separated e.g. requirements = sqlite3,kivy
 # Versions are pinned to known-compatible releases so CI builds are
 # reproducible and don't suddenly break when a new Kivy/KivyMD drops.
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
+# python3/hostpython3 pinned to 3.11.6: this p4a branch (v2026.05.09)
+# otherwise defaults to a newer CPython whose private/unstable C API
+# (_PyUnicode_FastCopyCharacters, _PyInterpreterState_GetConfig, etc.)
+# no longer matches what's baked into Kivy 2.3.0's pre-cythonized
+# kivy/graphics/*.c sources (generated years ago against an older
+# CPython). That mismatch is a genuine, unrelated build failure - it
+# only surfaced once the buildozer cache fix forced a real rebuild
+# instead of silently reusing old cached objects - not a config error.
+# python3==3.11.6 is a version confirmed to work with p4a v2026.05.09
+# (kivy/python-for-android#3339) and is what Kivy 2.3.0 was built and
+# tested against.
+requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
 
 
 # (str) Custom source folders for requirements
