@@ -470,32 +470,75 @@ jobs:
       # every mirror here also happens to fail, this step still exits 0
       # and simply leaves it to p4a's own (normal) download + retry logic
       # - this is pure insurance, never a hard requirement.
-      - name: Pre-fetch freetype source from a mirror (resilience for a flaky upstream host)
+      # ---------------------------------------------------------------
+      # Researched fix (previous version of this step was broken):
+      # download.savannah.gnu.org is a well-documented, chronically
+      # unreliable host - this exact failure mode (hangs, then "Network
+      # is unreachable") has been reported against it for years by many
+      # unrelated projects (MacPorts, NixOS, Yocto, doomemacs...), not
+      # something specific to this pipeline or a one-off blip.
+      #
+      # My first attempt at a mirror fallback here was itself wrong: it
+      # guessed SourceForge would also serve a "freetype-2.14.1.tar.gz"
+      # file, but FreeType stopped publishing .tar.gz release archives
+      # after ~2.14.0 - every current mirror (SourceForge, openSUSE,
+      # Gentoo/Exherbo) only carries "freetype-2.14.1.tar.xz". That's why
+      # the previous fallback silently did nothing (continue-on-error
+      # masked it) and the job hit the exact same savannah failure again.
+      # Confirmed real, currently-live URL:
+      #   https://downloads.sourceforge.net/project/freetype/freetype2/2.14.1/freetype-2.14.1.tar.xz
+      # p4a's freetype recipe has no checksum/hash pinned for this
+      # download (it only pins url + version), so re-packaging the
+      # SAME source as a .tar.gz to match the exact filename p4a looks
+      # for is safe - it's the identical source tree, just re-compressed
+      # locally with tools already on every Ubuntu runner (xz, gzip, tar).
+      - name: Pre-fetch freetype source (savannah is chronically unreliable; SourceForge is the researched fallback)
         continue-on-error: true
         run: |
           set +e
           FT_VERSION="2.14.1"
           DEST_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/freetype"
           DEST_FILE="$DEST_DIR/freetype-$FT_VERSION.tar.gz"
-          mkdir -p "$DEST_DIR"
-          if [ -s "$DEST_FILE" ]; then
-            echo "freetype source already present (cache hit) - skipping pre-fetch."
+          WORK="$RUNNER_TEMP/freetype-prefetch"
+          mkdir -p "$DEST_DIR" "$WORK"
+
+          if [ -s "$DEST_FILE" ] && tar -tzf "$DEST_FILE" >/dev/null 2>&1; then
+            echo "Valid freetype source already present (cache hit) - skipping pre-fetch."
             exit 0
           fi
-          for URL in \
-            "https://download.savannah.gnu.org/releases/freetype/freetype-$FT_VERSION.tar.gz" \
-            "https://sourceforge.net/projects/freetype/files/freetype2/$FT_VERSION/freetype-$FT_VERSION.tar.gz/download" \
-            "https://downloads.sourceforge.net/project/freetype/freetype2/$FT_VERSION/freetype-$FT_VERSION.tar.gz"
-          do
-            echo "Trying: $URL"
-            if curl -fL --connect-timeout 15 --max-time 90 --retry 2 -o "$DEST_FILE.tmp" "$URL"; then
+          rm -f "$DEST_FILE"
+
+          echo "--- Attempt 1: savannah.gnu.org directly (fails fast this time - 20s connect, 60s total - instead of hanging for 11+ minutes) ---"
+          if curl -fL --connect-timeout 20 --max-time 60 --retry 1 \
+               -o "$DEST_FILE.tmp" \
+               "https://download.savannah.gnu.org/releases/freetype/freetype-$FT_VERSION.tar.gz" \
+             && tar -tzf "$DEST_FILE.tmp" >/dev/null 2>&1; then
+            mv "$DEST_FILE.tmp" "$DEST_FILE"
+            echo "Got it directly from savannah.gnu.org - it must be back up."
+            exit 0
+          fi
+          rm -f "$DEST_FILE.tmp"
+          echo "savannah.gnu.org attempt failed or timed out - falling back to SourceForge (.tar.xz, re-packaged as .tar.gz below)."
+
+          echo "--- Attempt 2: SourceForge (confirmed live URL, .tar.xz only - FreeType stopped shipping .tar.gz after 2.14.0) ---"
+          XZ_FILE="$WORK/freetype-$FT_VERSION.tar.xz"
+          if curl -fL --connect-timeout 20 --max-time 120 --retry 3 --retry-delay 5 \
+               -o "$XZ_FILE" \
+               "https://downloads.sourceforge.net/project/freetype/freetype2/$FT_VERSION/freetype-$FT_VERSION.tar.xz"; then
+            echo "Downloaded from SourceForge. Re-packaging .tar.xz -> .tar.gz to match the filename p4a's recipe expects..."
+            rm -rf "$WORK/extracted"
+            mkdir -p "$WORK/extracted"
+            if tar -xf "$XZ_FILE" -C "$WORK/extracted" \
+               && tar -czf "$DEST_FILE.tmp" -C "$WORK/extracted" "freetype-$FT_VERSION" \
+               && tar -tzf "$DEST_FILE.tmp" >/dev/null 2>&1; then
               mv "$DEST_FILE.tmp" "$DEST_FILE"
-              echo "Pre-fetched freetype from: $URL"
+              echo "Pre-fetched and re-packaged freetype from SourceForge: $DEST_FILE"
               exit 0
             fi
-            rm -f "$DEST_FILE.tmp"
-          done
-          echo "All mirrors failed - leaving this to p4a's own download step as normal (not a failure)."
+          fi
+          rm -f "$DEST_FILE.tmp" "$XZ_FILE"
+
+          echo "Both attempts failed - leaving this to p4a's own download step as normal (not a hard failure here; it may simply fail again with the same savannah error, which is the honest outcome to report back)."
           exit 0
 
       - name: Build with Buildozer
