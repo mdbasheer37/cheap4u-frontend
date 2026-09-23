@@ -115,6 +115,25 @@ jobs:
           python -m pip install --upgrade pip wheel setuptools
           pip install --upgrade "buildozer>=1.5.0" "Cython==0.29.36"
 
+      # ---------------------------------------------------------------
+      # THIS is very likely the actual reason every previous linker/
+      # toolchain patch appeared to have no effect at all, even though
+      # the self-test proved the patch mechanism itself worked: this
+      # cache had a `restore-keys: buildozer-global-` fallback with no
+      # CACHE_VERSION or spec-hash in it. GitHub Actions cache falls back
+      # to ANY entry matching that prefix when the exact key is a miss -
+      # so every time CACHE_VERSION was bumped (v7, v8, v9...), the exact
+      # key was indeed a fresh miss, but the fallback silently restored
+      # the OLD .buildozer directory from a run before any of these
+      # patches existed anyway. python-for-android tracks "already built"
+      # state per recipe INSIDE .buildozer, so it saw SDL2/freetype/
+      # libpng/libmain already marked built from that stale restore and
+      # skipped recompiling them entirely - the patched toolchain was
+      # never even invoked for those files. That's why the alignment
+      # never changed no matter what the patch itself did.
+      # Fix: no restore-keys fallback. A miss on the exact key now means
+      # a genuinely empty .buildozer and a full rebuild of every recipe,
+      # which is what we actually want every time CACHE_VERSION changes.
       - name: Cache Buildozer global directory
         uses: actions/cache@v4
         with:
@@ -122,8 +141,6 @@ jobs:
             ~/.buildozer
             .buildozer
           key: buildozer-global-${{ env.CACHE_VERSION }}-${{ hashFiles('buildozer.spec') }}
-          restore-keys: |
-            buildozer-global-
 
       - name: Cache Android SDK/NDK
         id: sdk-cache
@@ -519,6 +536,33 @@ jobs:
             exit 1
           fi
           echo "apk_path=$PKG_PATH" >> "$GITHUB_OUTPUT"
+
+      # ---------------------------------------------------------------
+      # Diagnostic safety net. If the alignment check below still fails
+      # after the cache fix above, this is what tells us why on the next
+      # run, instead of guessing again: it shows whether SDL2/freetype/
+      # etc. were actually recompiled this run at all, and which exact
+      # toolchain path did it. Always runs, costs a few seconds.
+      - name: Diagnostic - was SDL2/freetype actually rebuilt, and with what toolchain?
+        if: always()
+        run: |
+          LOG="$GITHUB_WORKSPACE/buildozer_full.log"
+          if [ ! -f "$LOG" ]; then
+            echo "No log to inspect."
+            exit 0
+          fi
+          echo "===== Did p4a report these recipes as already built (restored from cache) vs actually building them? ====="
+          grep -n -i "sdl2_ttf\|freetype\|libpng\|already built\|Skipping.*build" "$LOG" | grep -i "sdl2_ttf\|freetype\|libpng" -A2 -B2 | head -n 80 || echo "(no matching lines found)"
+          echo ""
+          echo "===== Every distinct toolchain/bin directory actually invoked during the build ====="
+          grep -o '/[^ "'"'"']*toolchains/llvm/prebuilt/[^ "'"'"']*/bin' "$LOG" | sort -u || echo "(none found in log)"
+          echo ""
+          echo "===== Every distinct ld.lld path actually invoked ====="
+          grep -o '/[^ "'"'"']*ld\.lld' "$LOG" | sort -u || echo "(none found in log)"
+          echo ""
+          echo "===== Timestamps: was libSDL2_ttf.so produced fresh in this job, or restored from a cache? ====="
+          find .buildozer -iname "libSDL2_ttf.so" -newer buildozer.spec -print 2>/dev/null | sed 's/^/FRESH (newer than buildozer.spec, i.e. built this run): /' || true
+          find .buildozer -iname "libSDL2_ttf.so" -not -newer buildozer.spec -print 2>/dev/null | sed 's/^/STALE (older than buildozer.spec - likely restored from cache, not rebuilt): /' || true
 
       # ---------------------------------------------------------------
       # Hard verification gate: actually inspect the native libraries
