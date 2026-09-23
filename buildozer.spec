@@ -46,7 +46,15 @@ version = 1.1
 # comma separated e.g. requirements = sqlite3,kivy
 # Versions are pinned to known-compatible releases so CI builds are
 # reproducible and don't suddenly break when a new Kivy/KivyMD drops.
-requirements = python3,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
+#
+# python3==3.11.9 / hostpython3==3.11.9 are pinned EXPLICITLY (not just
+# "python3"). p4a.branch below (v2026.05.09) is much newer than this
+# project's original pin and its default hostpython3/python3 version may
+# have moved past 3.11 - Cython 0.29.36 (pinned in the CI workflow)
+# cannot compile Kivy 2.3.0's graphics .pyx files against Python
+# 3.12+/3.14's changed struct layout. Pinning here means the p4a version
+# can't silently change that out from under us.
+requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
 
 
 # (str) Custom source folders for requirements
@@ -139,7 +147,14 @@ android.minapi = 24
 # r28's default-on alignment doesn't depend on any recipe forwarding a
 # flag correctly, which is why this was worth the version bump instead of
 # continuing to patch the flag list.
-android.ndk = 28.1.13356709
+#
+# Bumped from 28.1.13356709 (r28b) to 28.2.13676358 (r28c): r28c is the
+# exact NDK revision python-for-android's own sdl2 recipe was
+# fixed/verified against (p4a PR #3164, "Update: numpy, pandas, sdl2 to
+# newer versions which support ndk28c") - matching it removes one more
+# variable when diagnosing any remaining alignment issue in the SDL2
+# native libraries specifically.
+android.ndk = 28.2.13676358
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 android.ndk_api = 24
