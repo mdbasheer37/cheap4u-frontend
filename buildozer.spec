@@ -46,15 +46,18 @@ version = 1.1
 # comma separated e.g. requirements = sqlite3,kivy
 # Versions are pinned to known-compatible releases so CI builds are
 # reproducible and don't suddenly break when a new Kivy/KivyMD drops.
-#
-# python3==3.11.9 / hostpython3==3.11.9 are pinned EXPLICITLY (not just
-# "python3"). p4a.branch below (v2026.05.09) is much newer than this
-# project's original pin and its default hostpython3/python3 version may
-# have moved past 3.11 - Cython 0.29.36 (pinned in the CI workflow)
-# cannot compile Kivy 2.3.0's graphics .pyx files against Python
-# 3.12+/3.14's changed struct layout. Pinning here means the p4a version
-# can't silently change that out from under us.
-requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
+# python3/hostpython3 pinned to 3.11.6: this p4a branch (v2026.05.09)
+# otherwise defaults to a newer CPython whose private/unstable C API
+# (_PyUnicode_FastCopyCharacters, _PyInterpreterState_GetConfig, etc.)
+# no longer matches what's baked into Kivy 2.3.0's pre-cythonized
+# kivy/graphics/*.c sources (generated years ago against an older
+# CPython). That mismatch is a genuine, unrelated build failure - it
+# only surfaced once the buildozer cache fix forced a real rebuild
+# instead of silently reusing old cached objects - not a config error.
+# python3==3.11.6 is a version confirmed to work with p4a v2026.05.09
+# (kivy/python-for-android#3339) and is what Kivy 2.3.0 was built and
+# tested against.
+requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
 
 
 # (str) Custom source folders for requirements
@@ -147,14 +150,7 @@ android.minapi = 24
 # r28's default-on alignment doesn't depend on any recipe forwarding a
 # flag correctly, which is why this was worth the version bump instead of
 # continuing to patch the flag list.
-#
-# Bumped from 28.1.13356709 (r28b) to 28.2.13676358 (r28c): r28c is the
-# exact NDK revision python-for-android's own sdl2 recipe was
-# fixed/verified against (p4a PR #3164, "Update: numpy, pandas, sdl2 to
-# newer versions which support ndk28c") - matching it removes one more
-# variable when diagnosing any remaining alignment issue in the SDL2
-# native libraries specifically.
-android.ndk = 28.2.13676358
+android.ndk = 28.1.13356709
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 android.ndk_api = 24
@@ -267,21 +263,7 @@ android.enable_androidx = True
 # can be necessary to solve conflicts in gradle_dependencies
 # please enclose in double quotes 
 # e.g. android.add_packaging_options = "exclude 'META-INF/common.kotlin_module'", "exclude 'META-INF/*.kotlin_module'"
-#
-# 16 KB PAGE SIZE FIX (part 1 of 2 - see p4a.source_dir below for part 2):
-# python-for-android's own Gradle template (build.tmpl.gradle, unconditional
-# for every app it builds) hardcodes:
-#     packagingOptions { jniLibs { useLegacyPackaging = true } }
-# "useLegacyPackaging = true" means native .so files are packaged the OLD,
-# COMPRESSED way. That is fundamentally incompatible with Google's 16 KB
-# page size requirement, regardless of how well the .so files themselves
-# are ELF-aligned - Play Console reads it straight off the AAB's bundle
-# config. This is emitted as a *second* packagingOptions{} block inside the
-# same android{} closure, so Gradle evaluates it after the template's own
-# block and the later assignment wins, overriding true -> false.
-# (Confirmed against python-for-android's own repo, "develop" branch,
-#  pythonforandroid/bootstraps/common/build/templates/build.tmpl.gradle.)
-android.add_packaging_options = "jniLibs { useLegacyPackaging = false }"
+#android.add_packaging_options =
 
 # (list) Java classes to add as activities to the manifest.
 #android.add_activities = com.example.ExampleActivity
@@ -354,7 +336,14 @@ android.archs = arm64-v8a
 # draft that failed with "must target API level 36" (built before
 # android.api was raised to 36, above) - reusing 10251 risks Play Console
 # treating the new, fixed upload as a duplicate version code.
-android.numeric_version = 10257
+# Bumped past 10257: that code is the one shown rejected for the 16 KB
+# page-size error in Play Console (android.api=36 / ndk=28.1.13356709
+# were already in place for that build - the NDK version alone wasn't
+# the fix; see the "Force 16 KB alignment for ndk-build recipes" step in
+# the workflow for what was actually missing). Reusing 10257 for the
+# corrected AAB risks Play Console treating it as the same, already-seen
+# version code.
+android.numeric_version = 10258
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
@@ -407,24 +396,6 @@ p4a.branch = v2026.05.09
 #p4a.commit = HEAD
 
 # (str) python-for-android git clone directory
-#
-# 16 KB PAGE SIZE FIX (part 2 of 2 - see android.add_packaging_options above
-# for part 1):
-# NDK r28+ compiles 16 KB-aligned by default for recipes built through the
-# standard autotools/distutils path (python3, openssl, sqlite3, libffi, ...),
-# but the SDL2 bootstrap (libSDL2.so, libSDL2_image.so, libSDL2_mixer.so,
-# libSDL2_ttf.so, and p4a's own libmain.so) is built by directly invoking
-# `ndk-build` against pythonforandroid/bootstraps/sdl2/build/jni/Application.mk,
-# which does NOT reliably inherit that default - confirmed by many people
-# still getting 4 KB-aligned SDL2 libraries in 2026 even with NDK r28 and
-# p4a's "develop" branch (https://github.com/kivy/python-for-android/issues/3165).
-# The CI workflow (.github/workflows/build.yml) clones python-for-android
-# itself at p4a.branch above into a local folder, appends the missing
-# APP_LDFLAGS/-Wl,-z,max-page-size=16384 line to that one Application.mk
-# file, and points this option at that patched local checkout - leave this
-# line commented for local/manual builds (they'll just fall back to p4a's
-# normal auto-clone behaviour, without the SDL2 patch); CI overwrites it via
-# sed before every build.
 #p4a.source_dir =
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
