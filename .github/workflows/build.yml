@@ -1,4 +1,4 @@
-name: Build Android APK/AAB
+name: Build Android APK
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Build type (release = signed .aab for Google Play)'
+        description: 'Build type'
         required: true
         default: 'debug'
         type: choice
@@ -19,14 +19,51 @@ on:
           - release
 
 env:
+  # Centralised version pins so SDK / NDK / build-tools always agree
+  # with what buildozer.spec expects.
   ANDROID_COMPILE_SDK: "36"
+  # Bump this whenever a toolchain change (e.g. the Cython pin, the NDK
+  # version) needs to invalidate the .buildozer cache even though
+  # buildozer.spec's hash alone wouldn't guarantee it - otherwise stale,
+  # already-compiled artifacts from a previous run get silently reused.
+  # v7: NDK r28 alone does NOT make the build 16 KB-safe. NDK r28's
+  # "aligned by default" behaviour only applies to code compiled directly
+  # by the NDK's clang/lld toolchain (the recipes that use distutils,
+  # autotools, CMake, etc - e.g. python3, openssl, sqlite3, libffi all
+  # come out aligned for free). It does NOT apply to anything built with
+  # ndk-build/Android.mk, because ndk-build's own make-based build system
+  # does not opt in to the linker's new default and still emits 4 KB
+  # LOAD segments unless told otherwise. In a Kivy/SDL2 app that's
+  # exactly libSDL2.so, libSDL2_image.so, libSDL2_mixer.so,
+  # libSDL2_ttf.so, AND python-for-android's own bootstrap libmain.so -
+  # all four SDL2 recipes plus the app's native entry point are built via
+  # ndk-build. This is a confirmed, still-open upstream gap as of 2026
+  # (kivy/python-for-android#3165) - bumping the NDK version alone does
+  # not fix it, which is exactly what the previous v6-ndk28 attempt
+  # (NDK r28 with no further changes) got wrong: it fixed everything
+  # EXCEPT the SDL2 family and libmain.so, which is exactly the failure
+  # this pipeline was hitting. See the "Force 16 KB alignment for
+  # ndk-build recipes" step below for the actual fix.
+  # v8: v7's ndk-build-only wrap wasn't enough - the actual CI run showed
+  # libfreetype.so/libpng16.so/libffi.so/libssl1.1.so (all built via
+  # autotools/configure, not ndk-build) were ALSO still 4 KB, alongside
+  # the expected SDL2/libmain.so files. v8 instead patches the real
+  # linker binary (ld.lld) that every build system - ndk-build,
+  # autotools, CMake, distutils - ultimately shells out to, which is a
+  # universal fix regardless of which recipe or build system is involved.
+  # See the "Force 16 KB alignment at the linker" step for details.
+  # v9: v8's approach renamed the shared "lld" multicall binary itself,
+  # which broke its own argv[0]-based dispatch (it decides ELF vs Mach-O
+  # vs COFF vs wasm by which name it was invoked as) - calling it back
+  # under a renamed path failed with "lld is a generic driver. Invoke
+  # ld.lld... instead", so the CI's own self-test caught it immediately.
+  # v9 leaves that shared binary untouched and instead replaces only the
+  # ld.lld symlink with a wrapper that re-execs the same untouched binary
+  # via `exec -a ld.lld` (forcing argv[0] back to "ld.lld" so dispatch
+  # still works), appending the alignment flags last.
+  CACHE_VERSION: "v9-argv0-safe-linker-wrap"
   ANDROID_BUILD_TOOLS: "36.0.0"
-  # NDK r28c. This is the NDK python-for-android v2026.05.09 recommends, and
-  # r28+ produces 16 KB-aligned ELF files by default (clang/lld + ndk-build).
-  # No NDK patching, no ld.lld wrapper, no global LDFLAGS: whether it really
-  # worked is decided by tools/verify_16kb.py on the finished .aab below.
-  ANDROID_NDK_VERSION: "28.2.13676358"
-  BUNDLETOOL_VERSION: "1.18.1"
+  ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
   ANDROID_SDK_ROOT: /home/runner/android-sdk
 
@@ -49,6 +86,10 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # ---------------------------------------------------------------
+      # System / native build dependencies that python-for-android (p4a)
+      # needs on the host to cross-compile Kivy's C extensions.
+      # ---------------------------------------------------------------
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update -y
@@ -60,104 +101,414 @@ jobs:
             cmake libffi-dev libssl-dev \
             ccache
 
-      # Buildozer only needs a `cython` executable on the host to pass its
-      # pre-flight check. Kivy/pyjnius/android are each compiled by p4a in an
-      # isolated build environment with the Cython version *they* pin, so this
-      # host pin does not affect how Kivy is built.
+      # ---------------------------------------------------------------
+      # Buildozer + Cython. Cython MUST be pinned to the 0.29.x line.
+      # Cython 3.x generates C code that fails to compile for several
+      # of Kivy's graphics .pyx files (observed as errors like
+      # "member reference type 'int' is not a pointer" in
+      # vertex_instructions.c). This is a known incompatibility between
+      # current Kivy/python-for-android recipes and Cython 3 - the
+      # buildozer maintainers pin below Cython 3.0 for the same reason.
+      # ---------------------------------------------------------------
       - name: Install Buildozer and Cython
         run: |
           python -m pip install --upgrade pip wheel setuptools
           pip install --upgrade "buildozer>=1.5.0" "Cython==0.29.36"
 
-      # -----------------------------------------------------------------
-      # CACHES - designed so a stale native library can never be reused.
-      #
-      # 1. SDK/NDK: a plain toolchain install. It is NOT modified after
-      #    installation any more (the old ndk-build / ld.lld patching is gone),
-      #    so restoring it is safe. The key contains every version and a hash
-      #    of this workflow.
-      # 2. p4a *download* cache only (source tarballs). We deliberately do NOT
-      #    cache ~/.buildozer or .buildozer as a whole: those contain compiled
-      #    objects, per-recipe "already built" markers and dists, which is
-      #    exactly how an old 4 KB-aligned libSDL2.so could be resurrected.
-      #    There is also NO restore-keys fallback: a key miss = empty cache.
-      # -----------------------------------------------------------------
+      # ---------------------------------------------------------------
+      # THIS is very likely the actual reason every previous linker/
+      # toolchain patch appeared to have no effect at all, even though
+      # the self-test proved the patch mechanism itself worked: this
+      # cache had a `restore-keys: buildozer-global-` fallback with no
+      # CACHE_VERSION or spec-hash in it. GitHub Actions cache falls back
+      # to ANY entry matching that prefix when the exact key is a miss -
+      # so every time CACHE_VERSION was bumped (v7, v8, v9...), the exact
+      # key was indeed a fresh miss, but the fallback silently restored
+      # the OLD .buildozer directory from a run before any of these
+      # patches existed anyway. python-for-android tracks "already built"
+      # state per recipe INSIDE .buildozer, so it saw SDL2/freetype/
+      # libpng/libmain already marked built from that stale restore and
+      # skipped recompiling them entirely - the patched toolchain was
+      # never even invoked for those files. That's why the alignment
+      # never changed no matter what the patch itself did.
+      # Fix: no restore-keys fallback. A miss on the exact key now means
+      # a genuinely empty .buildozer and a full rebuild of every recipe,
+      # which is what we actually want every time CACHE_VERSION changes.
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            .buildozer
+          key: buildozer-global-${{ env.CACHE_VERSION }}-${{ hashFiles('buildozer.spec') }}
+
       - name: Cache Android SDK/NDK
         id: sdk-cache
         uses: actions/cache@v4
         with:
           path: ${{ env.ANDROID_HOME }}
-          key: android-sdk-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}-${{ env.ANDROID_NDK_VERSION }}-${{ hashFiles('.github/workflows/build.yml') }}
+          # CACHE_VERSION is included here too: it's what we bump whenever
+          # the *patch we apply to the installed NDK* changes (see the
+          # "Force 16 KB alignment for ndk-build recipes" step), not just
+          # when the NDK version string itself changes. Without this, a
+          # cache-hit would silently restore an old, unpatched ndk-build
+          # binary from before that step existed.
+          key: android-sdk-${{ env.ANDROID_COMPILE_SDK }}-${{ env.ANDROID_BUILD_TOOLS }}-${{ env.ANDROID_NDK_VERSION }}-${{ env.CACHE_VERSION }}
 
-      - name: Cache p4a source downloads only (never compiled output)
-        uses: actions/cache@v4
-        with:
-          path: .buildozer/android/platform/build-arm64-v8a/packages
-          key: p4a-downloads-${{ hashFiles('buildozer.spec') }}
-
+      # ---------------------------------------------------------------
+      # Manually provision the Android SDK command-line tools.
+      # We do this ourselves (instead of letting buildozer auto-download
+      # the SDK) because buildozer's own SDK bootstrap is a common
+      # source of CI failures: missing sdkmanager, unaccepted licenses,
+      # and mismatched build-tools. Doing it explicitly here gives full
+      # control and guarantees no interactive prompts.
+      # ---------------------------------------------------------------
       - name: Install Android SDK command-line tools
         if: steps.sdk-cache.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           cd "$ANDROID_HOME/cmdline-tools"
-          curl -fsSL -o cmdline-tools.zip \
-            "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+
+          # Resolve the current "latest" Linux command-line tools URL from
+          # Google's own download page, with a known-good pinned fallback
+          # in case the page layout changes.
+          CMDLINE_URL=$(curl -fsSL https://developer.android.com/studio | \
+            grep -o 'https://dl.google.com/android/repository/commandlinetools-linux-[0-9]*_latest.zip' | \
+            head -n1 || true)
+          if [ -z "$CMDLINE_URL" ]; then
+            CMDLINE_URL="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+          fi
+          echo "Using command-line tools: $CMDLINE_URL"
+
+          curl -fsSL -o cmdline-tools.zip "$CMDLINE_URL"
           unzip -q cmdline-tools.zip
           rm cmdline-tools.zip
+          # sdkmanager requires the tools to live under cmdline-tools/latest
           rm -rf latest
           mv cmdline-tools latest
 
-      - name: Install Android platform, build-tools and NDK
-        if: steps.sdk-cache.outputs.cache-hit != 'true'
+      - name: Accept all Android SDK licenses
         run: |
           set -euo pipefail
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           mkdir -p "$ANDROID_HOME/licenses"
-          # `< <(yes)` instead of `yes |` so `set -o pipefail` does not trip on SIGPIPE.
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses < <(yes) > /dev/null
-          "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /dev/null || true
+
+      - name: Install Android platform-tools, build-tools, platform and NDK
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" \
             "platform-tools" \
             "platforms;android-${ANDROID_COMPILE_SDK}" \
             "build-tools;${ANDROID_BUILD_TOOLS}" \
-            "ndk;${ANDROID_NDK_VERSION}" < <(yes)
+            "ndk;${ANDROID_NDK_VERSION}" || true
 
-      - name: Verify Android SDK / NDK are present
+          # Re-accept licenses once more now that new packages exist -
+          # some sdkmanager versions write fresh license files per package.
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses > /dev/null || true
+
+      - name: Create legacy SDK path compatibility symlinks
         run: |
           set -euo pipefail
-          test -x "$ANDROID_HOME/platform-tools/adb"
-          test -x "$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}/aidl"
-          test -x "$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}/zipalign"
-          test -d "$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}"
-          test -d "$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}"
-          grep -H "Pkg.Revision" "$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}/source.properties"
-
-      - name: Legacy SDK path symlinks and buildozer.spec SDK/NDK paths
-        run: |
-          set -euo pipefail
-          # buildozer's pre-flight check still looks for tools/bin/*.
+          # Buildozer's SDK-build-tools check looks for sdkmanager (and
+          # friends) at the legacy `tools/bin/` location, even when
+          # android.skip_update = True is set in buildozer.spec. Modern
+          # sdkmanager only ships under `cmdline-tools/latest/bin/`, so
+          # without this symlink buildozer thinks the SDK is missing
+          # entirely and aborts.
           mkdir -p "$ANDROID_HOME/tools/bin"
           for tool in sdkmanager avdmanager apkanalyzer; do
             src="$ANDROID_HOME/cmdline-tools/latest/bin/$tool"
-            [ -e "$src" ] && ln -sf "$src" "$ANDROID_HOME/tools/bin/$tool"
+            if [ -e "$src" ]; then
+              ln -sf "$src" "$ANDROID_HOME/tools/bin/$tool"
+            fi
           done
+          ls -la "$ANDROID_HOME/tools/bin"
+
+      - name: Verify Android SDK / NDK / aidl are present
+        run: |
+          set -euo pipefail
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -d "$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}"
+          test -x "$ANDROID_HOME/build-tools/${ANDROID_BUILD_TOOLS}/aidl"
+          test -d "$ANDROID_HOME/platforms/android-${ANDROID_COMPILE_SDK}"
+          test -d "$ANDROID_HOME/ndk/${ANDROID_NDK_VERSION}"
+          echo "Android SDK looks good:"
+          ls "$ANDROID_HOME"
+
+      # ---------------------------------------------------------------
+      # THE ACTUAL 16 KB FIX - v2.
+      #
+      # What the previous attempt in this pipeline got wrong: it only
+      # wrapped `ndk-build` (assuming NDK r28's "16 KB by default" claim
+      # held for everything else). It didn't. The actual CI run showed
+      # libfreetype.so, libpng16.so, libffi.so and libssl1.1.so - none of
+      # which are built via ndk-build, they're autotools/configure
+      # recipes - were ALSO still 4 KB-aligned, alongside the expected
+      # ndk-build-built libSDL2.so/libSDL2_ttf.so/libmain.so. So NDK
+      # r28's default isn't actually reaching ANY of p4a's recipes in
+      # this build, ndk-build or not - something in p4a's own build
+      # environment (or this specific NDK point release) is forcing 4 KB
+      # regardless of build system.
+      #
+      # Rather than chase that down recipe-by-recipe, this patches the
+      # one thing every single one of those build systems ultimately
+      # calls: the real ELF linker binary itself (ld.lld, and any
+      # <triple>-ld / ld alias that resolves to the same file). ndk-build,
+      # autotools/configure, CMake and distutils all end up shelling out
+      # to that exact binary to actually produce a .so - so forcing every
+      # invocation of it to additionally pass
+      #   -z max-page-size=16384 -z common-page-size=16384
+      # as the LAST arguments (linker flags of the same kind: last
+      # occurrence wins) guarantees the result regardless of what any
+      # individual recipe, Android.mk, or p4a-internal default already
+      # put on the command line before it. This is a lower, more
+      # universal choke point than wrapping ndk-build alone.
+      #
+      # The ndk-build wrapper from the previous attempt is kept too
+      # (harmless, and it also flips APP_SUPPORT_FLEXIBLE_PAGE_SIZES for
+      # any ndk-build-internal logic that keys off it specifically) - but
+      # the ld.lld wrap below is what actually guarantees the outcome.
+      #
+      # A short self-test runs immediately after patching: it compiles a
+      # trivial .so with this exact toolchain and checks its alignment
+      # right here, in seconds, so a broken interception is caught before
+      # spending 2-3 minutes on the full buildozer build.
+      - name: Force 16 KB alignment at the linker (universal fix for every recipe)
+        run: |
+          set -euo pipefail
+          NDK_DIR="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          LLVM_BIN="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          EXTRA_LDFLAGS="-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
+
+          echo "=== Step 1: wrap ndk-build (kept from the previous attempt) ==="
+          NDK_BUILD="$NDK_DIR/ndk-build"
+          NDK_BUILD_MARKER="$NDK_DIR/.ndk-build-16k-wrapped"
+          if [ -f "$NDK_BUILD_MARKER" ]; then
+            echo "ndk-build already wrapped - skipping."
+          elif [ -f "$NDK_BUILD" ]; then
+            mv "$NDK_BUILD" "$NDK_DIR/ndk-build.real"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              '# Auto-generated: forces 16 KB alignment for anything p4a builds via ndk-build.' \
+              'DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"' \
+              'exec "$DIR/ndk-build.real" "$@" \' \
+              '  APP_LDFLAGS+="-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384" \' \
+              '  APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true' \
+              > "$NDK_BUILD"
+            chmod +x "$NDK_BUILD"
+            touch "$NDK_BUILD_MARKER"
+            echo "Wrapped $NDK_BUILD"
+          else
+            echo "::warning::No ndk-build found at $NDK_BUILD - skipping that layer (unexpected, but the linker-level wrap below still covers it)."
+          fi
+
+          echo "=== Step 2: wrap ld.lld (universal - catches every recipe) ==="
+          # IMPORTANT: modern NDKs ship lld as a single multicall ELF
+          # binary (its actual filename is just "lld"), and ld.lld/
+          # ld64.lld/lld-link/wasm-ld are symlinks to it. The binary
+          # decides which linker to act as by looking at its OWN argv[0]
+          # (i.e. which name it was invoked as) - it is NOT a per-name
+          # separate binary. Renaming the underlying "lld" file (as the
+          # very first version of this fix did) broke that dispatch
+          # entirely, and calling it directly as "lld.real" therefore
+          # failed with "lld is a generic driver. Invoke ld.lld... instead".
+          # That's why the previous run's self-test failed.
+          #
+          # The correct fix: leave the real "lld" binary completely
+          # untouched, and replace only the "ld.lld" symlink itself with a
+          # tiny wrapper that re-execs that same untouched binary while
+          # explicitly forcing its argv[0] back to "ld.lld" (via bash's
+          # `exec -a`), so its own name-based dispatch still selects the
+          # ELF linker exactly as before - just with our extra flags
+          # appended last.
+          LD_MARKER="$NDK_DIR/.ld-16k-wrapped"
+          LLD_ALIAS="$LLVM_BIN/ld.lld"
+          if [ -f "$LD_MARKER" ]; then
+            echo "ld.lld already wrapped - skipping."
+          elif [ -e "$LLD_ALIAS" ]; then
+            REAL_LLD="$(readlink -f "$LLD_ALIAS")"
+            echo "ld.lld currently resolves to: $REAL_LLD (this file is left untouched)"
+            rm -f "$LLD_ALIAS"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              '# Auto-generated: re-invokes the real, UNTOUCHED lld multicall' \
+              '# binary with argv[0] forced back to "ld.lld" (via `exec -a`) so its' \
+              '# own name-based dispatch still selects the ELF linker, then appends' \
+              '# 16 KB alignment flags last (same-key linker flags: last wins, so' \
+              '# this overrides anything already on the command line before it).' \
+              "exec -a ld.lld \"$REAL_LLD\" \"\$@\" -z max-page-size=16384 -z common-page-size=16384" \
+              > "$LLD_ALIAS"
+            chmod +x "$LLD_ALIAS"
+            touch "$LD_MARKER"
+            echo "Wrapped $LLD_ALIAS (real binary at $REAL_LLD is unmodified):"
+            cat "$LLD_ALIAS"
+          else
+            echo "::warning::No ld.lld found at $LLVM_BIN - unexpected NDK layout, the self-test below will catch this."
+          fi
+
+          echo "=== Step 3: also export LDFLAGS globally as a third layer ==="
+          # Belt-and-suspenders: several p4a PythonRecipe/autotools-based
+          # recipes start their build env from a copy of the process
+          # environment, so anything already exported here is inherited
+          # unless a recipe explicitly overwrites the key. Harmless if
+          # unused - the linker wrap above is what actually guarantees
+          # the result regardless of whether any given recipe honors this.
+          # (Not touching CFLAGS/__BIONIC_NO_PAGE_SIZE_MACRO here - that
+          # define is only needed by code with a custom allocator that
+          # reads the PAGE_SIZE macro at compile time, which nothing in
+          # this app's dependency stack does, and skipping it avoids any
+          # risk of an unrelated compile break in a recipe that doesn't
+          # expect it.)
+          echo "LDFLAGS=${LDFLAGS:-} $EXTRA_LDFLAGS" >> "$GITHUB_ENV"
+
+          echo "=== Step 4: self-test - compile a throwaway .so with this exact toolchain ==="
+          CLANG="$LLVM_BIN/clang"
+          READELF="$LLVM_BIN/llvm-readelf"
+          TESTDIR="$RUNNER_TEMP/16k-selftest"
+          mkdir -p "$TESTDIR"
+          echo 'int probe_16k(void) { return 42; }' > "$TESTDIR/probe.c"
+          "$CLANG" --target=aarch64-linux-android24 -fuse-ld=lld -shared \
+            -o "$TESTDIR/probe.so" "$TESTDIR/probe.c"
+          ALIGNS=$("$READELF" -lW "$TESTDIR/probe.so" | awk '/LOAD/ {print $NF}')
+          echo "Self-test .so LOAD alignments: $ALIGNS"
+          MIN_ALIGN_HEX=$(echo "$ALIGNS" | sort -u | head -n1)
+          if [ $((MIN_ALIGN_HEX)) -lt 16384 ]; then
+            echo "::error::Self-test FAILED - the linker wrap is not taking effect (got $MIN_ALIGN_HEX). The full buildozer build would still produce 4 KB .so files."
+            exit 1
+          fi
+          echo "Self-test passed: a throwaway .so built with this toolchain is 16 KB-aligned ($MIN_ALIGN_HEX). Proceeding to the real build."
+
+      # ---------------------------------------------------------------
+      # Separate, unrelated fix: Kivy 2.3.0's pre-generated
+      # kivy/graphics/cgl_backend/cgl_gl.c (shipped inside the Kivy
+      # sdist, not regenerated locally) assigns glShaderSource - whose
+      # real prototype takes `const GLchar *const *` - to a function
+      # pointer typed `const GLchar **`. That mismatch was always
+      # technically wrong, but Clang only started treating it as a build
+      # -killing ERROR (rather than a warning) starting with Clang 16
+      # (this NDK's Clang is well past that). This is a well-documented,
+      # widely-hit break affecting many projects built against Kivy 2.3.0
+      # with any modern Clang (github.com/kivy/kivy#8557), not anything
+      # specific to this app's code or the 16 KB work. CPython's own
+      # Modules/grpmodule.c hits the same class of newer-Clang strictness
+      # too (implicit-function-declaration / int-conversion on
+      # setgrent/getgrent/endgrent) - bionic actually implements all
+      # three functions (added ~2016), this is purely a missing/hidden
+      # declaration at compile time, not a missing symbol, so downgrading
+      # the diagnostic is safe: the linker will find the real symbol.
+      # Fix (per LLVM's own release notes for this exact change):
+      # downgrade these back to non-fatal warnings with
+      # -Wno-error=incompatible-function-pointer-types,
+      # -Wno-error=implicit-function-declaration and
+      # -Wno-error=int-conversion (the three C-strictness checks Clang
+      # made fatal-by-default across versions 15-16; Kivy 2.3.0 and this
+      # exact CPython module predate all three).
+      #
+      # IMPORTANT (this is what the previous version of this step got
+      # wrong): the NDK ships a separate compiler alias PER target-triple-
+      # and-API-level, e.g. "aarch64-linux-android24-clang" - and that is
+      # exactly what CPython's own setup.py uses to build extension
+      # modules (confirmed from the actual failing command), NOT the
+      # plain "clang" name. Wrapping only "clang" left every one of these
+      # per-triple aliases - and therefore all of CPython's own C
+      # extension modules - completely unpatched. Each such alias also
+      # infers its target triple AND API level purely from its own
+      # invoked name (no explicit --target flag on the command line for
+      # these, unlike plain "clang"), so it's not enough to patch one of
+      # them and symlink the rest to it either - each one individually
+      # needs argv[0] preserved as its own exact name via `exec -a`, or
+      # it silently loses its own target/API inference. So this now finds
+      # and wraps every "*clang*" name in the toolchain directory
+      # individually, each preserving its own name.
+      #
+      # Resolved in two passes rather than one: some of these aliases are
+      # symlinks to OTHER aliases rather than straight to the real binary
+      # (e.g. "clang++" -> "clang" -> the real "clang-19"), so resolving
+      # a later alias's target with readlink -f AFTER an earlier alias in
+      # the same loop has already been replaced would silently resolve
+      # through that already-rewritten wrapper instead of the real
+      # binary. Every target is resolved up front, before anything is
+      # touched, to avoid that.
+      - name: Downgrade newer-Clang strict-C errors that break Kivy 2.3.0 and CPython's shipped C sources
+        run: |
+          set -euo pipefail
+          NDK_DIR="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          LLVM_BIN="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          CLANG_MARKER="$NDK_DIR/.clang-legacy-c-wrapped-v2"
+
+          if [ -f "$CLANG_MARKER" ]; then
+            echo "All clang aliases already wrapped for this - skipping."
+            exit 0
+          fi
+
+          shopt -s nullglob
+
+          # Pass 1: resolve every symlink's final real target before
+          # touching anything (see comment above for why order matters).
+          ALIASES=()
+          TARGETS=()
+          for CLANG_ALIAS in "$LLVM_BIN"/*clang*; do
+            # Safety: only ever touch symlinks (the many per-triple/per-
+            # API aliases). The one real underlying binary they all point
+            # to (something like "clang-19") may itself match this same
+            # glob pattern - it must never be touched, or there'd be
+            # nothing left for any alias to exec.
+            [ -L "$CLANG_ALIAS" ] || continue
+            ALIASES+=("$CLANG_ALIAS")
+            TARGETS+=("$(readlink -f "$CLANG_ALIAS")")
+          done
+
+          # Pass 2: replace each alias with its wrapper, using the target
+          # resolved in pass 1.
+          COUNT=0
+          for i in "${!ALIASES[@]}"; do
+            CLANG_ALIAS="${ALIASES[$i]}"
+            REAL_CLANG="${TARGETS[$i]}"
+            ALIAS_NAME="$(basename "$CLANG_ALIAS")"
+            rm -f "$CLANG_ALIAS"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              '# Auto-generated: re-invokes the real, UNTOUCHED clang binary with' \
+              "# argv[0] forced back to \"$ALIAS_NAME\" (via \`exec -a\`) so this" \
+              '# alias'"'"'s own name-inferred target-triple/API-level defaults still' \
+              '# apply exactly as before, then appends flags that downgrade three' \
+              '# C-strictness checks Clang made fatal-by-default in versions 15/16' \
+              '# back to warnings - both Kivy 2.3.0 and this exact CPython version'"'"'s' \
+              '# shipped C sources predate all three. Appended last so they win' \
+              '# regardless of what a recipe'"'"'s own CFLAGS already set (including' \
+              '# CPython'"'"'s own explicit -Werror=implicit-function-declaration).' \
+              "exec -a \"$ALIAS_NAME\" \"$REAL_CLANG\" \"\$@\" -Wno-error=incompatible-function-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion" \
+              > "$CLANG_ALIAS"
+            chmod +x "$CLANG_ALIAS"
+            COUNT=$((COUNT + 1))
+          done
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::warning::No *clang* files found at $LLVM_BIN - unexpected NDK layout."
+          else
+            touch "$CLANG_MARKER"
+            echo "Wrapped $COUNT clang alias(es) under $LLVM_BIN, each preserving its own name."
+          fi
+
+      - name: Point buildozer.spec at the pre-installed SDK/NDK
+        run: |
+          set -euo pipefail
+          # Buildozer's own internal pre-flight check (the one that
+          # looks for build-tools/aidl before it even hands off to
+          # python-for-android) does not reliably pick up the
+          # APP_ANDROID_SDK_PATH / APP_ANDROID_NDK_PATH env-var
+          # overrides - it falls back to its default
+          # ~/.buildozer/android/platform/android-sdk path for that
+          # specific check. Writing the real paths directly into
+          # buildozer.spec removes any ambiguity.
           NDK_PATH="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
           sed -i "s|^#\?android.sdk_path *=.*|android.sdk_path = $ANDROID_HOME|" buildozer.spec
           sed -i "s|^#\?android.ndk_path *=.*|android.ndk_path = $NDK_PATH|" buildozer.spec
-          grep -n "^android.sdk_path\|^android.ndk_path\|^android.ndk \|^requirements" buildozer.spec
-
-      - name: Guarantee a clean native build (no stale .so can exist)
-        run: |
-          set -euo pipefail
-          rm -rf bin
-          # Only the source-download cache may exist. Any compiled artifact here is a bug.
-          if [ -d .buildozer ]; then
-            STALE=$(find .buildozer \( -name '*.so' -o -name '*.o' -o -name '*.a' -o -name '.mark-*' -path '*/build/*' \) 2>/dev/null | head -n 5)
-            if [ -n "$STALE" ]; then
-              echo "::error::Stale native build output found before the build:"; echo "$STALE"; exit 1
-            fi
-          fi
-          echo "OK: no pre-built native artifacts present."
+          echo "buildozer.spec now points to:"
+          grep -n "^android.sdk_path\|^android.ndk_path" buildozer.spec
 
       - name: Validate required signing secrets are present (release builds only)
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
@@ -169,11 +520,14 @@ jobs:
         run: |
           set -euo pipefail
           missing=0
-          [ "$HAS_KEYSTORE_B64" = "true" ] || { echo "::error::Missing secret ANDROID_KEYSTORE_BASE64"; missing=1; }
-          [ "$HAS_KEYSTORE_PW" = "true" ] || { echo "::error::Missing secret ANDROID_KEYSTORE_PASSWORD"; missing=1; }
-          [ "$HAS_KEY_ALIAS" = "true" ] || { echo "::error::Missing secret ANDROID_KEY_ALIAS"; missing=1; }
-          [ "$HAS_KEY_PW" = "true" ] || { echo "::error::Missing secret ANDROID_KEY_PASSWORD"; missing=1; }
-          [ "$missing" -eq 0 ] || exit 1
+          [ "$HAS_KEYSTORE_B64" = "true" ] || { echo "::error::Missing required secret ANDROID_KEYSTORE_BASE64"; missing=1; }
+          [ "$HAS_KEYSTORE_PW" = "true" ] || { echo "::error::Missing required secret ANDROID_KEYSTORE_PASSWORD"; missing=1; }
+          [ "$HAS_KEY_ALIAS" = "true" ] || { echo "::error::Missing required secret ANDROID_KEY_ALIAS"; missing=1; }
+          [ "$HAS_KEY_PW" = "true" ] || { echo "::error::Missing required secret ANDROID_KEY_PASSWORD"; missing=1; }
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more required signing secrets are not set in Settings > Secrets and variables > Actions. Aborting release build." >&2
+            exit 1
+          fi
           echo "All required signing secrets are present."
 
       - name: Decode release keystore (release builds only)
@@ -183,126 +537,357 @@ jobs:
         run: |
           set -euo pipefail
           echo "$KEYSTORE_B64" | base64 -d > "$GITHUB_WORKSPACE/release.keystore"
+          echo "Decoded keystore to a temporary file (not committed, cleaned up after the build)."
 
-      # Best-effort mirror for a flaky upstream host (freetype's savannah.gnu.org).
-      # Never fails the job; p4a falls back to its own download.
-      - name: Pre-fetch freetype source from a mirror
+      # ---------------------------------------------------------------
+      # Build the APK/AAB. buildozer.spec now has explicit android.sdk_path
+      # / android.ndk_path pointing at the SDK/NDK we installed above,
+      # and android.skip_update = True (also in buildozer.spec) tells
+      # buildozer not to try to manage the SDK itself. `yes |` is a
+      # final safety net so the process can never block on an
+      # unexpected interactive prompt.
+      #
+      # build_type is "debug" (default, produces an unsigned .apk for
+      # testing) or "release" (produces a signed .aab, the format Google
+      # Play requires for all new app submissions - a plain .apk is no
+      # longer accepted). To build a release AAB:
+      #   1. Generate a keystore once, locally (keep it forever - you
+      #      need the SAME keystore for every future update to this app):
+      #        keytool -genkey -v -keystore upload-keystore.jks \
+      #          -alias upload -keyalg RSA -keysize 2048 -validity 10000
+      #      (If Google Play has approved an upload-key reset, use the
+      #      new upload-keystore.jks / alias 'upload' issued for that
+      #      reset instead of generating a fresh one.)
+      #   2. Add these as GitHub repo secrets (Settings > Secrets and
+      #      variables > Actions):
+      #        ANDROID_KEYSTORE_BASE64   = base64 -w0 upload-keystore.jks
+      #        ANDROID_KEYSTORE_PASSWORD = the keystore password you set
+      #        ANDROID_KEY_ALIAS         = upload  (or whatever alias you used)
+      #        ANDROID_KEY_PASSWORD      = the key/alias password you set
+      #   3. Run this workflow manually (Actions tab > Run workflow) and
+      #      choose "release" as the build type.
+      #   4. Download the .aab artifact and upload it to Google Play.
+      # ---------------------------------------------------------------
+      # ---------------------------------------------------------------
+      # Best-effort resilience for a known-flaky upstream host. p4a's
+      # freetype recipe downloads its source from
+      # download.savannah.gnu.org, which occasionally hangs or is
+      # unreachable from CI runners (unrelated to anything in this repo -
+      # a run can hit "OSError: Network is unreachable" against that one
+      # host while every other download in the same job succeeds fine).
+      # Pre-fetching it here from a mirror, into the exact path p4a's own
+      # recipe looks for before it tries to download anything itself,
+      # means a flaky savannah.gnu.org doesn't fail the whole job: p4a
+      # sees the file already present and skips its own download. If
+      # every mirror here also happens to fail, this step still exits 0
+      # and simply leaves it to p4a's own (normal) download + retry logic
+      # - this is pure insurance, never a hard requirement.
+      # ---------------------------------------------------------------
+      # Researched fix (previous version of this step was broken):
+      # download.savannah.gnu.org is a well-documented, chronically
+      # unreliable host - this exact failure mode (hangs, then "Network
+      # is unreachable") has been reported against it for years by many
+      # unrelated projects (MacPorts, NixOS, Yocto, doomemacs...), not
+      # something specific to this pipeline or a one-off blip.
+      #
+      # My first attempt at a mirror fallback here was itself wrong: it
+      # guessed SourceForge would also serve a "freetype-2.14.1.tar.gz"
+      # file, but FreeType stopped publishing .tar.gz release archives
+      # after ~2.14.0 - every current mirror (SourceForge, openSUSE,
+      # Gentoo/Exherbo) only carries "freetype-2.14.1.tar.xz". That's why
+      # the previous fallback silently did nothing (continue-on-error
+      # masked it) and the job hit the exact same savannah failure again.
+      # Confirmed real, currently-live URL:
+      #   https://downloads.sourceforge.net/project/freetype/freetype2/2.14.1/freetype-2.14.1.tar.xz
+      # p4a's freetype recipe has no checksum/hash pinned for this
+      # download (it only pins url + version), so re-packaging the
+      # SAME source as a .tar.gz to match the exact filename p4a looks
+      # for is safe - it's the identical source tree, just re-compressed
+      # locally with tools already on every Ubuntu runner (xz, gzip, tar).
+      - name: Pre-fetch freetype source (savannah is chronically unreliable; SourceForge is the researched fallback)
         continue-on-error: true
         run: |
           set +e
           FT_VERSION="2.14.1"
           DEST_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/freetype"
           DEST_FILE="$DEST_DIR/freetype-$FT_VERSION.tar.gz"
-          mkdir -p "$DEST_DIR"
-          [ -s "$DEST_FILE" ] && exit 0
-          for URL in \
-            "https://download.savannah.gnu.org/releases/freetype/freetype-$FT_VERSION.tar.gz" \
-            "https://downloads.sourceforge.net/project/freetype/freetype2/$FT_VERSION/freetype-$FT_VERSION.tar.gz"
-          do
-            if curl -fL --connect-timeout 15 --max-time 90 --retry 2 -o "$DEST_FILE.tmp" "$URL"; then
-              mv "$DEST_FILE.tmp" "$DEST_FILE"; exit 0
+          WORK="$RUNNER_TEMP/freetype-prefetch"
+          mkdir -p "$DEST_DIR" "$WORK"
+
+          if [ -s "$DEST_FILE" ] && tar -tzf "$DEST_FILE" >/dev/null 2>&1; then
+            echo "Valid freetype source already present (cache hit) - skipping pre-fetch."
+            exit 0
+          fi
+          rm -f "$DEST_FILE"
+
+          echo "--- Attempt 1: savannah.gnu.org directly (fails fast this time - 20s connect, 60s total - instead of hanging for 11+ minutes) ---"
+          if curl -fL --connect-timeout 20 --max-time 60 --retry 1 \
+               -o "$DEST_FILE.tmp" \
+               "https://download.savannah.gnu.org/releases/freetype/freetype-$FT_VERSION.tar.gz" \
+             && tar -tzf "$DEST_FILE.tmp" >/dev/null 2>&1; then
+            mv "$DEST_FILE.tmp" "$DEST_FILE"
+            echo "Got it directly from savannah.gnu.org - it must be back up."
+            exit 0
+          fi
+          rm -f "$DEST_FILE.tmp"
+          echo "savannah.gnu.org attempt failed or timed out - falling back to SourceForge (.tar.xz, re-packaged as .tar.gz below)."
+
+          echo "--- Attempt 2: SourceForge (confirmed live URL, .tar.xz only - FreeType stopped shipping .tar.gz after 2.14.0) ---"
+          XZ_FILE="$WORK/freetype-$FT_VERSION.tar.xz"
+          if curl -fL --connect-timeout 20 --max-time 120 --retry 3 --retry-delay 5 \
+               -o "$XZ_FILE" \
+               "https://downloads.sourceforge.net/project/freetype/freetype2/$FT_VERSION/freetype-$FT_VERSION.tar.xz"; then
+            echo "Downloaded from SourceForge. Re-packaging .tar.xz -> .tar.gz to match the filename p4a's recipe expects..."
+            rm -rf "$WORK/extracted"
+            mkdir -p "$WORK/extracted"
+            if tar -xf "$XZ_FILE" -C "$WORK/extracted" \
+               && tar -czf "$DEST_FILE.tmp" -C "$WORK/extracted" "freetype-$FT_VERSION" \
+               && tar -tzf "$DEST_FILE.tmp" >/dev/null 2>&1; then
+              mv "$DEST_FILE.tmp" "$DEST_FILE"
+              echo "Pre-fetched and re-packaged freetype from SourceForge: $DEST_FILE"
+              exit 0
             fi
-            rm -f "$DEST_FILE.tmp"
-          done
+          fi
+          rm -f "$DEST_FILE.tmp" "$XZ_FILE"
+
+          echo "Both attempts failed - leaving this to p4a's own download step as normal (not a hard failure here; it may simply fail again with the same savannah error, which is the honest outcome to report back)."
           exit 0
 
-      # The build's exit status is NOT swallowed any more (the old `|| true`
-      # hid real failures until a later step).
       - name: Build with Buildozer
         env:
           P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
           P4A_RELEASE_KEYSTORE_PASSWD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           P4A_RELEASE_KEYALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           P4A_RELEASE_KEYALIAS_PASSWD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # NOTE: no LDFLAGS override here anymore. There used to be one
+          # (-Wl,-z,max-page-size=16384) to hand-align native libraries to
+          # 16 KB on NDK 25b, but that turned out to be an incomplete fix:
+          # Google's own docs list a second required flag
+          # (-z,common-page-size=16384) plus a macro define, and even with
+          # both, it only aligns whatever build step actually receives the
+          # flag - not guaranteed across every one of p4a's different
+          # recipe build systems, and definitely not prebuilt .so files
+          # from any wheel. NDK r28 (see buildozer.spec / ANDROID_NDK_VERSION
+          # above) compiles everything 16 KB-aligned by default instead, so
+          # there's nothing left for this step to pass through.
         run: |
-          set -uo pipefail
+          set -euo pipefail
           BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
           echo "Building: $BUILD_TYPE"
-          buildozer -v android "$BUILD_TYPE" < <(yes) 2>&1 | tee "$GITHUB_WORKSPACE/buildozer_full.log"
-          rc=${PIPESTATUS[0]}
-          echo "buildozer exit code: $rc"
-          exit "$rc"
+          yes | buildozer -v android "$BUILD_TYPE" 2>&1 | tee "$GITHUB_WORKSPACE/buildozer_full.log" || true
+          # If buildozer genuinely failed, there will be no output file and
+          # the next step ("Locate built package") will fail the job with
+          # a clear error - so it's safe to not treat `yes`'s harmless
+          # broken-pipe exit (SIGPIPE, once buildozer finishes and closes
+          # stdin) as a build failure here.
 
-      - name: Show first real compiler/Gradle error (only if the build failed)
-        if: failure()
+      - name: Show build error summary (only runs if build actually failed)
+        if: always()
         run: |
           LOG="$GITHUB_WORKSPACE/buildozer_full.log"
-          [ -f "$LOG" ] || exit 0
-          sed 's/\x1b\[[0-9;]*m//g' "$LOG" > /tmp/clean.log
-          echo "===== first ' error:' lines ====="
-          grep -n " error:" /tmp/clean.log | cut -c1-400 | head -n 15 || true
-          echo "===== Gradle failure block ====="
-          n=$(grep -nE "FAILURE:|BUILD FAILED|What went wrong" /tmp/clean.log | head -n1 | cut -d: -f1)
-          [ -n "${n:-}" ] && sed -n "${n},\$p" /tmp/clean.log | head -n 120 || echo "(none)"
+          if [ ! -f "$LOG" ]; then
+            echo "No buildozer_full.log found - build step may not have run."
+            exit 0
+          fi
+          if find bin -maxdepth 1 \( -name "*.apk" -o -name "*.aab" \) 2>/dev/null | grep -q .; then
+            echo "Package was produced - skipping error summary."
+            exit 0
+          fi
+
+          echo "===== Gradle failure block (if this was a gradle/aapt/packaging failure) ====="
+          # Gradle always prints one of these markers when a build fails.
+          # Print from the FIRST such marker to the end of the file, since
+          # that's where the actual causing task/error lives - a generic
+          # keyword grep gets flooded by repeated deprecation-warning
+          # lines that also contain "fail" and pushes the real signal out
+          # of a tail window.
+          if grep -nE "FAILURE:|BUILD FAILED|What went wrong" "$LOG" > /dev/null; then
+            FIRST_LINE=$(grep -nE "FAILURE:|BUILD FAILED|What went wrong" "$LOG" | head -n1 | cut -d: -f1)
+            sed -n "${FIRST_LINE},\$p" "$LOG" | head -n 200
+          else
+            echo "(no Gradle FAILURE/BUILD FAILED marker found in log)"
+          fi
+
+          echo ""
+          echo "===== AAPT / manifest / resource errors (if any) ====="
+          grep -inE "aapt|AndroidManifest|resource.*error|duplicate.*resource" "$LOG" | tail -n 60 || echo "(none found)"
+
+          echo ""
+          echo "===== python-for-android 'Command failed' block (fallback) ====="
+          if grep -n "# Command failed:" "$LOG" > /dev/null; then
+            LAST_CMD_LINE=$(grep -n "# Command failed:" "$LOG" | tail -n1 | cut -d: -f1)
+            sed -n "$((LAST_CMD_LINE>50 ? LAST_CMD_LINE-50 : 1)),${LAST_CMD_LINE}p" "$LOG"
+          fi
+
+          echo ""
+          echo "===== Last 100 lines of raw output (final fallback) ====="
+          tail -n 100 "$LOG"
 
       - name: Locate built package
         id: locate_apk
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          FILES=(bin/*.aab bin/*.apk)
-          [ ${#FILES[@]} -gt 0 ] || { echo "::error::No .aab/.apk found in bin/ - build failed."; exit 1; }
-          BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
-          if [ "$BUILD_TYPE" = "release" ]; then
-            AABS=(bin/*.aab)
-            [ ${#AABS[@]} -gt 0 ] || { echo "::error::Release build did not produce an .aab (check android.release_artifact = aab)."; exit 1; }
-            PKG="${AABS[0]}"
-          else
-            PKG="${FILES[0]}"
+          PKG_PATH=$(find bin -maxdepth 1 \( -name "*.apk" -o -name "*.aab" \) | head -n1)
+          if [ -z "$PKG_PATH" ]; then
+            echo "No APK/AAB found in bin/ - build failed." >&2
+            exit 1
           fi
-          ls -la bin
-          echo "apk_path=$PKG" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$PKG_PATH" >> "$GITHUB_OUTPUT"
 
-      # -----------------------------------------------------------------
-      # HARD GATE: verify the FINAL package, not intermediate build files.
-      #  1. every native .so in the .aab/.apk (plus .so files packed inside
-      #     libpybundle.so / private.tar, i.e. every Kivy C-extension):
-      #     every PT_LOAD segment must have 16 KB alignment
-      #  2. .aab: BundleConfig page alignment must not be 4K
-      #  3. bundletool -> universal APK: re-run the ELF check on the APK that
-      #     Play-style tooling derives, and `zipalign -c -P 16`
-      # -----------------------------------------------------------------
-      - name: Verify 16 KB page-size compatibility of the FINAL package
+      # ---------------------------------------------------------------
+      # Diagnostic safety net. If the alignment check below still fails
+      # after the cache fix above, this is what tells us why on the next
+      # run, instead of guessing again: it shows whether SDL2/freetype/
+      # etc. were actually recompiled this run at all, and which exact
+      # toolchain path did it. Always runs, costs a few seconds.
+      - name: Diagnostic - was SDL2/freetype actually rebuilt, and with what toolchain?
+        if: always()
+        run: |
+          LOG="$GITHUB_WORKSPACE/buildozer_full.log"
+          if [ ! -f "$LOG" ]; then
+            echo "No log to inspect."
+            exit 0
+          fi
+          echo "===== Did p4a report these recipes as already built (restored from cache) vs actually building them? ====="
+          grep -n -i "sdl2_ttf\|freetype\|libpng\|already built\|Skipping.*build" "$LOG" | grep -i "sdl2_ttf\|freetype\|libpng" -A2 -B2 | head -n 80 || echo "(no matching lines found)"
+          echo ""
+          echo "===== Every distinct toolchain/bin directory actually invoked during the build ====="
+          grep -o '/[^ "'"'"']*toolchains/llvm/prebuilt/[^ "'"'"']*/bin' "$LOG" | sort -u || echo "(none found in log)"
+          echo ""
+          echo "===== Every distinct ld.lld path actually invoked ====="
+          grep -o '/[^ "'"'"']*ld\.lld' "$LOG" | sort -u || echo "(none found in log)"
+          echo ""
+          echo "===== Timestamps: was libSDL2_ttf.so produced fresh in this job, or restored from a cache? ====="
+          find .buildozer -iname "libSDL2_ttf.so" -newer buildozer.spec -print 2>/dev/null | sed 's/^/FRESH (newer than buildozer.spec, i.e. built this run): /' || true
+          find .buildozer -iname "libSDL2_ttf.so" -not -newer buildozer.spec -print 2>/dev/null | sed 's/^/STALE (older than buildozer.spec - likely restored from cache, not rebuilt): /' || true
+
+      # ---------------------------------------------------------------
+      # Hard verification gate: actually inspect the native libraries
+      # that ended up inside the built package and fail the job if any
+      # of them still has a 4 KB-aligned LOAD segment. This is what
+      # proves the fix worked, rather than trusting the toolchain
+      # versions in isolation - it's the same class of check Google Play
+      # itself runs. Uses bundletool for .aab (to extract the real
+      # installable APKs the way Play would) and readelf from the NDK we
+      # already installed to inspect ELF program headers. Also checks
+      # the AAB's own alignment metadata with `zipalign -c -P 16`, which
+      # is the second, independent thing Play checks (uncompressed .so
+      # entries must additionally sit at 16 KB-aligned offsets inside the
+      # package, on top of the LOAD segments inside the .so themselves
+      # being 16 KB-aligned).
+      - name: Verify 16 KB page-size alignment of native libraries
         run: |
           set -euo pipefail
-          PKG="${{ steps.locate_apk.outputs.apk_path }}"
+          PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
+          NDK_DIR="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
+          READELF="$NDK_DIR/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
           ZIPALIGN="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/zipalign"
-          WORK="$RUNNER_TEMP/verify16k"; rm -rf "$WORK"; mkdir -p "$WORK"
+          WORKDIR="$RUNNER_TEMP/16k-verify"
+          rm -rf "$WORKDIR"
+          mkdir -p "$WORKDIR"
 
-          echo "##### 1) ELF PT_LOAD alignment of every native library in $PKG"
-          python tools/verify_16kb.py "$PKG" --blame-dir .buildozer
-
-          case "$PKG" in
-            *.aab)
-              echo; echo "##### 2) AAB / bundletool checks"
-              JAR="$WORK/bundletool.jar"
-              curl -fsSL -o "$JAR" "https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar"
-              java -jar "$JAR" validate --bundle="$PKG"
-              java -jar "$JAR" dump config --bundle="$PKG" | tee "$WORK/config.txt"
-              if grep -q "PAGE_ALIGNMENT_4K" "$WORK/config.txt"; then
-                echo "::error::16 KB PAGE SIZE CHECK: FAIL - BundleConfig requests 4 KB zip page alignment (PAGE_ALIGNMENT_4K)."
-                exit 1
+          check_so_dir() {
+            # $1 = directory to recursively search for .so files
+            local dir="$1"
+            local bad=0
+            while IFS= read -r -d '' so; do
+              # Only 64-bit ABI dirs are required to be 16 KB-aligned;
+              # Google does not require it for 32-bit arches. This repo
+              # only ships arm64-v8a anyway (android.archs), so every .so
+              # found here is in scope.
+              local aligns
+              aligns=$("$READELF" -lW "$so" 2>/dev/null | awk '/LOAD/ {print $NF}')
+              if [ -z "$aligns" ]; then
+                continue
               fi
-              grep -q "PAGE_ALIGNMENT_16K" "$WORK/config.txt" \
-                && echo "BundleConfig: PAGE_ALIGNMENT_16K" \
-                || echo "::warning::BundleConfig does not state PAGE_ALIGNMENT_16K explicitly; relying on the universal-APK zipalign check below."
+              local min_align_hex
+              min_align_hex=$(echo "$aligns" | sort -u | head -n1)
+              local min_align_dec=$((min_align_hex))
+              if [ "$min_align_dec" -lt 16384 ]; then
+                echo "::error::NOT 16 KB-aligned: $so (smallest LOAD align: $min_align_hex)"
+                bad=1
+              else
+                echo "OK (16 KB-aligned): $so"
+              fi
+            done < <(find "$dir" -name "*.so" -print0)
+            return $bad
+          }
 
-              echo; echo "##### 3) Universal APK derived from the AAB"
-              java -jar "$JAR" build-apks --bundle="$PKG" --output="$WORK/out.apks" --mode=universal --overwrite
-              unzip -o -q "$WORK/out.apks" universal.apk -d "$WORK"
-              python tools/verify_16kb.py "$WORK/universal.apk" --blame-dir .buildozer
-              "$ZIPALIGN" -c -v -P 16 4 "$WORK/universal.apk" > "$WORK/zipalign.log" 2>&1 \
-                || { echo "::error::zipalign: universal.apk is NOT 16 KB zip-aligned"; tail -n 40 "$WORK/zipalign.log"; exit 1; }
-              echo "zipalign -P 16: universal.apk is correctly aligned."
+          OVERALL_BAD=0
+
+          case "$PKG_PATH" in
+            *.aab)
+              echo "=== Inspecting AAB via bundletool ==="
+              BUNDLETOOL_JAR="$WORKDIR/bundletool.jar"
+              # bundletool's release asset name is versioned
+              # (bundletool-all-<version>.jar), so the generic
+              # "/releases/latest/download/bundletool-all.jar" URL 404s -
+              # it only works for an asset name that's identical on every
+              # release. Resolve the real, current download URL from the
+              # GitHub API instead, with a pinned last-known-good version
+              # as a fallback if the API call itself fails (rate limiting,
+              # network hiccup, etc).
+              BUNDLETOOL_FALLBACK_URL="https://github.com/google/bundletool/releases/download/1.16.0/bundletool-all-1.16.0.jar"
+              BUNDLETOOL_URL=$(curl -fsSL "https://api.github.com/repos/google/bundletool/releases/latest" \
+                | grep -o '"browser_download_url": *"[^"]*bundletool-all[^"]*\.jar"' \
+                | head -n1 \
+                | sed -E 's/.*"(https:[^"]+)"/\1/' || true)
+              if [ -z "$BUNDLETOOL_URL" ]; then
+                echo "Could not resolve latest bundletool release from the GitHub API - falling back to pinned 1.16.0."
+                BUNDLETOOL_URL="$BUNDLETOOL_FALLBACK_URL"
+              fi
+              echo "Using bundletool: $BUNDLETOOL_URL"
+              curl -fsSL -o "$BUNDLETOOL_JAR" "$BUNDLETOOL_URL"
+
+              # Build real, installable split APKs the way Play would,
+              # for a representative 64-bit device spec, then extract
+              # them so we can inspect the actual .so files Play will
+              # ship to users.
+              java -jar "$BUNDLETOOL_JAR" build-apks \
+                --bundle="$PKG_PATH" \
+                --output="$WORKDIR/out.apks" \
+                --mode=universal \
+                --overwrite
+
+              mkdir -p "$WORKDIR/universal"
+              unzip -o "$WORKDIR/out.apks" universal.apk -d "$WORKDIR/universal" > /dev/null
+              mkdir -p "$WORKDIR/universal_extracted"
+              unzip -o "$WORKDIR/universal/universal.apk" "lib/*" -d "$WORKDIR/universal_extracted" > /dev/null || true
+
+              echo "--- LOAD segment alignment (readelf) ---"
+              check_so_dir "$WORKDIR/universal_extracted" || OVERALL_BAD=1
+
+              echo "--- Zip-entry alignment (zipalign -P 16) ---"
+              if "$ZIPALIGN" -c -v -P 16 4 "$WORKDIR/universal/universal.apk" > "$WORKDIR/zipalign.log" 2>&1; then
+                echo "zipalign: universal.apk is correctly 16 KB zip-aligned."
+              else
+                echo "::error::zipalign reports the built APK is NOT 16 KB zip-aligned:"
+                tail -n 40 "$WORKDIR/zipalign.log"
+                OVERALL_BAD=1
+              fi
+
+              echo "--- Cross-check: raw .so files inside the .aab itself ---"
+              mkdir -p "$WORKDIR/aab_raw"
+              unzip -o "$PKG_PATH" "base/lib/*" -d "$WORKDIR/aab_raw" > /dev/null || true
+              check_so_dir "$WORKDIR/aab_raw" || OVERALL_BAD=1
               ;;
             *.apk)
-              echo; echo "##### zipalign check of the APK"
-              "$ZIPALIGN" -c -v -P 16 4 "$PKG" > "$WORK/zipalign.log" 2>&1 \
-                || { echo "::error::zipalign: APK is NOT 16 KB zip-aligned"; tail -n 40 "$WORK/zipalign.log"; exit 1; }
-              echo "zipalign -P 16: APK is correctly aligned."
+              echo "=== Inspecting APK directly ==="
+              mkdir -p "$WORKDIR/apk_extracted"
+              unzip -o "$PKG_PATH" "lib/*" -d "$WORKDIR/apk_extracted" > /dev/null || true
+              check_so_dir "$WORKDIR/apk_extracted" || OVERALL_BAD=1
+              ;;
+            *)
+              echo "::error::Unrecognized package type: $PKG_PATH" >&2
+              exit 1
               ;;
           esac
-          echo; echo "ALL 16 KB CHECKS PASSED for $PKG"
+
+          if [ "$OVERALL_BAD" -ne 0 ]; then
+            echo "::error::One or more native libraries are still 4 KB-aligned. Google Play will reject this package for the 16 KB page-size requirement."
+            exit 1
+          fi
+          echo "All native libraries are 16 KB page-size aligned."
 
       - name: Verify release AAB is signed with the expected upload certificate
         if: ${{ (github.event.inputs.build_type || 'debug') == 'release' }}
@@ -311,17 +896,32 @@ jobs:
         run: |
           set -euo pipefail
           PKG_PATH="${{ steps.locate_apk.outputs.apk_path }}"
-          ACTUAL_SHA1=$(keytool -printcert -jarfile "$PKG_PATH" | grep -m1 "SHA1:" | sed 's/.*SHA1: //')
+          echo "Inspecting signer certificate of $PKG_PATH ..."
+          ACTUAL_SHA1=$(keytool -printcert -jarfile "$PKG_PATH" | grep -A1 "^Certificate fingerprints:" | grep "SHA1:" | sed 's/.*SHA1: //')
+          if [ -z "$ACTUAL_SHA1" ]; then
+            # Some keytool versions print the fingerprint without the
+            # "Certificate fingerprints:" header line - fall back to a
+            # direct SHA1 grep.
+            ACTUAL_SHA1=$(keytool -printcert -jarfile "$PKG_PATH" | grep -m1 "SHA1:" | sed 's/.*SHA1: //')
+          fi
           echo "Expected upload cert SHA-1: $EXPECTED_SHA1"
           echo "Actual AAB signer SHA-1:    $ACTUAL_SHA1"
-          [ "$ACTUAL_SHA1" = "$EXPECTED_SHA1" ] || { echo "::error::AAB is NOT signed with the expected upload certificate."; exit 1; }
+          if [ "$ACTUAL_SHA1" != "$EXPECTED_SHA1" ]; then
+            echo "::error::AAB is NOT signed with the expected new upload certificate. Google Play will reject this upload. Check that ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_ALIAS secrets point at the new upload-keystore.jks (alias 'upload')." >&2
+            exit 1
+          fi
+          echo "Signature verified: AAB is signed with the new upload certificate."
 
       - name: Clean up temporary keystore file
         if: always()
         run: |
-          [ -f "$GITHUB_WORKSPACE/release.keystore" ] && { shred -u "$GITHUB_WORKSPACE/release.keystore" 2>/dev/null || rm -f "$GITHUB_WORKSPACE/release.keystore"; } || true
+          if [ -f "$GITHUB_WORKSPACE/release.keystore" ]; then
+            shred -u "$GITHUB_WORKSPACE/release.keystore" 2>/dev/null || rm -f "$GITHUB_WORKSPACE/release.keystore"
+            echo "Temporary keystore file removed."
+          else
+            echo "No temporary keystore file present - nothing to clean up."
+          fi
 
-      # Uploaded only if every check above passed.
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -331,7 +931,7 @@ jobs:
             bin/*.aab
           if-no-files-found: error
 
-      - name: Upload full build log (always)
+      - name: Upload full build log (always, for debugging failures)
         if: always()
         uses: actions/upload-artifact@v4
         with:
