@@ -44,20 +44,20 @@ version = 1.1
 
 # (list) Application requirements
 # comma separated e.g. requirements = sqlite3,kivy
-# Versions are pinned so CI builds are reproducible.
-# python3/hostpython3 = 3.11.6: the p4a release pinned below supports it and
-# it matches the CPython the app was developed against.
-# kivy == 2.3.1 (NOT 2.3.0): Kivy 2.3.0's C headers declare glShaderSource
-# with a `const GLchar **` argument, which is not the Khronos signature
-# (`const GLchar *const *`). Clang >= 16 - i.e. every current NDK, including
-# r28 - treats -Wincompatible-function-pointer-types as a hard error, so
-# kivy/graphics/cgl_backend/cgl_gl.c cannot compile ("incompatible function
-# pointer types assigning to 'void (*)(GLuint, GLsizei, const GLchar **,
-# const GLint *)'"). Kivy 2.3.1 fixes exactly this (kivy/kivy#8917: "align
-# glShaderSource typedef in common_subset.h with Khronos Headers"). It is a
-# patch release of the same 2.3 API line, and it is also the version this p4a
-# release's own kivy recipe defaults to. No -Wno-error hack is needed.
-requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.1,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
+# Versions are pinned to known-compatible releases so CI builds are
+# reproducible and don't suddenly break when a new Kivy/KivyMD drops.
+# python3/hostpython3 pinned to 3.11.6: this p4a branch (v2026.05.09)
+# otherwise defaults to a newer CPython whose private/unstable C API
+# (_PyUnicode_FastCopyCharacters, _PyInterpreterState_GetConfig, etc.)
+# no longer matches what's baked into Kivy 2.3.0's pre-cythonized
+# kivy/graphics/*.c sources (generated years ago against an older
+# CPython). That mismatch is a genuine, unrelated build failure - it
+# only surfaced once the buildozer cache fix forced a real rebuild
+# instead of silently reusing old cached objects - not a config error.
+# python3==3.11.6 is a version confirmed to work with p4a v2026.05.09
+# (kivy/python-for-android#3339) and is what Kivy 2.3.0 was built and
+# tested against.
+requirements = python3==3.11.6,hostpython3==3.11.6,kivy==2.3.0,kivymd==1.2.0,requests,pillow,certifi,charset_normalizer,idna,urllib3,plyer
 
 
 # (str) Custom source folders for requirements
@@ -138,14 +138,19 @@ android.minapi = 24
 #android.sdk = 35
 
 # (str) Android NDK version to use
-# NDK r28c is the version this p4a release recommends (p4a prints
-# "Recommended android's NDK version by p4a is: 28c"). Since r28 clang/lld
-# and ndk-build produce 16 KB-aligned ELF files by default, so no custom
-# linker flags or NDK patching are used anywhere in this project. That is
-# verified on the FINAL .aab by tools/verify_16kb.py in CI, not assumed.
-# In CI the NDK is pre-installed (ndk;28.2.13676358 == r28c) and located
-# through android.ndk_path, which the workflow writes into this file.
-android.ndk = 28c
+# NDK r28+ compiles every .so file 16 KB-page-aligned BY DEFAULT — no
+# per-recipe linker flags needed. Previously pinned to 25b (see the
+# workflow's CACHE_VERSION history for that reasoning), but the flag-only
+# workaround for 16 KB alignment on NDK 25b (-Wl,-z,max-page-size=16384 in
+# the CI workflow) turned out to be incomplete: Google's own build-system
+# docs list a SECOND required flag (-Wl,-z,common-page-size=16384) plus a
+# macro define, and even with both, that approach only aligns whatever
+# actually receives the flag — which isn't guaranteed across every one of
+# p4a's different recipe build systems (autotools, distutils, etc.). NDK
+# r28's default-on alignment doesn't depend on any recipe forwarding a
+# flag correctly, which is why this was worth the version bump instead of
+# continuing to patch the flag list.
+android.ndk = 28.1.13356709
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 android.ndk_api = 24
@@ -378,8 +383,13 @@ android.release_artifact = aab
 #p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-# Pinned to a release tag (not master/develop) so the build is reproducible.
-# v2026.05.09 targets Python 3.11 for this app's python3==3.11.6 pin.
+# Pinned to a known-stable release instead of master: master's python3
+# recipe has since moved to targeting Python 3.14 on-device, and that
+# version's changed internal C struct layout breaks Cython-generated
+# boilerplate in Kivy 2.3.0's graphics extensions (observed as
+# "member reference type 'int' is not a pointer" in tesselator.c /
+# vertex_instructions.c). This release targets Python 3.11, which is
+# compatible with Kivy 2.3.0 and Cython 0.29.36.
 p4a.branch = v2026.05.09
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
