@@ -23330,13 +23330,31 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._session_expired_handled = True
         self.current_user = None
         self.session_token = None
+
+        # Loop guard: if we JUST unlocked via PIN/fingerprint (within the last
+        # 10s) and immediately got 401'd again, the cached token is stale and
+        # bouncing back to the same PIN screen would just repeat the same
+        # unlock -> 401 cycle forever (this is what made old PIN/fingerprint
+        # users unable to log in at all after their 7-day token expired).
+        # Clear the cached session so the PIN screen won't auto-accept it
+        # again, and send them to full email/password login once instead.
+        import time
+        just_unlocked = (time.time() - getattr(self, '_pin_unlock_at', 0)) < 10
+        if just_unlocked and self.quick_pin_data:
+            self.quick_pin_data['session_token'] = None
+            self.quick_pin_data['user'] = None
+            self.show_error_dialog("Your saved session expired. Please log in again with your email and password.")
+            self.root.current = "login"
+            Clock.schedule_once(lambda dt: setattr(self, '_session_expired_handled', False), 2)
+            return
+
         self.show_error_dialog("Your session expired - please log in again")
         self.route_to_login_or_pin()
         Clock.schedule_once(lambda dt: setattr(self, '_session_expired_handled', False), 2)
 
     def route_to_login_or_pin(self):
         """Go to the PIN quick-unlock screen if one is configured, else full login."""
-        if self.quick_pin_data and self.quick_pin_data.get('pin_hash'):
+        if self.quick_pin_data and self.quick_pin_data.get('pin_hash') and self.quick_pin_data.get('session_token'):
             self.pin_entry_buffer = ""
             self.pin_entry_length = 0
             try:
@@ -23917,8 +23935,22 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         self.backend_api_request('auth/login-with-pin', 'POST', {'identifier': identifier, 'pin': pin}, callback)
 
-    def _pin_login_success(self):
-        """Shared success path for both PIN entry and fingerprint unlock."""
+    def _pin_login_success(self, pin=None):
+        """Shared success path for both PIN entry and fingerprint unlock.
+
+        The locally cached session_token can be up to JWT_ACCESS_TOKEN_EXPIRES
+        old (7 days server-side) - a user who unlocks with PIN/fingerprint
+        after that window would otherwise get 401'd on the very next API call,
+        which used to bounce them straight back to this same PIN screen in an
+        unbreakable loop (looked like "can't login" for anyone who hadn't done
+        a full email/password login in the last week). So: get the device
+        into the app immediately using the cached data for a snappy unlock,
+        but then silently mint a FRESH token from the server in the
+        background whenever we have the plaintext PIN to do so (numeric PIN
+        entry). Fingerprint unlock has no plaintext PIN to send, so it can't
+        refresh this way - see _mark_pin_unlock_just_happened / the loop
+        guard in handle_session_expired for that path instead.
+        """
         try:
             self.session_token = self.quick_pin_data.get("session_token") or ""
             self.current_user = self.quick_pin_data.get("user") or {}
@@ -23927,12 +23959,38 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.virtual_account_name = self.current_user.get('virtual_account_name') or ''
             self.pin_entry_buffer = ""
             self.pin_entry_length = 0
+            self._mark_pin_unlock_just_happened()
             self.update_dashboard()
             self.update_dashboard_virtual_account()
             self.fetch_virtual_account_details()
             self.root.current = "dashboard"
+
+            email = self.quick_pin_data.get("email")
+            if pin and email:
+                def on_refresh(success, response):
+                    if success and response.get('status') == 'success':
+                        data = response.get('data', {})
+                        fresh_token = data.get('session_token')
+                        fresh_user = data.get('user')
+                        if fresh_token:
+                            self.session_token = fresh_token
+                            if fresh_user:
+                                self.current_user = fresh_user
+                            # Re-cache so the NEXT unlock starts from a fresh token too.
+                            self.save_quick_pin(pin, email, fresh_token, self.current_user)
+                    # If this fails (e.g. offline), we just keep using the cached
+                    # token - no error shown here, this is a silent best-effort
+                    # refresh, not a user-facing login attempt.
+                self.backend_api_request('auth/login-with-pin', 'POST', {'identifier': email, 'pin': pin}, on_refresh)
         except Exception as e:
             print(f"_pin_login_success error: {e}")
+
+    def _mark_pin_unlock_just_happened(self):
+        """Timestamp used by handle_session_expired to break the
+        unlock -> 401 -> back-to-PIN-screen -> unlock -> 401 loop for
+        fingerprint unlock (which has no PIN to silently refresh with)."""
+        import time
+        self._pin_unlock_at = time.time()
 
     def _pin_login_fail(self):
         """Wrong PIN - clear the buffer and show a brief inline error."""
@@ -23985,7 +24043,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             f"{pin}:{self.quick_pin_data.get('email', '')}".encode()
         ).hexdigest()
         if expected_hash == self.quick_pin_data.get("pin_hash"):
-            self._pin_login_success()
+            self._pin_login_success(pin)
         elif len(pin) >= 6:
             self._pin_login_fail()
 
