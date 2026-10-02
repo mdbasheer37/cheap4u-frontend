@@ -18014,6 +18014,18 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         self._forgot_dialog.open()
            
+    @staticmethod
+    def _server_error_message(error, default):
+        """Kivy's UrlRequest hands on_failure the parsed JSON body (a dict) when
+        the server answers HTTP 4xx/5xx. Show the server's own message ("Invalid
+        OTP code", "Please wait 60 seconds...") instead of a raw dict labelled
+        "Network error"."""
+        if isinstance(error, dict):
+            msg = error.get('message')
+            if msg:
+                return str(msg)
+        return default
+
     def _request_reset_otp(self):
         """Send OTP to user's phone for password reset."""
         email = self._reset_email_field.text.strip() if hasattr(self, '_reset_email_field') else ''
@@ -18048,7 +18060,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         def on_failure(req, error):
             self.hide_loader()
-            self.show_error_dialog(f"Network error: {error}")
+            self.show_error_dialog(
+                self._server_error_message(error, "Could not send OTP. Please try again.")
+            )
 
         def on_error(req, error):
             self.hide_loader()
@@ -18061,18 +18075,19 @@ class DashboardApp(ChallengeMixin, MDApp):
             on_error=on_error,
             req_headers={'Content-Type': 'application/json'},
             req_body=json.dumps({'email': email}),
-            timeout=20,
+            timeout=60,   # Render free tier cold start + SMS send can exceed 20s
         )           
 
     def _submit_password_reset(self):
         """Verify OTP and set new password."""
         otp = self._reset_otp_field.text.strip() if hasattr(self, '_reset_otp_field') else ''
+        otp = ''.join(ch for ch in otp if ch.isdigit())   # ignore spaces/dashes from a pasted code
         password = self._reset_pass_field.text.strip() if hasattr(self, '_reset_pass_field') else ''
         confirm = self._reset_pass2_field.text.strip() if hasattr(self, '_reset_pass2_field') else ''
         user_id = getattr(self, '_reset_user_id', None)
 
-        if not otp:
-            self.show_error_dialog("Please enter the OTP from your SMS")
+        if len(otp) != 6:
+            self.show_error_dialog("Please enter the 6-digit OTP from your SMS")
             return
         if not password:
             self.show_error_dialog("Please enter a new password")
@@ -18114,8 +18129,24 @@ class DashboardApp(ChallengeMixin, MDApp):
                 Clock.schedule_once(lambda dt: self._show_reset_form(), 0.5)
 
         def on_failure(req, error):
+            # HTTP 4xx/5xx (wrong/expired OTP, rate limit...). The form was
+            # dismissed when RESET was tapped, so without re-opening it a
+            # single mistyped digit forced the whole forgot-password flow
+            # to start over. Show the server's message and bring the form
+            # back with the password fields already filled in.
             self.hide_loader()
-            self.show_error_dialog(f"Network error: {error}")
+            self.show_error_dialog(
+                self._server_error_message(error, "Could not reset password. Please try again.")
+            )
+
+            def _reopen(dt):
+                self._show_reset_form()
+                try:
+                    self._reset_pass_field.text = password
+                    self._reset_pass2_field.text = confirm
+                except Exception:
+                    pass
+            Clock.schedule_once(_reopen, 0.5)
 
         def on_error(req, error):
             self.hide_loader()
@@ -18132,7 +18163,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'otp_code': otp,
                 'new_password': password,
             }),
-            timeout=20,
+            timeout=60,   # Render free tier cold start + SMS send can exceed 20s
         )
 
     def _resend_reset_otp(self):
@@ -23456,6 +23487,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.root.current = "login"
             return
 
+        # Keep digits only: people paste "123 456" / "123-456" from the SMS.
+        otp_code = ''.join(ch for ch in str(otp_code or '') if ch.isdigit())
         if not otp_code or len(otp_code) != 6 or not otp_code.isdigit():
             self.show_error_dialog("Please enter a valid 6-digit OTP")
             return
