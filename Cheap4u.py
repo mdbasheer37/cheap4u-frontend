@@ -4613,46 +4613,110 @@ LazyScreenManager:
                     # Inside DashboardScreen, after wallet balance card
                     MDCard:
                         orientation: 'vertical'
-                        padding: dp(15)
+                        padding: dp(20), dp(18), dp(20), dp(16)
                         spacing: dp(10)
-                        radius: [15]
-                        elevation: 2
+                        radius: [dp(22)]
+                        elevation: 3
                         size_hint_y: None
                         height: self.minimum_height
-                        md_bg_color: app.theme_cls.bg_light
-
-                        MDLabel:
-                            text: "Your account number"
-                            font_style: "Subtitle1"
-                            bold: True
-                            theme_text_color: "Custom"
-                            text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
-                            size_hint_y: None
-                            height: self.texture_size[1]
+                        md_bg_color: [0.04, 0.16, 0.50, 1]
+                        canvas.before:
+                            # soft decorative circles for depth
+                            Color:
+                                rgba: [1, 1, 1, 0.06]
+                            Ellipse:
+                                pos: self.right - dp(90), self.top - dp(70)
+                                size: dp(150), dp(150)
+                            Color:
+                                rgba: [1, 1, 1, 0.05]
+                            Ellipse:
+                                pos: self.x - dp(40), self.y - dp(50)
+                                size: dp(110), dp(110)
 
                         MDBoxLayout:
                             orientation: 'horizontal'
-                            spacing: dp(10)
                             size_hint_y: None
-                            height: self.minimum_height
+                            height: dp(30)
+                            spacing: dp(8)
 
-                            MDIconButton:
-                                icon: "content-copy"
+                            MDIcon:
+                                icon: "bank-outline"
                                 theme_text_color: "Custom"
-                                text_color: app.theme_cls.primary_color
+                                text_color: [1, 1, 1, 0.9]
+                                font_size: "20sp"
+                                size_hint: None, None
+                                size: dp(24), dp(30)
+
+                            MDLabel:
+                                text: "Fund your wallet"
+                                font_style: "Subtitle2"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 0.85]
+                                valign: "center"
+
+                            MDCard:
+                                size_hint: None, None
+                                size: dp(110), dp(26)
+                                radius: [dp(13)]
+                                elevation: 0
+                                md_bg_color: [1, 1, 1, 0.18]
+                                pos_hint: {'center_y': 0.5}
+
+                                MDLabel:
+                                    text: app.virtual_bank_name.upper() if app.virtual_bank_name else "BANK"
+                                    font_style: "Caption"
+                                    bold: True
+                                    halign: "center"
+                                    valign: "center"
+                                    theme_text_color: "Custom"
+                                    text_color: [1, 1, 1, 1]
+
+                        MDLabel:
+                            id: virtual_account_display
+                            text: ("{} {} {}".format(app.virtual_account_number[:4], app.virtual_account_number[4:7], app.virtual_account_number[7:]) if len(app.virtual_account_number) == 10 else app.virtual_account_number) if app.virtual_account_number else "Loading account..."
+                            font_style: "H4"
+                            bold: True
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 1]
+                            size_hint_y: None
+                            height: dp(52)
+                            valign: "center"
+                            shorten: True
+
+                        MDLabel:
+                            text: app.virtual_account_name.upper() if app.virtual_account_name else ""
+                            font_style: "Caption"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.7]
+                            size_hint_y: None
+                            height: self.texture_size[1] + dp(2)
+                            shorten: True
+
+                        MDBoxLayout:
+                            orientation: 'horizontal'
+                            size_hint_y: None
+                            height: dp(44)
+                            spacing: dp(10)
+
+                            MDLabel:
+                                text: "Transfer any amount, wallet funds instantly"
+                                font_style: "Caption"
+                                theme_text_color: "Custom"
+                                text_color: [1, 1, 1, 0.65]
+                                valign: "center"
+
+                            MDRaisedButton:
+                                text: "COPY"
+                                size_hint: None, None
+                                height: dp(40)
+                                md_bg_color: [1, 1, 1, 1]
+                                theme_text_color: "Custom"
+                                text_color: [0.04, 0.16, 0.50, 1]
+                                elevation: 0
+                                pos_hint: {'center_y': 0.5}
                                 on_release: app.copy_virtual_account()
                                 disabled: not app.virtual_account_number
 
-                            MDLabel:
-                                id: virtual_account_display
-                                text: f"{app. virtual_bank_name} - {app. virtual_account_number}" if app.  virtual_account_number else "Loading  account..."
-                                theme_text_color: "Custom"
-                                text_color: [0.35, 0.35, 0.35, 1] if app.theme_cls.theme_style == "Light" else [0.85, 0.85, 0.85, 1]
-                                text_size: self.width, None
-                                size_hint_y: None
-                                height: self.texture_size[1]
-            
-            
                     MDLabel:
 
                         text: "Quick Actions"
@@ -6896,13 +6960,11 @@ LazyScreenManager:
                             Line:
                                 rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
-                        MDIcon:
-                            icon: "circle"
-                            font_size: "9sp"
-                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            opacity: 1 if app.pin_entry_length >= 1 else 0
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 1 else [0, 0, 0, 0]
+                            Ellipse:
+                                pos: self.center_x - dp(5), self.center_y - dp(5)
+                                size: dp(10), dp(10)
                     MDBoxLayout:
                         size_hint: None, None
                         size: dp(30), dp(38)
@@ -6918,13 +6980,11 @@ LazyScreenManager:
                             Line:
                                 rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
-                        MDIcon:
-                            icon: "circle"
-                            font_size: "9sp"
-                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            opacity: 1 if app.pin_entry_length >= 2 else 0
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 2 else [0, 0, 0, 0]
+                            Ellipse:
+                                pos: self.center_x - dp(5), self.center_y - dp(5)
+                                size: dp(10), dp(10)
                     MDBoxLayout:
                         size_hint: None, None
                         size: dp(30), dp(38)
@@ -6940,13 +7000,11 @@ LazyScreenManager:
                             Line:
                                 rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
-                        MDIcon:
-                            icon: "circle"
-                            font_size: "9sp"
-                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            opacity: 1 if app.pin_entry_length >= 3 else 0
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 3 else [0, 0, 0, 0]
+                            Ellipse:
+                                pos: self.center_x - dp(5), self.center_y - dp(5)
+                                size: dp(10), dp(10)
                     MDBoxLayout:
                         size_hint: None, None
                         size: dp(30), dp(38)
@@ -6962,13 +7020,11 @@ LazyScreenManager:
                             Line:
                                 rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
-                        MDIcon:
-                            icon: "circle"
-                            font_size: "9sp"
-                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            opacity: 1 if app.pin_entry_length >= 4 else 0
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 4 else [0, 0, 0, 0]
+                            Ellipse:
+                                pos: self.center_x - dp(5), self.center_y - dp(5)
+                                size: dp(10), dp(10)
                     MDBoxLayout:
                         size_hint: None, None
                         size: dp(30), dp(38)
@@ -6984,13 +7040,11 @@ LazyScreenManager:
                             Line:
                                 rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
-                        MDIcon:
-                            icon: "circle"
-                            font_size: "9sp"
-                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            opacity: 1 if app.pin_entry_length >= 5 else 0
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 5 else [0, 0, 0, 0]
+                            Ellipse:
+                                pos: self.center_x - dp(5), self.center_y - dp(5)
+                                size: dp(10), dp(10)
                     MDBoxLayout:
                         size_hint: None, None
                         size: dp(30), dp(38)
@@ -7006,13 +7060,11 @@ LazyScreenManager:
                             Line:
                                 rounded_rectangle: [self.x, self.y, self.width, self.height, dp(10)]
                                 width: dp(1.3)
-                        MDIcon:
-                            icon: "circle"
-                            font_size: "9sp"
-                            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            theme_text_color: "Custom"
-                            text_color: app.theme_cls.primary_color
-                            opacity: 1 if app.pin_entry_length >= 6 else 0
+                            Color:
+                                rgba: app.theme_cls.primary_color if app.pin_entry_length >= 6 else [0, 0, 0, 0]
+                            Ellipse:
+                                pos: self.center_x - dp(5), self.center_y - dp(5)
+                                size: dp(10), dp(10)
 
                 MDLabel:
                     id: pin_error_hint
@@ -23525,7 +23577,10 @@ class DashboardApp(ChallengeMixin, MDApp):
         screen = self.root.get_screen('dashboard')
         if hasattr(screen.ids, 'virtual_account_display'):
             if self.virtual_account_number:
-                screen.ids.virtual_account_display.text = f"{self.virtual_bank_name} - {self.virtual_account_number}"
+                num = self.virtual_account_number
+                screen.ids.virtual_account_display.text = (
+                    f"{num[:4]} {num[4:7]} {num[7:]}" if len(num) == 10 else num
+                )
             else:
                 screen.ids.virtual_account_display.text = "No virtual account yet"   
    
@@ -23568,8 +23623,9 @@ class DashboardApp(ChallengeMixin, MDApp):
             screen = self.root.get_screen('dashboard')
             if hasattr(screen.ids, 'virtual_account_display'):
                 if self.virtual_account_number:
+                    num = self.virtual_account_number
                     screen.ids.virtual_account_display.text = (
-                        f"{self.virtual_bank_name} — {self.virtual_account_number}"
+                        f"{num[:4]} {num[4:7]} {num[7:]}" if len(num) == 10 else num
                     )
                 else:
                     screen.ids.virtual_account_display.text = "Loading account..."
