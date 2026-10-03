@@ -4613,84 +4613,34 @@ LazyScreenManager:
                     # Inside DashboardScreen, after wallet balance card
                     MDCard:
                         orientation: 'vertical'
-                        padding: dp(20), dp(18), dp(20), dp(16)
-                        spacing: dp(10)
-                        radius: [dp(22)]
-                        elevation: 3
+                        padding: dp(16), dp(12), dp(16), dp(12)
+                        spacing: dp(2)
+                        radius: [dp(16)]
+                        elevation: 2
                         size_hint_y: None
                         height: self.minimum_height
-                        md_bg_color: [0.04, 0.16, 0.50, 1]
-                        canvas.before:
-                            # soft decorative circles for depth
-                            Color:
-                                rgba: [1, 1, 1, 0.06]
-                            Ellipse:
-                                pos: self.right - dp(90), self.top - dp(70)
-                                size: dp(150), dp(150)
-                            Color:
-                                rgba: [1, 1, 1, 0.05]
-                            Ellipse:
-                                pos: self.x - dp(40), self.y - dp(50)
-                                size: dp(110), dp(110)
+                        md_bg_color: app.theme_cls.primary_color
 
                         MDBoxLayout:
                             orientation: 'horizontal'
                             size_hint_y: None
-                            height: dp(30)
-                            spacing: dp(8)
+                            height: dp(22)
+                            spacing: dp(6)
 
                             MDIcon:
                                 icon: "bank-outline"
                                 theme_text_color: "Custom"
                                 text_color: [1, 1, 1, 0.9]
-                                font_size: "20sp"
+                                font_size: "16sp"
                                 size_hint: None, None
-                                size: dp(24), dp(30)
+                                size: dp(20), dp(22)
 
                             MDLabel:
-                                text: "Fund your wallet"
-                                font_style: "Subtitle2"
+                                text: "Fund wallet  \u2022  " + (app.virtual_bank_name if app.virtual_bank_name else "Bank")
+                                font_style: "Caption"
                                 theme_text_color: "Custom"
-                                text_color: [1, 1, 1, 0.85]
+                                text_color: [1, 1, 1, 0.9]
                                 valign: "center"
-
-                            MDCard:
-                                size_hint: None, None
-                                size: dp(110), dp(26)
-                                radius: [dp(13)]
-                                elevation: 0
-                                md_bg_color: [1, 1, 1, 0.18]
-                                pos_hint: {'center_y': 0.5}
-
-                                MDLabel:
-                                    text: app.virtual_bank_name.upper() if app.virtual_bank_name else "BANK"
-                                    font_style: "Caption"
-                                    bold: True
-                                    halign: "center"
-                                    valign: "center"
-                                    theme_text_color: "Custom"
-                                    text_color: [1, 1, 1, 1]
-
-                        MDLabel:
-                            id: virtual_account_display
-                            text: ("{} {} {}".format(app.virtual_account_number[:4], app.virtual_account_number[4:7], app.virtual_account_number[7:]) if len(app.virtual_account_number) == 10 else app.virtual_account_number) if app.virtual_account_number else "Loading account..."
-                            font_style: "H4"
-                            bold: True
-                            theme_text_color: "Custom"
-                            text_color: [1, 1, 1, 1]
-                            size_hint_y: None
-                            height: dp(52)
-                            valign: "center"
-                            shorten: True
-
-                        MDLabel:
-                            text: app.virtual_account_name.upper() if app.virtual_account_name else ""
-                            font_style: "Caption"
-                            theme_text_color: "Custom"
-                            text_color: [1, 1, 1, 0.7]
-                            size_hint_y: None
-                            height: self.texture_size[1] + dp(2)
-                            shorten: True
 
                         MDBoxLayout:
                             orientation: 'horizontal'
@@ -4699,23 +4649,35 @@ LazyScreenManager:
                             spacing: dp(10)
 
                             MDLabel:
-                                text: "Transfer any amount, wallet funds instantly"
-                                font_style: "Caption"
+                                id: virtual_account_display
+                                text: ("{} {} {}".format(app.virtual_account_number[:4], app.virtual_account_number[4:7], app.virtual_account_number[7:]) if len(app.virtual_account_number) == 10 else app.virtual_account_number) if app.virtual_account_number else "Loading account..."
+                                font_style: "H5"
+                                bold: True
                                 theme_text_color: "Custom"
-                                text_color: [1, 1, 1, 0.65]
+                                text_color: [1, 1, 1, 1]
                                 valign: "center"
+                                shorten: True
 
                             MDRaisedButton:
                                 text: "COPY"
                                 size_hint: None, None
-                                height: dp(40)
+                                height: dp(34)
                                 md_bg_color: [1, 1, 1, 1]
                                 theme_text_color: "Custom"
-                                text_color: [0.04, 0.16, 0.50, 1]
+                                text_color: app.theme_cls.primary_color
                                 elevation: 0
                                 pos_hint: {'center_y': 0.5}
                                 on_release: app.copy_virtual_account()
                                 disabled: not app.virtual_account_number
+
+                        MDLabel:
+                            text: app.virtual_account_name.upper() if app.virtual_account_name else ""
+                            font_style: "Caption"
+                            theme_text_color: "Custom"
+                            text_color: [1, 1, 1, 0.8]
+                            size_hint_y: None
+                            height: dp(18)
+                            shorten: True
 
                     MDLabel:
 
