@@ -16061,7 +16061,16 @@ class DashboardApp(ChallengeMixin, MDApp):
 
                 from kivy.clock import Clock
                 if response.status_code == 401:
-                    Clock.schedule_once(lambda dt: self.handle_session_expired(), 0)
+                    # Only treat as "session expired" if this request really
+                    # carried the CURRENT session token. A late background call
+                    # (reminders, challenge summary...) that was sent with an old
+                    # token must not pop a dialog over the login screen.
+                    sent_token = headers.get('Authorization', '')
+                    cur_token = getattr(self, 'session_token', None)
+                    is_auth_call = endpoint.startswith('auth/login') or endpoint.startswith('auth/register')
+                    still_current = bool(cur_token) and sent_token == f'Bearer {cur_token}'
+                    if still_current and not is_auth_call:
+                        Clock.schedule_once(lambda dt: self.handle_session_expired(), 0)
                     Clock.schedule_once(lambda dt, r=result: callback(False, r) if callback else None, 0)
                     return
                 if response.status_code == 200 and result.get('status') == 'success':
@@ -23372,6 +23381,11 @@ class DashboardApp(ChallengeMixin, MDApp):
         """Called whenever any backend call comes back 401 (expired/invalid token)."""
         if getattr(self, '_session_expired_handled', False):
             return
+        try:
+            if self.root and self.root.current in ("login", "pin_login", "quick_pin"):
+                return   # already signed out; nothing to announce
+        except Exception:
+            pass
         self._session_expired_handled = True
         self.current_user = None
         self.session_token = None
@@ -24404,6 +24418,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.show_error_dialog("Email and password are required")
             return
 
+        email = (email or '').strip()
         self.show_loader("Signing in...")
         login_data = {'email': email.lower(), 'password': password}
 
