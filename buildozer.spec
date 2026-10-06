@@ -343,7 +343,7 @@ android.archs = arm64-v8a, armeabi-v7a
 # the workflow for what was actually missing). Reusing 10257 for the
 # corrected AAB risks Play Console treating it as the same, already-seen
 # version code.
-android.numeric_version = 10260
+android.numeric_version = 10259
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
