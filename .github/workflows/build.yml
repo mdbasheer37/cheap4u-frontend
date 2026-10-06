@@ -653,12 +653,23 @@ jobs:
           echo "Both attempts failed - leaving this to p4a's own download step as normal (not a hard failure here; it may simply fail again with the same savannah error, which is the honest outcome to report back)."
           exit 0
 
-      - name: Copy pre-fetched freetype source to the armeabi-v7a build dir
+      - name: Copy pre-fetched freetype source to the multi-arch build dir
         continue-on-error: true
         run: |
-          SRC="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/freetype"
-          DST="$GITHUB_WORKSPACE/.buildozer/android/platform/build-armeabi-v7a/packages/freetype"
-          if [ -d "$SRC" ]; then mkdir -p "$DST" && cp -n "$SRC"/* "$DST"/ 2>/dev/null || true; fi
+          # With android.archs = arm64-v8a, armeabi-v7a, python-for-android
+          # uses ONE shared storage dir named "build-arm64-v8a_armeabi-v7a"
+          # (see the failed log: --storage-dir=.../build-arm64-v8a_armeabi-v7a).
+          # The pre-fetch above writes to the old single-arch folder, so
+          # p4a never saw it and fell back to savannah (hung ~11 min, failed).
+          BASE="$GITHUB_WORKSPACE/.buildozer/android/platform"
+          SRC="$BASE/build-arm64-v8a/packages/freetype"
+          for D in build-arm64-v8a_armeabi-v7a build-armeabi-v7a; do
+            if [ -d "$SRC" ]; then
+              mkdir -p "$BASE/$D/packages/freetype"
+              cp -n "$SRC"/* "$BASE/$D/packages/freetype/" 2>/dev/null || true
+              echo "Staged freetype source in $D:"; ls -la "$BASE/$D/packages/freetype"
+            fi
+          done
 
       - name: Build with Buildozer
         env:
