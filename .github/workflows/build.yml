@@ -653,6 +653,13 @@ jobs:
           echo "Both attempts failed - leaving this to p4a's own download step as normal (not a hard failure here; it may simply fail again with the same savannah error, which is the honest outcome to report back)."
           exit 0
 
+      - name: Copy pre-fetched freetype source to the armeabi-v7a build dir
+        continue-on-error: true
+        run: |
+          SRC="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/freetype"
+          DST="$GITHUB_WORKSPACE/.buildozer/android/platform/build-armeabi-v7a/packages/freetype"
+          if [ -d "$SRC" ]; then mkdir -p "$DST" && cp -n "$SRC"/* "$DST"/ 2>/dev/null || true; fi
+
       - name: Build with Buildozer
         env:
           P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
@@ -793,8 +800,11 @@ jobs:
             while IFS= read -r -d '' so; do
               # Only 64-bit ABI dirs are required to be 16 KB-aligned;
               # Google does not require it for 32-bit arches. This repo
-              # only ships arm64-v8a anyway (android.archs), so every .so
-              # found here is in scope.
+              # now ships arm64-v8a + armeabi-v7a (for 32-bit phones such as
+              # the Galaxy A02); 32-bit .so files are skipped below.
+              case "$so" in
+                */armeabi-v7a/*|*/x86/*) echo "SKIP (32-bit, 16 KB not required): $so"; continue ;;
+              esac
               local aligns
               aligns=$("$READELF" -lW "$so" 2>/dev/null | awk '/LOAD/ {print $NF}')
               if [ -z "$aligns" ]; then
