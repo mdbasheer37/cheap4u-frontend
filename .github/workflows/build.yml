@@ -653,22 +653,33 @@ jobs:
           echo "Both attempts failed - leaving this to p4a's own download step as normal (not a hard failure here; it may simply fail again with the same savannah error, which is the honest outcome to report back)."
           exit 0
 
-      - name: Copy pre-fetched freetype source to the multi-arch build dir
-        continue-on-error: true
+      - name: Stage pre-fetched freetype where python-for-android will look for it
         run: |
-          # With android.archs = arm64-v8a, armeabi-v7a, python-for-android
-          # uses ONE shared storage dir named "build-arm64-v8a_armeabi-v7a"
-          # (see the failed log: --storage-dir=.../build-arm64-v8a_armeabi-v7a).
-          # The pre-fetch above writes to the old single-arch folder, so
-          # p4a never saw it and fell back to savannah (hung ~11 min, failed).
+          set -eu
+          FT_VERSION="2.14.1"
+          FT_FILE="freetype-$FT_VERSION.tar.gz"
           BASE="$GITHUB_WORKSPACE/.buildozer/android/platform"
-          SRC="$BASE/build-arm64-v8a/packages/freetype"
-          for D in build-arm64-v8a_armeabi-v7a build-armeabi-v7a; do
-            if [ -d "$SRC" ]; then
-              mkdir -p "$BASE/$D/packages/freetype"
-              cp -n "$SRC"/* "$BASE/$D/packages/freetype/" 2>/dev/null || true
-              echo "Staged freetype source in $D:"; ls -la "$BASE/$D/packages/freetype"
-            fi
+          SRC="$BASE/build-arm64-v8a/packages/freetype/$FT_FILE"
+
+          # Fail fast (seconds, not the 11 minutes p4a wastes retrying savannah)
+          # if the pre-fetch did not produce a valid archive.
+          if [ ! -s "$SRC" ] || ! tar -tzf "$SRC" >/dev/null 2>&1; then
+            echo "::error::Pre-fetched $FT_FILE is missing or corrupt, so python-for-android would fall back to savannah.gnu.org (unreachable from GitHub runners). Re-run the workflow."
+            exit 1
+          fi
+
+          # With android.archs = "arm64-v8a, armeabi-v7a" p4a uses ONE shared
+          # storage dir named build-arm64-v8a_armeabi-v7a (see --storage-dir in
+          # the build log). p4a's Recipe.download() only skips downloading when
+          # BOTH the archive AND a ".mark-<archive>" file exist; with the archive
+          # but no marker it deletes the archive and downloads it again. So we
+          # create the marker too.
+          for D in build-arm64-v8a build-arm64-v8a_armeabi-v7a build-armeabi-v7a; do
+            T="$BASE/$D/packages/freetype"
+            mkdir -p "$T"
+            [ "$T/$FT_FILE" = "$SRC" ] || cp -f "$SRC" "$T/$FT_FILE"
+            touch "$T/.mark-$FT_FILE"
+            echo "Staged in $T:"; ls -la "$T"
           done
 
       - name: Build with Buildozer
