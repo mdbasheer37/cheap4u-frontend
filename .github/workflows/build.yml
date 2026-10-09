@@ -682,6 +682,33 @@ jobs:
             echo "Staged in $T:"; ls -la "$T"
           done
 
+      - name: Shim python so python-for-android recreates its pip venv cleanly (multi-arch fix)
+        run: |
+          set -eu
+          # Why: with two archs, p4a creates ONE shared venv ("build/venv")
+          # and runs "python -m venv venv" + "pip install -U pip" once PER ARCH.
+          # On the 2nd pass the venv already holds the upgraded (newer) pip;
+          # "python -m venv" then re-installs the older bundled pip on top of
+          # it, leaving a mix of old/new files, and pip crashes on startup
+          # ("cannot import name 'open_rich_spinner'"). Single-arch builds
+          # never hit this because the venv never exists yet.
+          # Fix: if "python -m venv <dir>" is asked to use a dir that already
+          # exists, delete that dir first so every pass starts from a clean venv.
+          REAL_PY="$(command -v python)"
+          SHIM_DIR="$RUNNER_TEMP/pyshim"
+          mkdir -p "$SHIM_DIR"
+          cat > "$SHIM_DIR/python" <<EOF
+          #!/bin/bash
+          if [ "\${1:-}" = "-m" ] && [ "\${2:-}" = "venv" ] && [ -n "\${3:-}" ] && [ -d "\${3}" ]; then
+            echo "[pyshim] removing stale venv before re-creating it: \${3}" >&2
+            rm -rf -- "\${3}"
+          fi
+          exec "$REAL_PY" "\$@"
+          EOF
+          chmod +x "$SHIM_DIR/python"
+          echo "$SHIM_DIR" >> "$GITHUB_PATH"
+          echo "Real python: $REAL_PY"; cat "$SHIM_DIR/python"
+
       - name: Build with Buildozer
         env:
           P4A_RELEASE_KEYSTORE: ${{ github.workspace }}/release.keystore
