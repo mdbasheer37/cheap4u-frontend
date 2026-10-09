@@ -682,32 +682,42 @@ jobs:
             echo "Staged in $T:"; ls -la "$T"
           done
 
-      - name: Shim python so python-for-android recreates its pip venv cleanly (multi-arch fix)
+      - name: Make "python -m venv" always start clean (multi-arch pip fix)
         run: |
           set -eu
-          # Why: with two archs, p4a creates ONE shared venv ("build/venv")
-          # and runs "python -m venv venv" + "pip install -U pip" once PER ARCH.
-          # On the 2nd pass the venv already holds the upgraded (newer) pip;
-          # "python -m venv" then re-installs the older bundled pip on top of
-          # it, leaving a mix of old/new files, and pip crashes on startup
-          # ("cannot import name 'open_rich_spinner'"). Single-arch builds
-          # never hit this because the venv never exists yet.
-          # Fix: if "python -m venv <dir>" is asked to use a dir that already
-          # exists, delete that dir first so every pass starts from a clean venv.
-          REAL_PY="$(command -v python)"
-          SHIM_DIR="$RUNNER_TEMP/pyshim"
-          mkdir -p "$SHIM_DIR"
-          cat > "$SHIM_DIR/python" <<EOF
-          #!/bin/bash
-          if [ "\${1:-}" = "-m" ] && [ "\${2:-}" = "venv" ] && [ -n "\${3:-}" ] && [ -d "\${3}" ]; then
-            echo "[pyshim] removing stale venv before re-creating it: \${3}" >&2
-            rm -rf -- "\${3}"
-          fi
-          exec "$REAL_PY" "\$@"
-          EOF
-          chmod +x "$SHIM_DIR/python"
-          echo "$SHIM_DIR" >> "$GITHUB_PATH"
-          echo "Real python: $REAL_PY"; cat "$SHIM_DIR/python"
+          # Why: with two archs, python-for-android uses ONE shared venv
+          # (build/venv) and runs "python -m venv venv" + "pip install -U pip"
+          # once PER ARCH. Pass 1 upgrades the venv's pip (23.2.1 -> 26.2.1).
+          # On pass 2 "python -m venv venv" re-installs the older bundled pip
+          # over the upgraded one -> a mix of old/new pip files -> pip crashes
+          # on start ("cannot import name 'open_rich_spinner'").
+          # A PATH wrapper did not help (p4a starts Python by full path), so
+          # patch the stdlib venv module of THIS Python: an existing target
+          # directory is cleared first (same as passing --clear), so every
+          # pass behaves like the first one.
+          python - <<'PYEOF'
+          import venv, pathlib, sys
+          p = pathlib.Path(venv.__file__)
+          src = p.read_text()
+          marker = "# PATCHED: always clear existing env dir"
+          if marker in src:
+              print("venv already patched:", p); sys.exit(0)
+          anchor = "        env_dir = os.path.abspath(env_dir)\n        context = self.ensure_directories(env_dir)"
+          if src.count(anchor) != 1:
+              sys.exit("ERROR: could not find the expected code in %s - the Python version changed; report this." % p)
+          src = src.replace(anchor,
+              "        env_dir = os.path.abspath(env_dir)\n"
+              "        self.clear = True  " + marker + "\n"
+              "        context = self.ensure_directories(env_dir)")
+          p.write_text(src)
+          print("patched", p)
+          PYEOF
+          # prove it works: create twice over the same dir, stale file must vanish
+          T="$(mktemp -d)"; cd "$T"
+          python -m venv v && touch v/STALE
+          python -m venv v
+          if [ -e v/STALE ]; then echo "::error::venv patch did not take effect"; exit 1; fi
+          v/bin/python -c "import pip; print('venv self-test OK, bundled pip', pip.__version__)"
 
       - name: Build with Buildozer
         env:
