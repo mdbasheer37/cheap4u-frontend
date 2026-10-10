@@ -61,7 +61,7 @@ env:
   # ld.lld symlink with a wrapper that re-execs the same untouched binary
   # via `exec -a ld.lld` (forcing argv[0] back to "ld.lld" so dispatch
   # still works), appending the alignment flags last.
-  CACHE_VERSION: "v9-argv0-safe-linker-wrap"
+  CACHE_VERSION: "v10-multi-arch-api21"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
@@ -609,7 +609,11 @@ jobs:
         run: |
           set +e
           FT_VERSION="2.14.1"
-          DEST_DIR="$GITHUB_WORKSPACE/.buildozer/android/platform/build-arm64-v8a/packages/freetype"
+          # With several android.archs, buildozer names the build dir after all of
+          # them (joined by "_"), so the freetype cache dir follows that name.
+          # If the name ever differs this step just no-ops (continue-on-error).
+          PLAT="$GITHUB_WORKSPACE/.buildozer/android/platform"
+          DEST_DIR="$PLAT/build-arm64-v8a_armeabi-v7a/packages/freetype"
           DEST_FILE="$DEST_DIR/freetype-$FT_VERSION.tar.gz"
           WORK="$RUNNER_TEMP/freetype-prefetch"
           mkdir -p "$DEST_DIR" "$WORK"
@@ -791,10 +795,9 @@ jobs:
             local dir="$1"
             local bad=0
             while IFS= read -r -d '' so; do
-              # Only 64-bit ABI dirs are required to be 16 KB-aligned;
-              # Google does not require it for 32-bit arches. This repo
-              # only ships arm64-v8a anyway (android.archs), so every .so
-              # found here is in scope.
+              # Only 64-bit ABIs are required to be 16 KB-aligned; Google does
+              # not require it for 32-bit arches (armeabi-v7a is shipped for
+              # older phones), so the find above only looks at 64-bit dirs.
               local aligns
               aligns=$("$READELF" -lW "$so" 2>/dev/null | awk '/LOAD/ {print $NF}')
               if [ -z "$aligns" ]; then
@@ -809,7 +812,7 @@ jobs:
               else
                 echo "OK (16 KB-aligned): $so"
               fi
-            done < <(find "$dir" -name "*.so" -print0)
+            done < <(find "$dir" \( -path "*arm64-v8a*" -o -path "*x86_64*" \) -name "*.so" -print0)
             return $bad
           }
 
