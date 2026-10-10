@@ -18509,32 +18509,6 @@ class DashboardApp(ChallengeMixin, MDApp):
             remaining = max(self.SPLASH_MIN_DURATION - elapsed, 0)
             Clock.schedule_once(lambda dt: self.finish_splash(), remaining)
 
-    def on_stop(self):
-        """Clean shutdown.
-
-        Play Console crash: "[libpython3.11.so] PyThread_exit_thread, SIGABRT".
-        It happens when the app is closed while a daemon worker thread (an
-        API request, the poller) is still running: during interpreter
-        shutdown that thread tries to take the GIL, Python calls
-        PyThread_exit_thread(), and Android aborts the process.
-        Fix: end the process directly on Android so the
-        interpreter is never finalized under a live thread.
-        """
-        self._shutting_down = True
-        try:
-            from kivy.utils import platform as _platform
-            on_android = (_platform == 'android')
-        except Exception:
-            on_android = False
-        if on_android:
-            try:
-                import logging
-                logging.shutdown()      # flush logs before exiting
-            except Exception:
-                pass
-            os._exit(0)
-        return True
-
     def on_resume(self):
         """Called by Kivy when the app returns from the background — a
         good moment to check for any bill reminders that queued up while
