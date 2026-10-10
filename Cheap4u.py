@@ -7271,7 +7271,7 @@ LazyScreenManager:
                         padding: dp(25)
                         spacing: dp(15)
                         size_hint: (0.9, None)
-                        height: dp(380)  # Increased height to accommodate referral field
+                        height: dp(480)  # scrollable form incl. PIN fields
                         pos_hint: {'center_x': 0.5}
                         elevation: 5
                         radius: [dp(15),]
@@ -7283,7 +7283,7 @@ LazyScreenManager:
                                 orientation: 'vertical'
                                 spacing: dp(15)
                                 size_hint_y: None
-                                height: dp(490)  # Increased height
+                                height: dp(1000)  # fits all fields incl. PINs
 
                                 # Name field
                                 MDTextField:
@@ -7373,10 +7373,82 @@ LazyScreenManager:
                                     helper_text: "Re-enter your password"
                                     required: True
 
+                                # Login PIN (4-6 digits)
+                                MDTextField:
+                                    id: reg_login_pin
+                                    hint_text: "Login PIN (4-6 digits)"
+                                    icon_left: "shield-key-outline"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    password: True
+                                    input_filter: "int"
+                                    input_type: "number"
+                                    max_text_length: 6
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Used for quick login"
+                                    required: True
+
+                                # Confirm Login PIN
+                                MDTextField:
+                                    id: reg_login_pin_confirm
+                                    hint_text: "Confirm Login PIN"
+                                    icon_left: "shield-key-outline"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    password: True
+                                    input_filter: "int"
+                                    input_type: "number"
+                                    max_text_length: 6
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Re-enter your login PIN"
+                                    required: True
+
+                                # Transaction PIN (4-6 digits)
+                                MDTextField:
+                                    id: reg_txn_pin
+                                    hint_text: "Transaction PIN (4-6 digits)"
+                                    icon_left: "shield-key-outline"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    password: True
+                                    input_filter: "int"
+                                    input_type: "number"
+                                    max_text_length: 6
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Used to approve every purchase"
+                                    required: True
+
+                                # Confirm Transaction PIN
+                                MDTextField:
+                                    id: reg_txn_pin_confirm
+                                    hint_text: "Confirm Transaction PIN"
+                                    icon_left: "shield-key-outline"
+                                    mode: "rectangle"
+                                    size_hint_y: None
+                                    height: dp(76)
+                                    size_hint_x: 1
+                                    password: True
+                                    input_filter: "int"
+                                    input_type: "number"
+                                    max_text_length: 6
+                                    line_color_focus: app.theme_cls.primary_color
+                                    helper_text_mode: "on_focus"
+                                    helper_text: "Re-enter your transaction PIN"
+                                    required: True
+
                     # Register button
                     MDRaisedButton:
                         text: "REGISTER"
-                        on_release: app.register_user(reg_name.text, reg_email.text, reg_phone.text, reg_referral_code.text, reg_password.text, reg_confirm_password.text)
+                        on_release: app.register_user(reg_name.text, reg_email.text, reg_phone.text, reg_referral_code.text, reg_password.text, reg_confirm_password.text, reg_login_pin.text, reg_login_pin_confirm.text, reg_txn_pin.text, reg_txn_pin_confirm.text)
                         pos_hint: {'center_x': 0.5}
                         size_hint_x: 0.9
                         md_bg_color: app.theme_cls.primary_color
@@ -23439,7 +23511,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         self.route_to_login_or_pin()
 
-    def register_user(self, name, email, phone, referral_code, password, confirm_password):
+    def register_user(self, name, email, phone, referral_code, password, confirm_password,
+                      login_pin='', login_pin_confirm='', txn_pin='', txn_pin_confirm=''):
         """Handle user registration with backend API"""
         # Validation (same as before)
         if not all([name, email, phone, password, confirm_password]):
@@ -23458,13 +23531,32 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.show_error_dialog("Phone number must be 11 digits")
             return
         
+        # Login PIN + Transaction PIN are mandatory at sign-up
+        login_pin, login_pin_confirm = (login_pin or '').strip(), (login_pin_confirm or '').strip()
+        txn_pin, txn_pin_confirm = (txn_pin or '').strip(), (txn_pin_confirm or '').strip()
+        for label, pin, conf in (("Login PIN", login_pin, login_pin_confirm),
+                                 ("Transaction PIN", txn_pin, txn_pin_confirm)):
+            if not pin.isdigit() or not (4 <= len(pin) <= 6):
+                self.show_error_dialog(f"{label} must be 4-6 digits")
+                return
+            if pin != conf:
+                self.show_error_dialog(f"{label}s do not match")
+                return
+
         self.show_loader("Creating your account...")
+
+        # Kept in memory only so the login PIN can be cached on this device
+        # after OTP verification (see verify_otp); cleared right after.
+        self._pending_login_pin = login_pin
+        self._pending_login_email = email.lower()
 
         registration_data = {
             'name': name,
             'email': email.lower(),
             'phone': phone,
-            'password': password   # ✅ Raw password, NOT hashed
+            'password': password,   # ✅ Raw password, NOT hashed
+            'login_pin': login_pin,
+            'transaction_pin': txn_pin,
         }
         if referral_code and referral_code.strip():
             registration_data['referral_code'] = referral_code.strip()
@@ -23534,8 +23626,24 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self.show_success_dialog("Account verified successfully!")
                 self.root.current = "dashboard"
                 email = self.current_user.get('email')
-                if email and not self.current_user.get('login_pin_set'):
+                pending_pin = getattr(self, '_pending_login_pin', None)
+                if email and pending_pin and self.current_user.get('login_pin_set'):
+                    # PINs were chosen at registration and already live on the
+                    # server - just cache the login PIN on this device.
+                    self.save_quick_pin(pending_pin, email, self.session_token, self.current_user)
+                elif email and not self.current_user.get('login_pin_set'):
                     Clock.schedule_once(lambda dt: self.prompt_setup_quick_pin(email, self.session_token, self.current_user), 1)
+                self._pending_login_pin = None
+                self._pending_login_email = None
+                # Account number: show it now, and fetch again in case it was
+                # still being created when verification finished.
+                self.virtual_account_number = self.current_user.get('virtual_account_number') or ''
+                self.virtual_bank_name = self.current_user.get('virtual_bank_name') or ''
+                self.virtual_account_name = self.current_user.get('virtual_account_name') or ''
+                self.update_dashboard_virtual_account()
+                if not self.virtual_account_number:
+                    Clock.schedule_once(lambda dt: self.fetch_virtual_account_details(), 2)
+                    Clock.schedule_once(lambda dt: self.fetch_virtual_account_details(), 6)
                 # Clear pending data
                 self.pending_user_id = None
                 self.pending_user_email = None
@@ -24500,6 +24608,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             screen.ids.reg_referral_code.text = ""
             screen.ids.reg_password.text = ""
             screen.ids.reg_confirm_password.text = ""
+            for _id in ("reg_login_pin", "reg_login_pin_confirm", "reg_txn_pin", "reg_txn_pin_confirm"):
+                screen.ids[_id].text = ""
         except Exception as e:
             print(f"Error clearing registration form: {str(e)}")
 
