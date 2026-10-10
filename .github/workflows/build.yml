@@ -61,7 +61,7 @@ env:
   # ld.lld symlink with a wrapper that re-execs the same untouched binary
   # via `exec -a ld.lld` (forcing argv[0] back to "ld.lld" so dispatch
   # still works), appending the alignment flags last.
-  CACHE_VERSION: "v10-multi-arch-api21"
+  CACHE_VERSION: "v11-multi-arch-venv-clear"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
@@ -679,6 +679,48 @@ jobs:
           BUILD_TYPE="${{ github.event.inputs.build_type || 'debug' }}"
           echo "Building: $BUILD_TYPE"
           yes | buildozer -v android "$BUILD_TYPE" 2>&1 | tee "$GITHUB_WORKSPACE/buildozer_full.log" || true
+
+          # ---------------------------------------------------------------
+          # Multi-arch (arm64-v8a + armeabi-v7a) fix.
+          # p4a installs the pure-python requirements once PER ARCH, but into
+          # the SAME shared "build/venv". On the 2nd pass `python -m venv venv`
+          # re-installs the bundled pip 23.2.1 on top of the pip 26.x that the
+          # 1st pass upgraded to, leaving a mix of old and new pip files, and
+          # the next `pip install -U pip` dies with
+          #   ImportError: cannot import name 'open_rich_spinner'
+          # Fix: make p4a create the venv with --clear (start from an empty
+          # directory every pass). buildozer has cloned p4a by now (the first
+          # run above got that far), so patch it and run buildozer again; all
+          # already-built recipes are reused, so the retry is quick.
+          # ---------------------------------------------------------------
+          if ! find bin -maxdepth 1 \( -name "*.apk" -o -name "*.aab" \) 2>/dev/null | grep -q .; then
+            P4A_BUILD_PY="$GITHUB_WORKSPACE/.buildozer/android/platform/python-for-android/pythonforandroid/build.py"
+            if [ -f "$P4A_BUILD_PY" ] && grep -q "open_rich_spinner" "$GITHUB_WORKSPACE/buildozer_full.log"; then
+              python - "$P4A_BUILD_PY" <<'PYEOF'
+          import re, sys
+          path = sys.argv[1]
+          src = open(path).read()
+          if "'--clear'" in src or '"--clear"' in src or "venv --clear" in src:
+              print("p4a venv already uses --clear - nothing to patch")
+              sys.exit(0)
+          new, n = re.subn(r"""(['"])-m\1\s*,\s*(['"])venv\2\s*,\s*(['"])venv\3""",
+                           r"'-m', 'venv', '--clear', 'venv'", src)
+          if n == 0:
+              new, n = re.subn(r"-m venv venv", "-m venv --clear venv", src)
+          if n == 0:
+              print("::error::Could not find the 'python -m venv venv' call in p4a build.py. Lines mentioning venv:")
+              for i, line in enumerate(src.splitlines(), 1):
+                  if "venv" in line:
+                      print(f"{i}: {line}")
+              sys.exit(1)
+          open(path, "w").write(new)
+          print(f"Patched {n} venv call(s) in p4a build.py to use --clear")
+          PYEOF
+              grep -n "venv" "$P4A_BUILD_PY" | head -20
+              echo "===== Retrying buildozer with the patched python-for-android ====="
+              yes | buildozer -v android "$BUILD_TYPE" 2>&1 | tee -a "$GITHUB_WORKSPACE/buildozer_full.log" || true
+            fi
+          fi
           # If buildozer genuinely failed, there will be no output file and
           # the next step ("Locate built package") will fail the job with
           # a clear error - so it's safe to not treat `yes`'s harmless
