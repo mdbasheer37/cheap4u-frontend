@@ -128,7 +128,7 @@ android.permissions = INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS, USE_BIOMETRIC,
 android.api = 36
 
 # (int) Minimum API your APK / AAB will support.
-android.minapi = 24
+android.minapi = 21
 
 # (int) Android SDK version to use
 # NOTE: this option is deprecated by python-for-android/buildozer and
@@ -153,7 +153,7 @@ android.minapi = 24
 android.ndk = 28.1.13356709
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
-android.ndk_api = 24
+android.ndk_api = 21
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
 #android.ndk_path =
@@ -247,6 +247,7 @@ android.gradle_dependencies = androidx.core:core:1.12.0
 # contains an 'androidx' package, or any package from Kotlin source.
 # android.enable_androidx requires android.api >= 28
 android.enable_androidx = True
+android.extra_manifest_xml = ./data/extra_manifest.xml
 
 # (list) add java compile options
 # this can for example be necessary when importing certain java libraries using the 'android.gradle_dependencies' option
@@ -323,7 +324,7 @@ android.enable_androidx = True
 
 # (list) The Android archs to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 # In past, was `android.arch` as we weren't supporting builds for multiple archs at the same time.
-android.archs = arm64-v8a
+android.archs = arm64-v8a, armeabi-v7a
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
@@ -343,7 +344,7 @@ android.archs = arm64-v8a
 # the workflow for what was actually missing). Reusing 10257 for the
 # corrected AAB risks Play Console treating it as the same, already-seen
 # version code.
-android.numeric_version = 10258
+android.numeric_version = 10259
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True

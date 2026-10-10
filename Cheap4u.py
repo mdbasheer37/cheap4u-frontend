@@ -4650,7 +4650,7 @@ LazyScreenManager:
 
                             MDLabel:
                                 id: virtual_account_display
-                                text: ("{} {} {}".format(app.virtual_account_number[:4], app.virtual_account_number[4:7], app.virtual_account_number[7:]) if len(app.virtual_account_number) == 10 else app.virtual_account_number) if app.virtual_account_number else "Loading account..."
+                                text: ("{} {} {}".format(app.virtual_account_number[:4], app.virtual_account_number[4:7], app.virtual_account_number[7:]) if len(app.virtual_account_number) == 10 else app.virtual_account_number) if app.virtual_account_number else app.virtual_account_status
                                 font_style: "H5"
                                 bold: True
                                 theme_text_color: "Custom"
@@ -4659,7 +4659,7 @@ LazyScreenManager:
                                 shorten: True
 
                             MDRaisedButton:
-                                text: "COPY"
+                                text: "COPY" if app.virtual_account_number else "RETRY"
                                 size_hint: None, None
                                 height: dp(34)
                                 md_bg_color: [1, 1, 1, 1]
@@ -4668,7 +4668,6 @@ LazyScreenManager:
                                 elevation: 0
                                 pos_hint: {'center_y': 0.5}
                                 on_release: app.copy_virtual_account()
-                                disabled: not app.virtual_account_number
 
                         MDLabel:
                             text: app.virtual_account_name.upper() if app.virtual_account_name else ""
@@ -11087,6 +11086,7 @@ class DashboardApp(ChallengeMixin, MDApp):
     virtual_account_number =   StringProperty('')
     virtual_bank_name = StringProperty('')
     virtual_account_name = StringProperty('')
+    virtual_account_status = StringProperty('Loading account...')
 
     backend_url = StringProperty("")  # Will be set based on environment
     payment_processing = BooleanProperty(False)
@@ -15529,9 +15529,11 @@ class DashboardApp(ChallengeMixin, MDApp):
                 if data.get('has_virtual_account') and self.virtual_account_number:
                     self._show_bank_transfer_details(data)
                 else:
+                    reason = data.get('account_error') or ''
                     self.show_error_dialog(
                         "Virtual account not available yet.\n"
                         "Please use Card Payment to fund your wallet."
+                        + (f"\n\nReason: {reason}" if reason else "")
                     )
             else:
                 self.show_error_dialog(
@@ -23678,6 +23680,12 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self.virtual_account_number = data.get('account_number') or ''
                 self.virtual_bank_name = data.get('bank_name') or ''
                 self.virtual_account_name = data.get('account_name') or ''
+                if self.virtual_account_number:
+                    self.virtual_account_status = 'Loading account...'
+                else:
+                    reason = data.get('account_error') or ''
+                    self.virtual_account_status = 'Not ready - tap RETRY'
+                    self._virtual_account_error = reason
                 balance = data.get('wallet_balance')
                 if balance is not None and self.current_user:
                     self.current_user['wallet_balance'] = balance
@@ -23686,9 +23694,13 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         def on_failure(req, error):
             print(f"fetch_virtual_account_details failed: {error}")
+            if not self.virtual_account_number:
+                self.virtual_account_status = 'Not ready - tap RETRY'
 
         def on_error(req, error):
             print(f"fetch_virtual_account_details error: {error}")
+            if not self.virtual_account_number:
+                self.virtual_account_status = 'No connection - tap RETRY'
 
         UrlRequest(
             f"{self.backend_url}/api/payment/account-details",
@@ -23697,7 +23709,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'Authorization': f'Bearer {self.session_token}',
                 'Content-Type': 'application/json',
             },
-            timeout=15,
+            timeout=45,
         )
     
     
@@ -23731,9 +23743,12 @@ class DashboardApp(ChallengeMixin, MDApp):
             )
         else:
             # Try fetching first
+            self.virtual_account_status = 'Loading account...'
             self.fetch_virtual_account_details()
+            reason = getattr(self, '_virtual_account_error', '') or ''
             self.show_error_dialog(
-                "Account number not loaded yet. Please wait and try again."
+                "Account number not ready yet. Trying again - please wait a few seconds."
+                + (f"\n\nReason: {reason}" if reason else "")
             )                            
             
 
