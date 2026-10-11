@@ -61,7 +61,7 @@ env:
   # ld.lld symlink with a wrapper that re-execs the same untouched binary
   # via `exec -a ld.lld` (forcing argv[0] back to "ld.lld" so dispatch
   # still works), appending the alignment flags last.
-  CACHE_VERSION: "v12-p4a-source-dir"
+  CACHE_VERSION: "v13-extra-manifest"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
@@ -715,6 +715,26 @@ jobs:
           sed -i "s|^#\?p4a.source_dir *=.*|p4a.source_dir = $P4A_DIR|" buildozer.spec
           sed -i "s|^p4a.branch|#p4a.branch|" buildozer.spec
           grep -n "^p4a\.\|^#p4a.branch" buildozer.spec
+
+      # -----------------------------------------------------------------
+      # buildozer.spec has android.extra_manifest_xml = ./data/extra_manifest.xml
+      # (marks fingerprint / microphone / touchscreen as OPTIONAL hardware so
+      # Google Play stops hiding the app from phones without a fingerprint
+      # reader). If that file was not committed, buildozer dies at the very
+      # last step with FileNotFoundError - after the whole 20-minute build.
+      # So write it here every time; the CI copy always wins.
+      # -----------------------------------------------------------------
+      - name: Ensure data/extra_manifest.xml exists (optional-hardware declarations for Google Play)
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          printf '%s\n' \
+            '<uses-feature android:name="android.hardware.fingerprint" android:required="false" />' \
+            '<uses-feature android:name="android.hardware.microphone" android:required="false" />' \
+            '<uses-feature android:name="android.hardware.touchscreen" android:required="false" />' \
+            > data/extra_manifest.xml
+          echo "data/extra_manifest.xml:"; cat data/extra_manifest.xml
+          grep -n "^android.extra_manifest_xml" buildozer.spec
 
       - name: Build with Buildozer
         env:
