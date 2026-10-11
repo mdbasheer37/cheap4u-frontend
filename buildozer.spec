@@ -128,7 +128,7 @@ android.permissions = INTERNET, RECORD_AUDIO, POST_NOTIFICATIONS, USE_BIOMETRIC,
 android.api = 36
 
 # (int) Minimum API your APK / AAB will support.
-android.minapi = 21
+android.minapi = 24
 
 # (int) Android SDK version to use
 # NOTE: this option is deprecated by python-for-android/buildozer and
@@ -153,7 +153,7 @@ android.minapi = 21
 android.ndk = 28.1.13356709
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
-android.ndk_api = 21
+android.ndk_api = 24
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
 #android.ndk_path =
@@ -344,7 +344,7 @@ android.archs = arm64-v8a, armeabi-v7a
 # the workflow for what was actually missing). Reusing 10257 for the
 # corrected AAB risks Play Console treating it as the same, already-seen
 # version code.
-android.numeric_version = 10259
+android.numeric_version = 10260
 
 # (bool) enables Android auto backup feature (Android API >=23)
 android.allow_backup = True
