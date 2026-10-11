@@ -17,6 +17,14 @@ on:
         options:
           - debug
           - release
+      archs:
+        description: 'CPU architectures (both = works on old 32-bit phones but a bigger file; arm64 only = roughly half the size)'
+        required: true
+        default: 'arm64-v8a, armeabi-v7a'
+        type: choice
+        options:
+          - 'arm64-v8a, armeabi-v7a'
+          - 'arm64-v8a'
 
 env:
   # Centralised version pins so SDK / NDK / build-tools always agree
@@ -61,7 +69,7 @@ env:
   # ld.lld symlink with a wrapper that re-execs the same untouched binary
   # via `exec -a ld.lld` (forcing argv[0] back to "ld.lld" so dispatch
   # still works), appending the alignment flags last.
-  CACHE_VERSION: "v13-extra-manifest"
+  CACHE_VERSION: "v14-arch-choice"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
@@ -604,6 +612,17 @@ jobs:
       # SAME source as a .tar.gz to match the exact filename p4a looks
       # for is safe - it's the identical source tree, just re-compressed
       # locally with tools already on every Ubuntu runner (xz, gzip, tar).
+      - name: Select CPU architectures (manual runs can pick arm64-only for a smaller file)
+        run: |
+          set -euo pipefail
+          ARCHS="${{ github.event.inputs.archs || 'arm64-v8a, armeabi-v7a' }}"
+          sed -i "s|^android.archs *=.*|android.archs = ${ARCHS}|" buildozer.spec
+          # buildozer names its build folder after the archs joined by "_"
+          ARCH_DIR="build-$(echo "$ARCHS" | tr -d ' ' | tr ',' '_')"
+          echo "ARCH_BUILD_DIR=$ARCH_DIR" >> "$GITHUB_ENV"
+          echo "Building for: $ARCHS (folder $ARCH_DIR)"
+          grep -n "^android.archs" buildozer.spec
+
       - name: Pre-fetch freetype source (savannah is chronically unreliable; SourceForge is the researched fallback)
         continue-on-error: true
         run: |
@@ -613,7 +632,7 @@ jobs:
           # them (joined by "_"), so the freetype cache dir follows that name.
           # If the name ever differs this step just no-ops (continue-on-error).
           PLAT="$GITHUB_WORKSPACE/.buildozer/android/platform"
-          DEST_DIR="$PLAT/build-arm64-v8a_armeabi-v7a/packages/freetype"
+          DEST_DIR="$PLAT/${ARCH_BUILD_DIR:-build-arm64-v8a_armeabi-v7a}/packages/freetype"
           DEST_FILE="$DEST_DIR/freetype-$FT_VERSION.tar.gz"
           WORK="$RUNNER_TEMP/freetype-prefetch"
           mkdir -p "$DEST_DIR" "$WORK"
