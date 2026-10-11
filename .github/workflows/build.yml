@@ -25,6 +25,14 @@ on:
         options:
           - 'arm64-v8a, armeabi-v7a'
           - 'arm64-v8a'
+      min_api:
+        description: 'Oldest Android allowed (24 = Android 7.0, accepted by Play automatic protection; 21 = Android 5.0, Play rejects it unless automatic protection is turned off)'
+        required: true
+        default: '24'
+        type: choice
+        options:
+          - '24'
+          - '21'
 
 env:
   # Centralised version pins so SDK / NDK / build-tools always agree
@@ -69,7 +77,7 @@ env:
   # ld.lld symlink with a wrapper that re-execs the same untouched binary
   # via `exec -a ld.lld` (forcing argv[0] back to "ld.lld" so dispatch
   # still works), appending the alignment flags last.
-  CACHE_VERSION: "v14-arch-choice"
+  CACHE_VERSION: "v15-min-api-choice"
   ANDROID_BUILD_TOOLS: "36.0.0"
   ANDROID_NDK_VERSION: "28.1.13356709"   # NDK r28.1 - fixes every non-ndk-build recipe by default; see CACHE_VERSION note above for what it does NOT fix
   ANDROID_HOME: /home/runner/android-sdk
@@ -617,6 +625,9 @@ jobs:
           set -euo pipefail
           ARCHS="${{ github.event.inputs.archs || 'arm64-v8a, armeabi-v7a' }}"
           sed -i "s|^android.archs *=.*|android.archs = ${ARCHS}|" buildozer.spec
+          MIN_API="${{ github.event.inputs.min_api || '24' }}"
+          sed -i "s|^android.minapi *=.*|android.minapi = ${MIN_API}|; s|^android.ndk_api *=.*|android.ndk_api = ${MIN_API}|" buildozer.spec
+          grep -n "^android.minapi\|^android.ndk_api\|^android.numeric_version" buildozer.spec
           # buildozer names its build folder after the archs joined by "_"
           ARCH_DIR="build-$(echo "$ARCHS" | tr -d ' ' | tr ',' '_')"
           echo "ARCH_BUILD_DIR=$ARCH_DIR" >> "$GITHUB_ENV"
