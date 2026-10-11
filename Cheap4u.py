@@ -18443,6 +18443,11 @@ class DashboardApp(ChallengeMixin, MDApp):
 
             self.primary_light = [0.2, 0.2, 0.4, 1]
 
+        try:
+            self._sync_inset_background()
+        except Exception:
+            pass
+
     # ── Dark Mode ────────────────────────────────────────────────────
 
     def _detect_system_theme(self):
@@ -18527,11 +18532,114 @@ class DashboardApp(ChallengeMixin, MDApp):
     SPLASH_MIN_DURATION = 0.6
     SPLASH_MAX_DURATION = 2.0
 
+    # ------------------------------------------------------------------
+    # System bars (navigation bar / status bar) - keep every screen clear
+    # of them.
+    #
+    # Apps that target Android 15+ (API 35+) are drawn EDGE-TO-EDGE by the
+    # system: the window runs underneath the status bar and the navigation
+    # bar (3-button or gesture pill), so anything at the very bottom of a
+    # screen - bottom tabs, "Proceed" buttons, footer links - ends up hidden
+    # behind it. This app targets API 36, so it must handle that itself.
+    #
+    # How it works (one place, every screen): the OS reports how much of the
+    # window the bars cover; on Android 14 and below the system already keeps
+    # the content clear of them and reports 0, so nothing changes there. On
+    # Android 15+ the root screen manager is moved/shrunk by exactly that
+    # amount, so every screen automatically sits between the bars.
+    # ------------------------------------------------------------------
+    def setup_system_bar_insets(self):
+        from kivy.utils import platform
+        self._sys_insets = (0, 0, 0, 0)
+        if platform != 'android':
+            return
+        try:
+            from android.runnable import run_on_ui_thread
+            from jnius import autoclass, PythonJavaClass, java_method
+        except Exception as e:
+            print(f"setup_system_bar_insets: android helpers unavailable: {e}")
+            return
+
+        Window.bind(size=self._relayout_for_insets)
+        app = self
+
+        class _InsetsListener(PythonJavaClass):
+            __javainterfaces__ = ['android/view/View$OnApplyWindowInsetsListener']
+            __javacontext__ = 'app'
+
+            @java_method('(Landroid/view/View;Landroid/view/WindowInsets;)Landroid/view/WindowInsets;')
+            def onApplyWindowInsets(self, view, insets):
+                try:
+                    left = top = right = bottom = 0
+                    # WindowInsets.Type exists from Android 11 (API 30). Below
+                    # that the window is never edge-to-edge by enforcement, so
+                    # 0 is correct.
+                    if autoclass('android.os.Build$VERSION').SDK_INT >= 30:
+                        Type = autoclass('android.view.WindowInsets$Type')
+                        i = insets.getInsets(Type.systemBars() | Type.displayCutout())
+                        left, top, right, bottom = i.left, i.top, i.right, i.bottom
+                    Clock.schedule_once(
+                        lambda dt: app._set_system_insets(left, top, right, bottom), 0)
+                except Exception as e:
+                    print(f"onApplyWindowInsets error: {e}")
+                return insets
+
+        self._insets_listener = _InsetsListener()
+
+        @run_on_ui_thread
+        def _install():
+            try:
+                activity = autoclass('org.kivy.android.PythonActivity').mActivity
+                content = activity.findViewById(16908290)   # android.R.id.content
+                content.setOnApplyWindowInsetsListener(self._insets_listener)
+                content.requestApplyInsets()
+            except Exception as e:
+                print(f"setup_system_bar_insets install error: {e}")
+
+        self._request_insets = _install
+        _install()
+        # Insets can arrive a moment after the first frame; ask again.
+        Clock.schedule_once(lambda dt: _install(), 1.0)
+
+    def _set_system_insets(self, left, top, right, bottom):
+        new = (int(left), int(top), int(right), int(bottom))
+        if new == getattr(self, '_sys_insets', None):
+            return
+        self._sys_insets = new
+        self._relayout_for_insets()
+
+    def _relayout_for_insets(self, *args):
+        root = getattr(self, 'root', None)
+        if root is None:
+            return
+        left, top, right, bottom = getattr(self, '_sys_insets', (0, 0, 0, 0))
+        if not (left or top or right or bottom):
+            root.size_hint = (1, 1)
+            root.pos = (0, 0)
+            root.size = Window.size
+        else:
+            root.size_hint = (None, None)
+            root.pos = (left, bottom)
+            root.size = (max(1, Window.width - left - right),
+                         max(1, Window.height - top - bottom))
+        self._sync_inset_background()
+
+    def _sync_inset_background(self):
+        """The strips left behind the bars take the app's background colour."""
+        try:
+            Window.clearcolor = tuple(self.bg_normal)
+        except Exception:
+            pass
+
     def on_start(self):
         """Show the splash instantly, then do all real startup work
         (screen setup, login-status/session check, API warm-up) in the
         background while it's on screen, and navigate away the moment
         that work is done - never waiting on animation timers."""
+        try:
+            self.setup_system_bar_insets()
+        except Exception as e:
+            print(f"setup_system_bar_insets failed: {e}")
         try:
             self._splash_routed = False
             self._splash_start_time = time.time()
@@ -18592,6 +18700,12 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.check_pending_bill_reminders()
         except Exception as e:
             print(f"on_resume reminder check error: {e}")
+
+        try:
+            if getattr(self, '_request_insets', None):
+                self._request_insets()
+        except Exception as e:
+            print(f"on_resume insets error: {e}")
 
         try:
             if getattr(self, 'theme_preference', 'light') == 'system':
