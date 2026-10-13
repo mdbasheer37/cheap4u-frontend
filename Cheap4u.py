@@ -24362,46 +24362,43 @@ class DashboardApp(ChallengeMixin, MDApp):
     # ─────────────────────────────────────────────────────────────
     # Fingerprint / biometric unlock (Android only)
     #
-    # Uses the AndroidX FingerprintManagerCompat API via pyjnius rather
-    # than the newer BiometricPrompt, deliberately: BiometricPrompt's
-    # constructor requires a FragmentActivity, and Kivy's own
-    # PythonActivity (python-for-android's SDL2 bootstrap) extends plain
-    # Activity, not FragmentActivity - so BiometricPrompt would fail at
-    # runtime without a custom Activity subclass. FingerprintManagerCompat
-    # works with a plain Activity/Context instead.
+    # Uses a small Java helper compiled into the app
+    # (java/org/cheap4u/helpers/BiometricHelper.java, included through
+    # android.add_src in buildozer.spec). It talks to the platform
+    # FingerprintManager directly. The previous version called AndroidX
+    # FingerprintManagerCompat from Python, which Google removed in androidx
+    # core 1.13 and whose callback is an abstract class pyjnius cannot
+    # implement - so the fingerprint button never appeared / never worked.
     #
-    # Every JNI lookup happens lazily inside these methods (not at import
-    # time) and is wrapped in try/except, so if anything about this
-    # doesn't line up on a given device or AndroidX version, it fails
-    # into "fingerprint not available" instead of crashing the app or
-    # blocking PIN entry. This is the one part of this change I could not
-    # test myself - there's no Android device/emulator in this environment
-    # - so please verify it on a real phone with a fingerprint enrolled.
+    # Every call is wrapped in try/except, so if anything doesn't line up on a
+    # device it falls back to "fingerprint not available" and PIN entry
+    # always keeps working. The button only shows when the phone has a
+    # fingerprint sensor AND at least one fingerprint enrolled in its settings.
     # ─────────────────────────────────────────────────────────────
 
-    def _fingerprint_manager(self):
+    def _bio_helper(self):
+        """The small Java helper compiled into the app (java/org/cheap4u/helpers)."""
         from kivy.utils import platform
         if platform != "android":
             return None
         try:
             from jnius import autoclass
-            FingerprintManagerCompat = autoclass(
-                "androidx.core.hardware.fingerprint.FingerprintManagerCompat"
-            )
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")
-            activity = PythonActivity.mActivity
-            return FingerprintManagerCompat.from_(activity)
+            return autoclass("org.cheap4u.helpers.BiometricHelper")
         except Exception as e:
-            print(f"fingerprint manager unavailable: {e}")
+            print(f"fingerprint helper unavailable: {e}")
             return None
 
     def _check_biometric_available(self):
-        """Best-effort check, called each time the PIN screen is shown."""
+        """Called each time the PIN screen is shown: the fingerprint button
+        only appears when the phone has a sensor AND an enrolled fingerprint."""
         self.pin_biometric_available = False
         try:
-            fm = self._fingerprint_manager()
-            if fm is not None and fm.isHardwareDetected() and fm.hasEnrolledFingerprints():
-                self.pin_biometric_available = True
+            helper = self._bio_helper()
+            if helper is None:
+                return
+            from jnius import autoclass
+            activity = autoclass("org.kivy.android.PythonActivity").mActivity
+            self.pin_biometric_available = bool(helper.isAvailable(activity))
         except Exception as e:
             print(f"biometric availability check error: {e}")
 
@@ -24417,43 +24414,33 @@ class DashboardApp(ChallengeMixin, MDApp):
         try:
             from jnius import autoclass, PythonJavaClass, java_method
 
-            fm = self._fingerprint_manager()
-            if fm is None:
+            helper = self._bio_helper()
+            if helper is None:
                 self.show_error_dialog("Fingerprint unlock isn't available on this device.")
                 return
-
-            CancellationSignal = autoclass("android.os.CancellationSignal")
-            self._fp_cancel_signal = CancellationSignal()
-
+            activity = autoclass("org.kivy.android.PythonActivity").mActivity
             app_ref = self
 
             class FPCallback(PythonJavaClass):
-                __javainterfaces__ = [
-                    "androidx/core/hardware/fingerprint/FingerprintManagerCompat$AuthenticationCallback"
-                ]
+                # A plain Java interface (declared in BiometricHelper.java), which
+                # pyjnius can implement - unlike the old abstract AndroidX class.
+                __javainterfaces__ = ["org/cheap4u/helpers/BiometricHelper$Callback"]
                 __javacontext__ = "app"
 
-                @java_method("()V")
-                def onAuthenticationFailed(self):
-                    Clock.schedule_once(lambda dt: app_ref.show_toast("Fingerprint not recognized - try again"), 0)
+                @java_method("(ILjava/lang/String;)V")
+                def onResult(self, code, message):
+                    if code == 0:
+                        Clock.schedule_once(lambda dt: app_ref._pin_login_success(), 0)
+                    elif code == 1:
+                        Clock.schedule_once(
+                            lambda dt: app_ref.show_toast("Fingerprint not recognized - try again"), 0)
+                    else:
+                        Clock.schedule_once(
+                            lambda dt: app_ref.show_toast(f"Fingerprint: {message}"), 0)
 
-                @java_method("(ILjava/lang/CharSequence;)V")
-                def onAuthenticationError(self, errMsgId, errString):
-                    Clock.schedule_once(lambda dt: app_ref.show_toast(f"Fingerprint: {errString}"), 0)
-
-                @java_method("(ILjava/lang/CharSequence;)V")
-                def onAuthenticationHelp(self, helpMsgId, helpString):
-                    pass
-
-                @java_method(
-                    "(Landroidx/core/hardware/fingerprint/FingerprintManagerCompat$AuthenticationResult;)V"
-                )
-                def onAuthenticationSucceeded(self, result):
-                    Clock.schedule_once(lambda dt: app_ref._pin_login_success(), 0)
-
-            self._fp_callback = FPCallback()
+            self._fp_callback = FPCallback()   # keep a reference so it isn't garbage-collected
             self.show_toast("Touch the fingerprint sensor")
-            fm.authenticate(None, 0, self._fp_cancel_signal, self._fp_callback, None)
+            helper.authenticate(activity, self._fp_callback)
         except Exception as e:
             print(f"attempt_pin_fingerprint error: {e}")
             self.show_error_dialog("Fingerprint unlock isn't available right now - please use your PIN.")
