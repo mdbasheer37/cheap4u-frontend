@@ -754,6 +754,17 @@ jobs:
       # last step with FileNotFoundError - after the whole 20-minute build.
       # So write it here every time; the CI copy always wins.
       # -----------------------------------------------------------------
+      - name: Verify the fingerprint Java helper is in the repo
+        run: |
+          set -euo pipefail
+          F="java/org/cheap4u/helpers/BiometricHelper.java"
+          if [ ! -f "$F" ]; then
+            echo "::error::$F is missing. Push the whole java/ folder - without it the fingerprint button never appears."
+            exit 1
+          fi
+          grep -n "^android.add_src" buildozer.spec || { echo "::error::android.add_src is not set in buildozer.spec"; exit 1; }
+          echo "OK: $F present"
+
       - name: Ensure data/extra_manifest.xml exists (optional-hardware declarations for Google Play)
         run: |
           set -euo pipefail
