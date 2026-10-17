@@ -11302,24 +11302,98 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._txn_pin_dots = []
         bio_ready = self._bio_txn_ready()   # fingerprint enabled for transactions on this phone
 
-        content = MDBoxLayout(
+        from kivy.uix.modalview import ModalView
+        from kivy.uix.anchorlayout import AnchorLayout
+
+        # ---- look & feel (works in light and dark theme) --------------------
+        primary = list(self.theme_cls.primary_color)
+        is_light = self.theme_cls.theme_style == "Light"
+        sheet_bg = [1, 1, 1, 1] if is_light else [0.11, 0.13, 0.17, 1]
+        key_bg = [0.93, 0.96, 1, 1] if is_light else [0.18, 0.21, 0.27, 1]
+        soft_primary = [primary[0], primary[1], primary[2], 0.13]
+        try:
+            bottom_inset = int(getattr(self, '_sys_insets', (0, 0, 0, 0))[3])   # px, nav bar on Android 15+
+        except Exception:
+            bottom_inset = 0
+
+        card = MDCard(
             orientation='vertical',
-            spacing=dp(14),
-            padding=[dp(10), dp(6), dp(10), dp(4)],
-            size_hint_y=None,
-            height=dp(420 + (64 if bio_ready else 0)),
+            size_hint=(1, 1),
+            radius=[dp(28), dp(28), 0, 0],
+            md_bg_color=sheet_bg,
+            elevation=0,
+            spacing=dp(8),
+            padding=[dp(20), dp(8), dp(20), dp(14) + bottom_inset],
         )
+        heights = []          # every row's height, to size the sheet exactly
 
+        def add_row(widget, height):
+            widget.size_hint_y = None
+            widget.height = height
+            card.add_widget(widget)
+            heights.append(height)
+
+        # grab handle
+        handle_row = AnchorLayout(anchor_x='center', anchor_y='center')
+        handle_row.add_widget(MDCard(
+            size_hint=(None, None), size=(dp(42), dp(4)),
+            radius=[dp(2)], md_bg_color=[0.7, 0.72, 0.76, 0.6], elevation=0,
+        ))
+        add_row(handle_row, dp(12))
+
+        # header: shield badge + title/subtitle + close
+        header = MDBoxLayout(orientation='horizontal', spacing=dp(12))
+        badge = MDCard(
+            size_hint=(None, None), size=(dp(48), dp(48)),
+            radius=[dp(24)], md_bg_color=soft_primary, elevation=0,
+            pos_hint={'center_y': 0.5},
+        )
+        badge.add_widget(MDIcon(
+            icon="shield-lock", halign="center", valign="middle",
+            theme_text_color="Custom", text_color=primary, font_size="26sp",
+        ))
+        header.add_widget(badge)
+        titles = MDBoxLayout(orientation='vertical', spacing=dp(2), pos_hint={'center_y': 0.5})
+        titles.add_widget(MDLabel(
+            text="Confirm Transaction", bold=True, font_size="19sp",
+            theme_text_color="Primary", size_hint_y=None, height=dp(26),
+        ))
+        titles.add_widget(MDLabel(
+            text="Scan fingerprint or enter PIN" if bio_ready else "Enter your transaction PIN",
+            font_size="12sp", theme_text_color="Secondary",
+            size_hint_y=None, height=dp(18),
+        ))
+        header.add_widget(titles)
+        header.add_widget(MDIconButton(
+            icon="close", theme_text_color="Secondary",
+            pos_hint={'center_y': 0.5},
+            on_release=lambda x: self._cancel_pin_verification(),
+        ))
+        add_row(header, dp(56))
+
+        # fingerprint pill (only when fingerprint approval is switched on)
         if bio_ready:
-            content.add_widget(MDIconButton(
-                icon="fingerprint",
-                theme_text_color="Custom",
-                text_color=self.theme_cls.primary_color,
-                icon_size="44sp",
-                pos_hint={'center_x': 0.5},
+            fp_row = AnchorLayout(anchor_x='center', anchor_y='center')
+            fp_pill = MDCard(
+                orientation='horizontal',
+                size_hint=(None, None), size=(dp(210), dp(44)),
+                radius=[dp(22)], md_bg_color=soft_primary, elevation=0,
+                ripple_behavior=True,
                 on_release=lambda x: self._start_txn_fingerprint(self._pending_pin_on_success),
+            )
+            fp_pill.add_widget(MDIcon(
+                icon="fingerprint", halign="center", valign="middle",
+                theme_text_color="Custom", text_color=primary, font_size="26sp",
+                size_hint_x=None, width=dp(50),
             ))
+            fp_pill.add_widget(MDLabel(
+                text="Use fingerprint", valign="middle",
+                theme_text_color="Custom", text_color=primary, font_size="14sp",
+            ))
+            fp_row.add_widget(fp_pill)
+            add_row(fp_row, dp(44))
 
+        # PIN dots
         dots_row = MDBoxLayout(
             orientation='horizontal',
             spacing=dp(10),
@@ -11331,7 +11405,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             dot = MDIcon(
                 icon="checkbox-blank-circle-outline",
                 theme_text_color="Custom",
-                text_color=self.theme_cls.primary_color,
+                text_color=primary,
                 font_size="20sp",
                 halign="center",
                 size_hint_x=None,
@@ -11339,93 +11413,116 @@ class DashboardApp(ChallengeMixin, MDApp):
             )
             dots_row.add_widget(dot)
             self._txn_pin_dots.append(dot)
-        content.add_widget(dots_row)
+        add_row(dots_row, dp(30))
 
+        # error line (kept as self.pin_error_label - other code writes to it)
         self.pin_error_label = MDLabel(
             text="",
             theme_text_color="Error",
             font_style="Caption",
             halign="center",
-            size_hint_y=None,
-            height=dp(18),
-            opacity=0
+            opacity=0,
         )
-        content.add_widget(self.pin_error_label)
+        add_row(self.pin_error_label, dp(16))
 
-        def _key_bg_color():
-            return (
-                [0.93, 0.96, 1, 1] if self.theme_cls.theme_style == "Light"
-                else [0.16, 0.18, 0.22, 1]
+        # keypad: round soft keys, Clear / 0 / backspace on the bottom row
+        def make_key(on_release, text=None, icon=None, filled=True):
+            key = MDCard(
+                size_hint=(None, None), size=(dp(56), dp(56)),
+                radius=[dp(28)],
+                md_bg_color=key_bg if filled else [0, 0, 0, 0],
+                elevation=0,
+                ripple_behavior=True,
+                on_release=on_release,
             )
-
-        def make_digit_key(label_text, callback):
-            wrap = MDBoxLayout(
-                size_hint=(None, None),
-                size=(dp(58), dp(58)),
-                radius=[dp(29)],
-                md_bg_color=_key_bg_color(),
-                pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            )
-            btn = MDFlatButton(
-                text=label_text,
-                font_size="20sp",
-                size_hint=(None, None),
-                size=(dp(58), dp(58)),
-                pos_hint={'center_x': 0.5, 'center_y': 0.5},
-                on_release=callback,
-            )
-            wrap.add_widget(btn)
-            return wrap
+            if icon:
+                key.add_widget(MDIcon(
+                    icon=icon, halign="center", valign="middle",
+                    theme_text_color="Primary", font_size="24sp",
+                ))
+            else:
+                key.add_widget(MDLabel(
+                    text=text, halign="center", valign="middle",
+                    theme_text_color="Primary" if filled else "Secondary",
+                    font_size="24sp" if filled else "13sp",
+                ))
+            cell = AnchorLayout(anchor_x='center', anchor_y='center')
+            cell.add_widget(key)
+            return cell
 
         keypad = MDGridLayout(
             cols=3,
             spacing=dp(6),
-            size_hint_y=None,
-            height=dp(4 * 62),
-            row_default_height=dp(62),
+            row_default_height=dp(64),
             row_force_default=True,
         )
         for d in "123456789":
-            keypad.add_widget(make_digit_key(d, lambda x, d=d: self._txn_pin_press(d)))
-        keypad.add_widget(MDFlatButton(
-            text="Clear",
-            font_size="12sp",
-            theme_text_color="Secondary",
-            pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            on_release=lambda x: self._txn_pin_clear(),
-        ))
-        keypad.add_widget(make_digit_key("0", lambda x: self._txn_pin_press("0")))
-        keypad.add_widget(MDIconButton(
-            icon="backspace-outline",
-            pos_hint={'center_x': 0.5, 'center_y': 0.5},
-            on_release=lambda x: self._txn_pin_backspace(),
-        ))
-        content.add_widget(keypad)
+            keypad.add_widget(make_key(lambda x, d=d: self._txn_pin_press(d), text=d))
+        keypad.add_widget(make_key(lambda x: self._txn_pin_clear(), text="Clear", filled=False))
+        keypad.add_widget(make_key(lambda x: self._txn_pin_press("0"), text="0"))
+        keypad.add_widget(make_key(lambda x: self._txn_pin_backspace(), icon="backspace-outline", filled=False))
+        add_row(keypad, dp(4 * 64 + 3 * 6))
 
-        confirm_btn = MDIconButton(
-            icon="check-circle",
-            theme_text_color="Custom",
-            text_color=self.theme_cls.primary_color,
-            icon_size="34sp",
-            pos_hint={'center_x': 0.5},
+        # buttons: Cancel (soft) + Confirm (filled)
+        buttons = MDBoxLayout(orientation='horizontal', spacing=dp(12))
+        cancel_btn = MDCard(
+            size_hint_x=0.4, radius=[dp(25)], md_bg_color=key_bg, elevation=0,
+            ripple_behavior=True,
+            on_release=lambda x: self._cancel_pin_verification(),
+        )
+        cancel_btn.add_widget(MDLabel(
+            text="Cancel", halign="center", valign="middle",
+            theme_text_color="Secondary", font_size="15sp",
+        ))
+        confirm_btn = MDCard(
+            size_hint_x=0.6, radius=[dp(25)], md_bg_color=primary, elevation=0,
+            ripple_behavior=True,
             on_release=lambda x: self._submit_pin_verification(self._pending_pin_on_success),
         )
-        content.add_widget(confirm_btn)
+        confirm_btn.add_widget(MDLabel(
+            text="Confirm", bold=True, halign="center", valign="middle",
+            theme_text_color="Custom", text_color=[1, 1, 1, 1], font_size="16sp",
+        ))
+        buttons.add_widget(cancel_btn)
+        buttons.add_widget(confirm_btn)
+        add_row(buttons, dp(50))
 
-        self.pin_dialog = MDDialog(
-            title="Transaction PIN Required",
-            type="custom",
-            content_cls=content,
-            buttons=[
-                MDFlatButton(
-                    text="CANCEL",
-                    theme_text_color="Custom",
-                    text_color=self.theme_cls.primary_color,
-                    on_release=lambda x: self._cancel_pin_verification()
-                )
-            ],
-            radius=[20, 7, 20, 7]
+        # reassurance line
+        add_row(MDLabel(
+            text="Secured & encrypted", halign="center", valign="middle",
+            font_size="11sp", theme_text_color="Hint",
+        ), dp(16))
+
+        total = (sum(heights) + card.spacing[1] * (len(heights) - 1)
+                 + card.padding[1] + card.padding[3])
+        sheet = ModalView(
+            size_hint=(1, None),
+            height=min(total, Window.height * 0.97),
+            anchor_y='bottom',
+            auto_dismiss=True,            # tap outside / Android back closes it
+            background="",
+            background_color=[0, 0, 0, 0],
+            overlay_color=[0, 0, 0, 0.55],
         )
+        sheet.add_widget(card)
+
+        def _on_sheet_dismiss(*_):
+            # Closed by tapping outside / back / Cancel / success: tidy up, but
+            # never wipe a NEWER dialog that has already replaced this one.
+            try:
+                current = getattr(self, 'pin_dialog', None)
+                if current is None or current is sheet:
+                    self.pin_dialog = None
+                    self._txn_pin_buffer = ""
+                    self._txn_pin_dots = []
+                    helper = self._bio_helper()
+                    if helper is not None:
+                        helper.cancel()
+            except Exception as e:
+                print(f"pin sheet dismiss cleanup error: {e}")
+
+        sheet.bind(on_dismiss=_on_sheet_dismiss)
+        self.pin_dialog = sheet
         self.pin_dialog.open()
         if bio_ready:
             # Ask for the fingerprint straight away; the PIN pad below is the fallback.
