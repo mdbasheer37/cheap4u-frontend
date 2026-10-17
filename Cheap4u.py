@@ -11302,6 +11302,28 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._txn_pin_dots = []
         bio_ready = self._bio_txn_ready()   # fingerprint enabled for transactions on this phone
 
+        try:
+            self._open_pin_sheet(bio_ready)
+        except Exception as e:
+            # Never let a layout problem close the app or block a purchase:
+            # log it and fall back to the plain dialog.
+            print(f"PIN bottom sheet failed, using basic dialog: {e}")
+            traceback.print_exc()
+            try:
+                if getattr(self, 'pin_dialog', None):
+                    self.pin_dialog.dismiss()
+            except Exception:
+                pass
+            self.pin_dialog = None
+            self._txn_pin_dots = []
+            self._open_basic_pin_dialog(bio_ready)
+        if bio_ready:
+            # Ask for the fingerprint straight away; the PIN pad below is the fallback.
+            Clock.schedule_once(lambda dt: self._start_txn_fingerprint(self._pending_pin_on_success), 0.4)
+
+
+    def _open_pin_sheet(self, bio_ready):
+        """The bottom-sheet PIN screen (see verify_transaction_pin)."""
         from kivy.uix.modalview import ModalView
         from kivy.uix.anchorlayout import AnchorLayout
 
@@ -11316,14 +11338,17 @@ class DashboardApp(ChallengeMixin, MDApp):
         except Exception:
             bottom_inset = 0
 
+        row_gap = dp(8)
+        pad_top = dp(8)
+        pad_bottom = dp(14) + bottom_inset
         card = MDCard(
             orientation='vertical',
             size_hint=(1, 1),
             radius=[dp(28), dp(28), 0, 0],
             md_bg_color=sheet_bg,
             elevation=0,
-            spacing=dp(8),
-            padding=[dp(20), dp(8), dp(20), dp(14) + bottom_inset],
+            spacing=row_gap,
+            padding=[dp(20), pad_top, dp(20), pad_bottom],
         )
         heights = []          # every row's height, to size the sheet exactly
 
@@ -11493,8 +11518,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             font_size="11sp", theme_text_color="Hint",
         ), dp(16))
 
-        total = (sum(heights) + card.spacing[1] * (len(heights) - 1)
-                 + card.padding[1] + card.padding[3])
+        total = sum(heights) + row_gap * (len(heights) - 1) + pad_top + pad_bottom
         sheet = ModalView(
             size_hint=(1, None),
             height=min(total, Window.height * 0.97),
@@ -11523,10 +11547,104 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         sheet.bind(on_dismiss=_on_sheet_dismiss)
         self.pin_dialog = sheet
-        self.pin_dialog.open()
+        sheet.open()
+
+    def _open_basic_pin_dialog(self, bio_ready):
+        """Plain, proven PIN dialog - used automatically if the bottom sheet
+        can't be built for any reason, so a layout problem can never stop (or
+        crash) a transaction."""
+        content = MDBoxLayout(
+            orientation='vertical',
+            spacing=dp(14),
+            padding=[dp(10), dp(6), dp(10), dp(4)],
+            size_hint_y=None,
+            height=dp(420 + (64 if bio_ready else 0)),
+        )
         if bio_ready:
-            # Ask for the fingerprint straight away; the PIN pad below is the fallback.
-            Clock.schedule_once(lambda dt: self._start_txn_fingerprint(self._pending_pin_on_success), 0.4)
+            content.add_widget(MDIconButton(
+                icon="fingerprint",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                icon_size="44sp",
+                pos_hint={'center_x': 0.5},
+                on_release=lambda x: self._start_txn_fingerprint(self._pending_pin_on_success),
+            ))
+        dots_row = MDBoxLayout(
+            orientation='horizontal', spacing=dp(10),
+            size_hint=(None, None), size=(dp(210), dp(28)),
+            pos_hint={'center_x': 0.5},
+        )
+        for _ in range(6):
+            dot = MDIcon(
+                icon="checkbox-blank-circle-outline",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                font_size="20sp", halign="center",
+                size_hint_x=None, width=dp(26),
+            )
+            dots_row.add_widget(dot)
+            self._txn_pin_dots.append(dot)
+        content.add_widget(dots_row)
+
+        self.pin_error_label = MDLabel(
+            text="", theme_text_color="Error", font_style="Caption",
+            halign="center", size_hint_y=None, height=dp(18), opacity=0,
+        )
+        content.add_widget(self.pin_error_label)
+
+        key_bg = ([0.93, 0.96, 1, 1] if self.theme_cls.theme_style == "Light"
+                  else [0.16, 0.18, 0.22, 1])
+
+        def make_digit_key(label_text, callback):
+            wrap = MDBoxLayout(
+                size_hint=(None, None), size=(dp(58), dp(58)),
+                radius=[dp(29)], md_bg_color=key_bg,
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            )
+            wrap.add_widget(MDFlatButton(
+                text=label_text, font_size="20sp",
+                size_hint=(None, None), size=(dp(58), dp(58)),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5},
+                on_release=callback,
+            ))
+            return wrap
+
+        keypad = MDGridLayout(
+            cols=3, spacing=dp(6), size_hint_y=None, height=dp(4 * 62),
+            row_default_height=dp(62), row_force_default=True,
+        )
+        for d in "123456789":
+            keypad.add_widget(make_digit_key(d, lambda x, d=d: self._txn_pin_press(d)))
+        keypad.add_widget(MDFlatButton(
+            text="Clear", font_size="12sp", theme_text_color="Secondary",
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            on_release=lambda x: self._txn_pin_clear(),
+        ))
+        keypad.add_widget(make_digit_key("0", lambda x: self._txn_pin_press("0")))
+        keypad.add_widget(MDIconButton(
+            icon="backspace-outline",
+            pos_hint={'center_x': 0.5, 'center_y': 0.5},
+            on_release=lambda x: self._txn_pin_backspace(),
+        ))
+        content.add_widget(keypad)
+        content.add_widget(MDIconButton(
+            icon="check-circle", theme_text_color="Custom",
+            text_color=self.theme_cls.primary_color, icon_size="34sp",
+            pos_hint={'center_x': 0.5},
+            on_release=lambda x: self._submit_pin_verification(self._pending_pin_on_success),
+        ))
+        self.pin_dialog = MDDialog(
+            title="Transaction PIN Required",
+            type="custom",
+            content_cls=content,
+            buttons=[MDFlatButton(
+                text="CANCEL", theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                on_release=lambda x: self._cancel_pin_verification(),
+            )],
+            radius=[20, 7, 20, 7],
+        )
+        self.pin_dialog.open()
 
     def _txn_pin_press(self, digit):
         if len(self._txn_pin_buffer) >= 6:
