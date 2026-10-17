@@ -11291,22 +11291,34 @@ class DashboardApp(ChallengeMixin, MDApp):
         they've finished typing it. Instead there's an explicit checkmark to
         submit, and it only auto-submits once all 6 slots are filled (the
         hard cap, so there's nothing ambiguous left to wait for). For the
-        same reason, there's no fingerprint shortcut here either - that's a
-        local, on-device check, and using it to skip a server-verified PIN
-        that guards real money movement isn't a substitution to make
-        without knowing what your backend actually expects for that.
+        same reason, a fingerprint is NOT treated as a purely local check here:
+        once it is turned on (after one correct PIN), a successful scan makes the
+        app send a server-issued per-phone token instead of the PIN, and the
+        server verifies that token on every transaction (auth/verify-pin and the
+        purchase routes). See _submit_bio_verification / _offer_bio_txn_then.
         """
         self._pending_pin_on_success = on_success
         self._txn_pin_buffer = ""
         self._txn_pin_dots = []
+        bio_ready = self._bio_txn_ready()   # fingerprint enabled for transactions on this phone
 
         content = MDBoxLayout(
             orientation='vertical',
             spacing=dp(14),
             padding=[dp(10), dp(6), dp(10), dp(4)],
             size_hint_y=None,
-            height=dp(420),
+            height=dp(420 + (64 if bio_ready else 0)),
         )
+
+        if bio_ready:
+            content.add_widget(MDIconButton(
+                icon="fingerprint",
+                theme_text_color="Custom",
+                text_color=self.theme_cls.primary_color,
+                icon_size="44sp",
+                pos_hint={'center_x': 0.5},
+                on_release=lambda x: self._start_txn_fingerprint(self._pending_pin_on_success),
+            ))
 
         dots_row = MDBoxLayout(
             orientation='horizontal',
@@ -11415,6 +11427,9 @@ class DashboardApp(ChallengeMixin, MDApp):
             radius=[20, 7, 20, 7]
         )
         self.pin_dialog.open()
+        if bio_ready:
+            # Ask for the fingerprint straight away; the PIN pad below is the fallback.
+            Clock.schedule_once(lambda dt: self._start_txn_fingerprint(self._pending_pin_on_success), 0.4)
 
     def _txn_pin_press(self, digit):
         if len(self._txn_pin_buffer) >= 6:
@@ -11449,8 +11464,212 @@ class DashboardApp(ChallengeMixin, MDApp):
         except Exception as e:
             print(f"_update_txn_pin_dots error: {e}")
 
+    # ------------------------------------------------------------------
+    # Fingerprint approval for transactions.
+    # The server still verifies every transaction. After a correct PIN the
+    # server issues this phone a random token (auth/enable-biometric); a
+    # successful fingerprint scan then sends "bio:<token>" where the PIN would
+    # go. See BiometricHelper.java for the scanning itself.
+    # ------------------------------------------------------------------
+    def _bio_txn_path(self):
+        try:
+            return os.path.join(self.user_data_dir, "bio_txn.json")
+        except Exception:
+            return "bio_txn.json"
+
+    def _bio_txn_email(self):
+        return ((getattr(self, 'current_user', None) or {}).get('email') or '').lower()
+
+    def _load_bio_txn_token(self):
+        email = self._bio_txn_email()
+        if not email:
+            return None
+        try:
+            path = self._bio_txn_path()
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    return (json.load(f) or {}).get(email)
+        except Exception as e:
+            print(f"_load_bio_txn_token error: {e}")
+        return None
+
+    def _save_bio_txn_token(self, token):
+        """Store (or, with token=None, remove) this account's fingerprint token."""
+        email = self._bio_txn_email()
+        if not email:
+            return False
+        try:
+            path = self._bio_txn_path()
+            data = {}
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    data = json.load(f) or {}
+            if token:
+                data[email] = token
+            else:
+                data.pop(email, None)
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w") as f:
+                json.dump(data, f)
+            return True
+        except Exception as e:
+            print(f"_save_bio_txn_token error: {e}")
+            return False
+
+    def _device_has_fingerprint(self):
+        from kivy.utils import platform
+        if platform != "android":
+            return False
+        try:
+            helper = self._bio_helper()
+            if helper is None:
+                return False
+            from jnius import autoclass
+            activity = autoclass("org.kivy.android.PythonActivity").mActivity
+            return bool(helper.isAvailable(activity))
+        except Exception as e:
+            print(f"_device_has_fingerprint error: {e}")
+            return False
+
+    def _bio_txn_ready(self):
+        """True when fingerprint approval is switched on for this account on this phone."""
+        try:
+            return bool(self._load_bio_txn_token()) and self._device_has_fingerprint()
+        except Exception:
+            return False
+
+    def _new_fp_callback(self, on_ok, on_retry, on_error):
+        from jnius import PythonJavaClass, java_method
+
+        class _CB(PythonJavaClass):
+            __javainterfaces__ = ["org/cheap4u/helpers/BiometricHelper$Callback"]
+            __javacontext__ = "app"
+
+            @java_method("(ILjava/lang/String;)V")
+            def onResult(self, code, message):
+                if code == 0:
+                    Clock.schedule_once(lambda dt: on_ok(), 0)
+                elif code == 1:
+                    Clock.schedule_once(lambda dt: on_retry(), 0)
+                else:
+                    Clock.schedule_once(lambda dt, m=message: on_error(m), 0)
+
+        return _CB()
+
+    def _start_txn_fingerprint(self, on_success):
+        if not getattr(self, 'pin_dialog', None):
+            return
+        try:
+            helper = self._bio_helper()
+            if helper is None:
+                return
+            from jnius import autoclass
+            activity = autoclass("org.kivy.android.PythonActivity").mActivity
+            self._txn_fp_callback = self._new_fp_callback(
+                on_ok=lambda: self._submit_bio_verification(on_success),
+                on_retry=lambda: self.show_toast("Fingerprint not recognized - try again"),
+                on_error=lambda m: self.show_toast(f"Fingerprint: {m} - use your PIN"),
+            )
+            self.show_toast("Touch the fingerprint sensor")
+            helper.authenticate(activity, self._txn_fp_callback)
+        except Exception as e:
+            print(f"_start_txn_fingerprint error: {e}")
+            self.show_toast("Fingerprint unavailable - enter your PIN")
+
+    def _submit_bio_verification(self, on_success):
+        """A fingerprint scan succeeded: have the server check this phone's token."""
+        token = self._load_bio_txn_token()
+        if not getattr(self, 'pin_dialog', None):
+            return                      # dialog was closed in the meantime
+        if not token:
+            self.show_toast("Fingerprint isn't set up - enter your PIN")
+            return
+        credential = "bio:" + token
+        self.show_loader("Verifying...")
+
+        def on_response(success, result):
+            self.hide_loader()
+            try:
+                result = result if isinstance(result, dict) else {}
+                if success or result.get('status') == 'success':
+                    if getattr(self, 'pin_dialog', None):
+                        self.pin_dialog.dismiss()
+                    self.pin_dialog = None
+                    self.verified_pin = credential
+                    on_success()
+                elif result.get('code') == 'bio_invalid':
+                    # PIN was changed/reset or fingerprint was turned off elsewhere.
+                    self._save_bio_txn_token(None)
+                    self.show_toast("Fingerprint approval expired - enter your PIN")
+                else:
+                    self._show_pin_error(result.get('message', 'Verification failed'))
+            except Exception as e:
+                print(f"_submit_bio_verification error: {e}")
+                self._show_pin_error("Something went wrong - please try again")
+
+        self.backend_api_request('auth/verify-pin', 'POST', {'pin': credential}, on_response)
+
+    def _offer_bio_txn_then(self, pin, on_success):
+        """After a correct PIN: once per app session, offer to turn on fingerprint
+        approval, then carry on with the transaction either way."""
+        try:
+            eligible = (
+                not getattr(self, '_bio_offer_shown', False)
+                and not self._load_bio_txn_token()
+                and self._device_has_fingerprint()
+            )
+        except Exception:
+            eligible = False
+        if not eligible:
+            on_success()
+            return
+        self._bio_offer_shown = True
+        holder = {}
+
+        def _no(*_):
+            holder['dlg'].dismiss()
+            on_success()
+
+        def _yes(*_):
+            holder['dlg'].dismiss()
+            self.show_loader("Turning on fingerprint...")
+
+            def resp(success, result):
+                self.hide_loader()
+                result = result if isinstance(result, dict) else {}
+                token = (result.get('data') or {}).get('biometric_token')
+                if (success or result.get('status') == 'success') and token and self._save_bio_txn_token(token):
+                    try:
+                        self.current_user['biometric_txn_enabled'] = True
+                    except Exception:
+                        pass
+                    self.show_toast("Fingerprint turned on for transactions")
+                else:
+                    self.show_toast("Couldn't turn on fingerprint - you can try again next time")
+                on_success()
+
+            self.backend_api_request('auth/enable-biometric', 'POST', {'pin': pin}, resp)
+
+        holder['dlg'] = MDDialog(
+            title="Use fingerprint for transactions?",
+            text="Approve purchases with your fingerprint instead of typing your PIN. "
+                 "You can always use your PIN instead.",
+            auto_dismiss=False,
+            buttons=[
+                MDFlatButton(text="NOT NOW", on_release=_no),
+                MDRaisedButton(text="TURN ON", on_release=_yes),
+            ],
+        )
+        holder['dlg'].open()
+
     def _cancel_pin_verification(self):
         """Cancel PIN verification"""
+        try:
+            helper = self._bio_helper()
+            if helper is not None:
+                helper.cancel()
+        except Exception as e:
+            print(f"cancel fingerprint scan error: {e}")
         try:
             if getattr(self, 'pin_dialog', None):
                 self.pin_dialog.dismiss()
@@ -11481,7 +11700,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                         self.pin_dialog.dismiss()
                     self.pin_dialog = None
                     self.verified_pin = pin
-                    on_success()
+                    self._offer_bio_txn_then(pin, on_success)
                 else:
                     self._txn_pin_buffer = ""
                     self._update_txn_pin_dots()
