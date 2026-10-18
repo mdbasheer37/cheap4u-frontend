@@ -11302,121 +11302,142 @@ class DashboardApp(ChallengeMixin, MDApp):
         self._txn_pin_dots = []
         bio_ready = self._bio_txn_ready()   # fingerprint enabled for transactions on this phone
 
+        self._pin_fallback_bio = bio_ready
+        # For the next few seconds, any unhandled error is rescued by switching to
+        # the plain dialog instead of closing the app (see _install_pin_guard).
+        self._pin_guard_until = time.time() + 3.0
         try:
             self._open_pin_sheet(bio_ready)
         except Exception as e:
-            # Never let a layout problem close the app or block a purchase:
-            # log it and fall back to the plain dialog.
-            print(f"PIN bottom sheet failed, using basic dialog: {e}")
-            traceback.print_exc()
-            try:
-                if getattr(self, 'pin_dialog', None):
-                    self.pin_dialog.dismiss()
-            except Exception:
-                pass
-            self.pin_dialog = None
-            self._txn_pin_dots = []
-            self._open_basic_pin_dialog(bio_ready)
+            self._pin_ui_fallback(e, bio_ready)
         if bio_ready:
             # Ask for the fingerprint straight away; the PIN pad below is the fallback.
             Clock.schedule_once(lambda dt: self._start_txn_fingerprint(self._pending_pin_on_success), 0.4)
 
 
+    def _pin_ui_fallback(self, error, bio_ready):
+        """The redesigned PIN screen failed: show the plain, proven dialog instead,
+        and put the real error on screen so it can be reported."""
+        self._pin_guard_until = 0
+        self._pin_rescue_pending = False
+        try:
+            print(f"PIN screen redesign failed, using basic dialog: {error!r}")
+            traceback.print_exc()
+        except Exception:
+            pass
+        try:
+            if getattr(self, 'pin_dialog', None):
+                self.pin_dialog.dismiss()
+        except Exception:
+            pass
+        self.pin_dialog = None
+        self._txn_pin_buffer = ""
+        self._txn_pin_dots = []
+        try:
+            self._open_basic_pin_dialog(bio_ready)
+        except Exception as e2:
+            print(f"basic PIN dialog also failed: {e2!r}")
+        try:
+            self.show_toast(f"PIN screen error: {type(error).__name__}: {str(error)[:90]}")
+        except Exception:
+            pass
+
+    def _install_pin_guard(self):
+        """Register (once) a Kivy exception handler that, for a few seconds after the
+        PIN screen opens, swaps in the plain dialog instead of letting an
+        unhandled error close the app. Outside that window errors behave as usual."""
+        if getattr(self, '_pin_guard_installed', False):
+            return
+        try:
+            from kivy.base import ExceptionHandler, ExceptionManager
+            app = self
+
+            class _PinGuard(ExceptionHandler):
+                def handle_exception(self, inst):
+                    try:
+                        if time.time() < getattr(app, '_pin_guard_until', 0) and getattr(app, 'pin_dialog', None):
+                            # Keep absorbing errors until the rescue has run (it
+                            # switches to the plain dialog and ends the guard).
+                            if not getattr(app, '_pin_rescue_pending', False):
+                                app._pin_rescue_pending = True
+                                bio = getattr(app, '_pin_fallback_bio', False)
+                                Clock.schedule_once(lambda dt, e=inst: app._pin_ui_fallback(e, bio), 0)
+                            return ExceptionManager.PASS
+                    except Exception:
+                        pass
+                    return ExceptionManager.RAISE
+
+            ExceptionManager.add_handler(_PinGuard())
+            self._pin_guard_installed = True
+        except Exception as e:
+            print(f"_install_pin_guard failed: {e}")
+
     def _open_pin_sheet(self, bio_ready):
-        """The bottom-sheet PIN screen (see verify_transaction_pin)."""
-        from kivy.uix.modalview import ModalView
+        """Redesigned PIN screen. Built on MDDialog - the same, proven container
+        the plain PIN dialog uses - with rounded corners, a shield badge, soft
+        round keys and a filled Confirm button."""
         from kivy.uix.anchorlayout import AnchorLayout
 
-        # ---- look & feel (works in light and dark theme) --------------------
         primary = list(self.theme_cls.primary_color)
         is_light = self.theme_cls.theme_style == "Light"
-        sheet_bg = [1, 1, 1, 1] if is_light else [0.11, 0.13, 0.17, 1]
         key_bg = [0.93, 0.96, 1, 1] if is_light else [0.18, 0.21, 0.27, 1]
         soft_primary = [primary[0], primary[1], primary[2], 0.13]
-        try:
-            bottom_inset = int(getattr(self, '_sys_insets', (0, 0, 0, 0))[3])   # px, nav bar on Android 15+
-        except Exception:
-            bottom_inset = 0
 
-        row_gap = dp(8)
-        pad_top = dp(8)
-        pad_bottom = dp(14) + bottom_inset
-        card = MDCard(
+        gap = dp(8)
+        heights = []          # row heights, so the content height is exact
+        content = MDBoxLayout(
             orientation='vertical',
-            size_hint=(1, 1),
-            radius=[dp(28), dp(28), 0, 0],
-            md_bg_color=sheet_bg,
-            elevation=0,
-            spacing=row_gap,
-            padding=[dp(20), pad_top, dp(20), pad_bottom],
+            spacing=gap,
+            padding=[dp(4), dp(2), dp(4), dp(2)],
+            size_hint_y=None,
         )
-        heights = []          # every row's height, to size the sheet exactly
 
         def add_row(widget, height):
             widget.size_hint_y = None
             widget.height = height
-            card.add_widget(widget)
+            content.add_widget(widget)
             heights.append(height)
 
-        # grab handle
-        handle_row = AnchorLayout(anchor_x='center', anchor_y='center')
-        handle_row.add_widget(MDCard(
-            size_hint=(None, None), size=(dp(42), dp(4)),
-            radius=[dp(2)], md_bg_color=[0.7, 0.72, 0.76, 0.6], elevation=0,
-        ))
-        add_row(handle_row, dp(12))
-
-        # header: shield badge + title/subtitle + close
-        header = MDBoxLayout(orientation='horizontal', spacing=dp(12))
+        # shield badge
+        badge_row = AnchorLayout(anchor_x='center', anchor_y='center')
         badge = MDCard(
             size_hint=(None, None), size=(dp(48), dp(48)),
             radius=[dp(24)], md_bg_color=soft_primary, elevation=0,
-            pos_hint={'center_y': 0.5},
         )
         badge.add_widget(MDIcon(
             icon="shield-lock", halign="center", valign="middle",
             theme_text_color="Custom", text_color=primary, font_size="26sp",
         ))
-        header.add_widget(badge)
-        titles = MDBoxLayout(orientation='vertical', spacing=dp(2), pos_hint={'center_y': 0.5})
-        titles.add_widget(MDLabel(
-            text="Confirm Transaction", bold=True, font_size="19sp",
-            theme_text_color="Primary", size_hint_y=None, height=dp(26),
-        ))
-        titles.add_widget(MDLabel(
+        badge_row.add_widget(badge)
+        add_row(badge_row, dp(48))
+
+        add_row(MDLabel(
             text="Scan fingerprint or enter PIN" if bio_ready else "Enter your transaction PIN",
+            halign="center", valign="middle",
             font_size="12sp", theme_text_color="Secondary",
-            size_hint_y=None, height=dp(18),
-        ))
-        header.add_widget(titles)
-        header.add_widget(MDIconButton(
-            icon="close", theme_text_color="Secondary",
-            pos_hint={'center_y': 0.5},
-            on_release=lambda x: self._cancel_pin_verification(),
-        ))
-        add_row(header, dp(56))
+        ), dp(18))
 
         # fingerprint pill (only when fingerprint approval is switched on)
         if bio_ready:
             fp_row = AnchorLayout(anchor_x='center', anchor_y='center')
             fp_pill = MDCard(
                 orientation='horizontal',
-                size_hint=(None, None), size=(dp(210), dp(44)),
-                radius=[dp(22)], md_bg_color=soft_primary, elevation=0,
+                size_hint=(None, None), size=(dp(190), dp(42)),
+                radius=[dp(21)], md_bg_color=soft_primary, elevation=0,
                 ripple_behavior=True,
                 on_release=lambda x: self._start_txn_fingerprint(self._pending_pin_on_success),
             )
             fp_pill.add_widget(MDIcon(
                 icon="fingerprint", halign="center", valign="middle",
-                theme_text_color="Custom", text_color=primary, font_size="26sp",
-                size_hint_x=None, width=dp(50),
+                theme_text_color="Custom", text_color=primary, font_size="24sp",
+                size_hint_x=None, width=dp(46),
             ))
             fp_pill.add_widget(MDLabel(
                 text="Use fingerprint", valign="middle",
                 theme_text_color="Custom", text_color=primary, font_size="14sp",
             ))
             fp_row.add_widget(fp_pill)
-            add_row(fp_row, dp(44))
+            add_row(fp_row, dp(42))
 
         # PIN dots
         dots_row = MDBoxLayout(
@@ -11450,11 +11471,11 @@ class DashboardApp(ChallengeMixin, MDApp):
         )
         add_row(self.pin_error_label, dp(16))
 
-        # keypad: round soft keys, Clear / 0 / backspace on the bottom row
+        # keypad: round soft keys; Clear / 0 / backspace on the bottom row
         def make_key(on_release, text=None, icon=None, filled=True):
             key = MDCard(
-                size_hint=(None, None), size=(dp(56), dp(56)),
-                radius=[dp(28)],
+                size_hint=(None, None), size=(dp(52), dp(52)),
+                radius=[dp(26)],
                 md_bg_color=key_bg if filled else [0, 0, 0, 0],
                 elevation=0,
                 ripple_behavior=True,
@@ -11463,13 +11484,13 @@ class DashboardApp(ChallengeMixin, MDApp):
             if icon:
                 key.add_widget(MDIcon(
                     icon=icon, halign="center", valign="middle",
-                    theme_text_color="Primary", font_size="24sp",
+                    theme_text_color="Primary", font_size="22sp",
                 ))
             else:
                 key.add_widget(MDLabel(
                     text=text, halign="center", valign="middle",
                     theme_text_color="Primary" if filled else "Secondary",
-                    font_size="24sp" if filled else "13sp",
+                    font_size="22sp" if filled else "13sp",
                 ))
             cell = AnchorLayout(anchor_x='center', anchor_y='center')
             cell.add_widget(key)
@@ -11478,7 +11499,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         keypad = MDGridLayout(
             cols=3,
             spacing=dp(6),
-            row_default_height=dp(64),
+            row_default_height=dp(58),
             row_force_default=True,
         )
         for d in "123456789":
@@ -11486,56 +11507,52 @@ class DashboardApp(ChallengeMixin, MDApp):
         keypad.add_widget(make_key(lambda x: self._txn_pin_clear(), text="Clear", filled=False))
         keypad.add_widget(make_key(lambda x: self._txn_pin_press("0"), text="0"))
         keypad.add_widget(make_key(lambda x: self._txn_pin_backspace(), icon="backspace-outline", filled=False))
-        add_row(keypad, dp(4 * 64 + 3 * 6))
+        add_row(keypad, dp(4 * 58 + 3 * 6))
 
         # buttons: Cancel (soft) + Confirm (filled)
-        buttons = MDBoxLayout(orientation='horizontal', spacing=dp(12))
+        buttons = MDBoxLayout(orientation='horizontal', spacing=dp(10))
         cancel_btn = MDCard(
-            size_hint_x=0.4, radius=[dp(25)], md_bg_color=key_bg, elevation=0,
+            size_hint_x=0.4, radius=[dp(24)], md_bg_color=key_bg, elevation=0,
             ripple_behavior=True,
             on_release=lambda x: self._cancel_pin_verification(),
         )
         cancel_btn.add_widget(MDLabel(
             text="Cancel", halign="center", valign="middle",
-            theme_text_color="Secondary", font_size="15sp",
+            theme_text_color="Secondary", font_size="14sp",
         ))
         confirm_btn = MDCard(
-            size_hint_x=0.6, radius=[dp(25)], md_bg_color=primary, elevation=0,
+            size_hint_x=0.6, radius=[dp(24)], md_bg_color=primary, elevation=0,
             ripple_behavior=True,
             on_release=lambda x: self._submit_pin_verification(self._pending_pin_on_success),
         )
         confirm_btn.add_widget(MDLabel(
-            text="Confirm", bold=True, halign="center", valign="middle",
-            theme_text_color="Custom", text_color=[1, 1, 1, 1], font_size="16sp",
+            text="Confirm", halign="center", valign="middle",
+            theme_text_color="Custom", text_color=[1, 1, 1, 1], font_size="15sp",
         ))
         buttons.add_widget(cancel_btn)
         buttons.add_widget(confirm_btn)
-        add_row(buttons, dp(50))
+        add_row(buttons, dp(48))
 
-        # reassurance line
         add_row(MDLabel(
             text="Secured & encrypted", halign="center", valign="middle",
             font_size="11sp", theme_text_color="Hint",
         ), dp(16))
 
-        total = sum(heights) + row_gap * (len(heights) - 1) + pad_top + pad_bottom
-        sheet = ModalView(
-            size_hint=(1, None),
-            height=min(total, Window.height * 0.97),
-            anchor_y='bottom',
-            auto_dismiss=True,            # tap outside / Android back closes it
-            background="",
-            background_color=[0, 0, 0, 0],
-            overlay_color=[0, 0, 0, 0.55],
-        )
-        sheet.add_widget(card)
+        content.height = sum(heights) + gap * (len(heights) - 1) + dp(4)
 
-        def _on_sheet_dismiss(*_):
+        dialog = MDDialog(
+            title="Confirm Transaction",
+            type="custom",
+            content_cls=content,
+            radius=[dp(28), dp(28), dp(28), dp(28)],
+        )
+
+        def _on_dialog_dismiss(*_):
             # Closed by tapping outside / back / Cancel / success: tidy up, but
             # never wipe a NEWER dialog that has already replaced this one.
             try:
                 current = getattr(self, 'pin_dialog', None)
-                if current is None or current is sheet:
+                if current is None or current is dialog:
                     self.pin_dialog = None
                     self._txn_pin_buffer = ""
                     self._txn_pin_dots = []
@@ -11543,11 +11560,11 @@ class DashboardApp(ChallengeMixin, MDApp):
                     if helper is not None:
                         helper.cancel()
             except Exception as e:
-                print(f"pin sheet dismiss cleanup error: {e}")
+                print(f"pin dialog dismiss cleanup error: {e}")
 
-        sheet.bind(on_dismiss=_on_sheet_dismiss)
-        self.pin_dialog = sheet
-        sheet.open()
+        dialog.bind(on_dismiss=_on_dialog_dismiss)
+        self.pin_dialog = dialog
+        dialog.open()
 
     def _open_basic_pin_dialog(self, bio_ready):
         """Plain, proven PIN dialog - used automatically if the bottom sheet
@@ -19074,6 +19091,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.setup_system_bar_insets()
         except Exception as e:
             print(f"setup_system_bar_insets failed: {e}")
+        self._install_pin_guard()
         try:
             self._splash_routed = False
             self._splash_start_time = time.time()
