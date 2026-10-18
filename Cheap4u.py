@@ -11448,12 +11448,17 @@ class DashboardApp(ChallengeMixin, MDApp):
             ))
             add_row(centred(fp_pill), dp(42))
 
-        # ---- PIN dots (centred as one block) -----------------------------------
+        # ---- PIN dots -----------------------------------------------------------
+        # MDIcon always resizes itself to its glyph (and the glyph grows when a
+        # dot fills in), so it ignores a fixed width and the row packs to the
+        # left. Each dot therefore lives in its own fixed-width slot, centred,
+        # which keeps the whole row exactly centred and stops it jittering.
+        dot_slot, dot_gap = dp(30), dp(8)
         dots_row = MDBoxLayout(
             orientation='horizontal',
-            spacing=dp(10),
+            spacing=dot_gap,
             size_hint=(None, None),
-            size=(dp(6 * 26 + 5 * 10), dp(28)),
+            size=(6 * dot_slot + 5 * dot_gap, dp(30)),
         )
         for _ in range(6):
             dot = MDIcon(
@@ -11462,12 +11467,14 @@ class DashboardApp(ChallengeMixin, MDApp):
                 text_color=primary,
                 font_size="20sp",
                 halign="center",
-                size_hint_x=None,
-                width=dp(26),
+                valign="middle",
             )
-            dots_row.add_widget(dot)
+            slot = AnchorLayout(anchor_x='center', anchor_y='center',
+                                size_hint_x=None, width=dot_slot)
+            slot.add_widget(dot)
+            dots_row.add_widget(slot)
             self._txn_pin_dots.append(dot)
-        add_row(centred(dots_row), dp(30))
+        add_row(centred(dots_row), dp(32))
 
         # error line (kept as self.pin_error_label - other code writes to it)
         self.pin_error_label = MDLabel(
