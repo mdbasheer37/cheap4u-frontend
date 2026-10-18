@@ -11374,8 +11374,8 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     def _open_pin_sheet(self, bio_ready):
         """Redesigned PIN screen. Built on MDDialog - the same, proven container
-        the plain PIN dialog uses - with rounded corners, a shield badge, soft
-        round keys and a filled Confirm button."""
+        the plain PIN dialog uses. Every icon/row is centred explicitly (MDIcon
+        keeps its own small size, so it must be placed inside an AnchorLayout)."""
         from kivy.uix.anchorlayout import AnchorLayout
 
         primary = list(self.theme_cls.primary_color)
@@ -11383,12 +11383,12 @@ class DashboardApp(ChallengeMixin, MDApp):
         key_bg = [0.93, 0.96, 1, 1] if is_light else [0.18, 0.21, 0.27, 1]
         soft_primary = [primary[0], primary[1], primary[2], 0.13]
 
-        gap = dp(8)
+        gap = dp(6)
         heights = []          # row heights, so the content height is exact
         content = MDBoxLayout(
             orientation='vertical',
             spacing=gap,
-            padding=[dp(4), dp(2), dp(4), dp(2)],
+            padding=[0, 0, 0, dp(2)],
             size_hint_y=None,
         )
 
@@ -11398,28 +11398,39 @@ class DashboardApp(ChallengeMixin, MDApp):
             content.add_widget(widget)
             heights.append(height)
 
-        # shield badge
-        badge_row = AnchorLayout(anchor_x='center', anchor_y='center')
-        badge = MDCard(
-            size_hint=(None, None), size=(dp(48), dp(48)),
-            radius=[dp(24)], md_bg_color=soft_primary, elevation=0,
-        )
-        badge.add_widget(MDIcon(
-            icon="shield-lock", halign="center", valign="middle",
-            theme_text_color="Custom", text_color=primary, font_size="26sp",
-        ))
-        badge_row.add_widget(badge)
-        add_row(badge_row, dp(48))
+        def centred(widget):
+            """Wrap a fixed-size widget so it sits dead-centre of its parent."""
+            box = AnchorLayout(anchor_x='center', anchor_y='center')
+            box.add_widget(widget)
+            return box
 
+        def icon(name, size_sp, color=None):
+            if color is None:
+                return MDIcon(icon=name, halign="center", valign="middle",
+                              theme_text_color="Primary", font_size=size_sp)
+            return MDIcon(icon=name, halign="center", valign="middle",
+                          theme_text_color="Custom", text_color=color, font_size=size_sp)
+
+        # ---- header: shield badge, title, hint ---------------------------------
+        badge = MDCard(
+            size_hint=(None, None), size=(dp(56), dp(56)),
+            radius=[dp(28)], md_bg_color=soft_primary, elevation=0,
+        )
+        badge.add_widget(centred(icon("shield-lock", "28sp", primary)))
+        add_row(centred(badge), dp(56))
+
+        add_row(MDLabel(
+            text="Confirm Transaction", font_style="H6",
+            halign="center", valign="middle",
+        ), dp(28))
         add_row(MDLabel(
             text="Scan fingerprint or enter PIN" if bio_ready else "Enter your transaction PIN",
             halign="center", valign="middle",
             font_size="12sp", theme_text_color="Secondary",
         ), dp(18))
 
-        # fingerprint pill (only when fingerprint approval is switched on)
+        # ---- fingerprint pill (only when fingerprint approval is on) -----------
         if bio_ready:
-            fp_row = AnchorLayout(anchor_x='center', anchor_y='center')
             fp_pill = MDCard(
                 orientation='horizontal',
                 size_hint=(None, None), size=(dp(190), dp(42)),
@@ -11427,25 +11438,22 @@ class DashboardApp(ChallengeMixin, MDApp):
                 ripple_behavior=True,
                 on_release=lambda x: self._start_txn_fingerprint(self._pending_pin_on_success),
             )
-            fp_pill.add_widget(MDIcon(
-                icon="fingerprint", halign="center", valign="middle",
-                theme_text_color="Custom", text_color=primary, font_size="24sp",
-                size_hint_x=None, width=dp(46),
-            ))
+            fp_icon_box = centred(icon("fingerprint", "24sp", primary))
+            fp_icon_box.size_hint_x = None
+            fp_icon_box.width = dp(46)
+            fp_pill.add_widget(fp_icon_box)
             fp_pill.add_widget(MDLabel(
-                text="Use fingerprint", valign="middle",
+                text="Use fingerprint", halign="left", valign="middle",
                 theme_text_color="Custom", text_color=primary, font_size="14sp",
             ))
-            fp_row.add_widget(fp_pill)
-            add_row(fp_row, dp(42))
+            add_row(centred(fp_pill), dp(42))
 
-        # PIN dots
+        # ---- PIN dots (centred as one block) -----------------------------------
         dots_row = MDBoxLayout(
             orientation='horizontal',
             spacing=dp(10),
             size_hint=(None, None),
-            size=(dp(210), dp(28)),
-            pos_hint={'center_x': 0.5},
+            size=(dp(6 * 26 + 5 * 10), dp(28)),
         )
         for _ in range(6):
             dot = MDIcon(
@@ -11459,7 +11467,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             )
             dots_row.add_widget(dot)
             self._txn_pin_dots.append(dot)
-        add_row(dots_row, dp(30))
+        add_row(centred(dots_row), dp(30))
 
         # error line (kept as self.pin_error_label - other code writes to it)
         self.pin_error_label = MDLabel(
@@ -11469,10 +11477,10 @@ class DashboardApp(ChallengeMixin, MDApp):
             halign="center",
             opacity=0,
         )
-        add_row(self.pin_error_label, dp(16))
+        add_row(self.pin_error_label, dp(14))
 
-        # keypad: round soft keys; Clear / 0 / backspace on the bottom row
-        def make_key(on_release, text=None, icon=None, filled=True):
+        # ---- keypad: round soft keys; Clear / 0 / backspace on the last row ----
+        def make_key(on_release, text=None, icon_name=None, filled=True):
             key = MDCard(
                 size_hint=(None, None), size=(dp(52), dp(52)),
                 radius=[dp(26)],
@@ -11481,20 +11489,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                 ripple_behavior=True,
                 on_release=on_release,
             )
-            if icon:
-                key.add_widget(MDIcon(
-                    icon=icon, halign="center", valign="middle",
-                    theme_text_color="Primary", font_size="22sp",
-                ))
+            if icon_name:
+                key.add_widget(centred(icon(icon_name, "22sp")))
             else:
                 key.add_widget(MDLabel(
                     text=text, halign="center", valign="middle",
                     theme_text_color="Primary" if filled else "Secondary",
                     font_size="22sp" if filled else "13sp",
                 ))
-            cell = AnchorLayout(anchor_x='center', anchor_y='center')
-            cell.add_widget(key)
-            return cell
+            return centred(key)
 
         keypad = MDGridLayout(
             cols=3,
@@ -11506,10 +11509,10 @@ class DashboardApp(ChallengeMixin, MDApp):
             keypad.add_widget(make_key(lambda x, d=d: self._txn_pin_press(d), text=d))
         keypad.add_widget(make_key(lambda x: self._txn_pin_clear(), text="Clear", filled=False))
         keypad.add_widget(make_key(lambda x: self._txn_pin_press("0"), text="0"))
-        keypad.add_widget(make_key(lambda x: self._txn_pin_backspace(), icon="backspace-outline", filled=False))
+        keypad.add_widget(make_key(lambda x: self._txn_pin_backspace(), icon_name="backspace-outline", filled=False))
         add_row(keypad, dp(4 * 58 + 3 * 6))
 
-        # buttons: Cancel (soft) + Confirm (filled)
+        # ---- buttons: Cancel (soft) + Confirm (filled) -------------------------
         buttons = MDBoxLayout(orientation='horizontal', spacing=dp(10))
         cancel_btn = MDCard(
             size_hint_x=0.4, radius=[dp(24)], md_bg_color=key_bg, elevation=0,
@@ -11538,10 +11541,9 @@ class DashboardApp(ChallengeMixin, MDApp):
             font_size="11sp", theme_text_color="Hint",
         ), dp(16))
 
-        content.height = sum(heights) + gap * (len(heights) - 1) + dp(4)
+        content.height = sum(heights) + gap * (len(heights) - 1) + dp(2)
 
         dialog = MDDialog(
-            title="Confirm Transaction",
             type="custom",
             content_cls=content,
             radius=[dp(28), dp(28), dp(28), dp(28)],
