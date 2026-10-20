@@ -19198,6 +19198,17 @@ class DashboardApp(ChallengeMixin, MDApp):
   
 
     def setup_data_purchase_screen(self):
+        try:
+            chips = self._add_pick_chips("data_purchase", "data_phone_input")
+            if chips is not None:
+                # like the number field, only usable once a plan is chosen
+                def _sync_chips(*_):
+                    chips.disabled = not self.selected_data_plan
+                    chips.opacity = 1 if self.selected_data_plan else 0.5
+                self.bind(selected_data_plan=_sync_chips)
+                _sync_chips()
+        except Exception as e:
+            print(f"data purchase chips error: {e}")
 
         """Enhanced setup for data purchase screen with better error handling and UI"""
 
@@ -21706,6 +21717,7 @@ class DashboardApp(ChallengeMixin, MDApp):
 
 
     def setup_airtime_topup_screen(self):
+        self._add_pick_chips("airtime_topup", "phone_input")
 
         screen = self.root.get_screen("airtime_topup")
 
@@ -26482,9 +26494,209 @@ class DashboardApp(ChallengeMixin, MDApp):
 
 
 
+    # ------------------------------------------------------------------
+    # "Beneficiaries" + "My Contact" buttons under the recipient number field
+    # ------------------------------------------------------------------
+    def _make_pick_chip(self, icon_name, text, on_release):
+        """Outlined, rounded button: blue icon + blue label (see mock-up)."""
+        from kivy.uix.anchorlayout import AnchorLayout
+        from kivy.graphics import Color, Line
+        primary = list(self.theme_cls.primary_color)
+        chip = MDCard(
+            size_hint_x=0.5,
+            radius=[dp(16)],
+            elevation=0,
+            md_bg_color=self.theme_cls.bg_light,
+            ripple_behavior=True,
+            on_release=on_release,
+        )
+        row = MDBoxLayout(orientation='horizontal', spacing=dp(8),
+                          padding=[dp(14), 0, dp(8), 0])
+        icon_slot = AnchorLayout(anchor_x='center', anchor_y='center',
+                                 size_hint_x=None, width=dp(30))
+        icon_slot.add_widget(MDIcon(
+            icon=icon_name, halign="center", valign="middle",
+            theme_text_color="Custom", text_color=primary, font_size="22sp",
+        ))
+        row.add_widget(icon_slot)
+        row.add_widget(MDLabel(
+            text=text, halign="left", valign="middle",
+            theme_text_color="Custom", text_color=primary, font_size="15sp",
+        ))
+        chip.add_widget(row)
+        # thin grey rounded outline, drawn on top
+        with chip.canvas.after:
+            Color(0.80, 0.80, 0.82, 1)
+            border = Line(rounded_rectangle=(chip.x, chip.y, chip.width, chip.height, dp(16)),
+                          width=dp(1.1))
+
+        def _redraw(*_):
+            border.rounded_rectangle = (chip.x, chip.y, chip.width, chip.height, dp(16))
+
+        chip.bind(pos=_redraw, size=_redraw)
+        return chip
+
+    def _add_pick_chips(self, screen_name, phone_field_id):
+        """Insert [Beneficiaries] [My Contact] right under the recipient number
+        field. Wrapped in try/except: if anything is off the screen simply works
+        as before, without the two buttons."""
+        try:
+            screen = self.root.get_screen(screen_name)
+            if getattr(screen, '_pick_chips_added', False):
+                return None
+            field = screen.ids.get(phone_field_id)
+            parent = field.parent if field is not None else None
+            if parent is None:
+                return None
+            row = MDBoxLayout(orientation='horizontal', spacing=dp(10),
+                              size_hint_y=None, height=dp(52))
+            row.add_widget(self._make_pick_chip(
+                "account-multiple", "Beneficiaries", lambda x: self.show_beneficiaries()))
+            row.add_widget(self._make_pick_chip(
+                "book-open-variant", "My Contact", lambda x: self.pick_phone_contact()))
+            # children[0] is the bottom-most widget, so this lands just below the field
+            parent.add_widget(row, index=parent.children.index(field))
+            screen._pick_chips_added = True
+            return row
+        except Exception as e:
+            print(f"_add_pick_chips({screen_name}) failed: {e}")
+            return None
+
+    # ---- My Contact: Android's own contact picker ---------------------
+    # ACTION_PICK on the phone-number table hands the app just the ONE contact
+    # the user taps, so no READ_CONTACTS permission is needed.
+    _CONTACT_REQUEST_CODE = 7421
+
+    def pick_phone_contact(self):
+        from kivy.utils import platform
+        if platform != "android":
+            self.show_toast("Picking from contacts works on Android phones")
+            return
+        try:
+            from android import activity
+            from jnius import autoclass
+            Intent = autoclass('android.content.Intent')
+            Phone = autoclass('android.provider.ContactsContract$CommonDataKinds$Phone')
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            self._contact_target_screen = self.root.current
+            try:
+                activity.unbind(on_activity_result=self._on_contact_result)
+            except Exception:
+                pass
+            activity.bind(on_activity_result=self._on_contact_result)
+            intent = Intent(Intent.ACTION_PICK, Phone.CONTENT_URI)
+            PythonActivity.mActivity.startActivityForResult(intent, self._CONTACT_REQUEST_CODE)
+        except Exception as e:
+            print(f"pick_phone_contact error: {e}")
+            self.show_toast("Couldn't open your contacts - type the number instead")
+
+    @staticmethod
+    def _normalize_ng_phone(raw):
+        """'+234 803 123 4567' / '0803-123-4567' / '8031234567' -> '08031234567'."""
+        digits = re.sub(r"\D", "", raw or "")
+        if digits.startswith("00234"):
+            digits = "0" + digits[5:]
+        elif digits.startswith("234") and len(digits) >= 13:
+            digits = "0" + digits[3:]
+        elif len(digits) == 10 and digits[0] in "789":
+            digits = "0" + digits
+        return digits[:11]
+
+    def _on_contact_result(self, request_code, result_code, intent):
+        """Runs on Android's thread: read the picked contact, then hand over to Kivy."""
+        if request_code != self._CONTACT_REQUEST_CODE:
+            return
+        try:
+            if result_code != -1 or intent is None:      # -1 == RESULT_OK
+                return
+            from jnius import autoclass
+            Phone = autoclass('android.provider.ContactsContract$CommonDataKinds$Phone')
+            activity = autoclass('org.kivy.android.PythonActivity').mActivity
+            cursor = activity.getContentResolver().query(
+                intent.getData(), [Phone.NUMBER, Phone.DISPLAY_NAME], None, None, None)
+            number = name = ""
+            if cursor is not None:
+                try:
+                    if cursor.moveToFirst():
+                        number = cursor.getString(0) or ""
+                        name = cursor.getString(1) or ""
+                finally:
+                    cursor.close()
+            number = self._normalize_ng_phone(number)
+            Clock.schedule_once(lambda dt: self._apply_picked_number(number, name), 0)
+        except Exception as e:
+            print(f"_on_contact_result error: {e}")
+            Clock.schedule_once(
+                lambda dt: self.show_toast("Couldn't read that contact - type the number instead"), 0)
+
+    def _apply_picked_number(self, number, name=""):
+        """Put a chosen number (from My Contact or Beneficiaries) in the recipient field."""
+        field_ids = {"airtime_topup": "phone_input", "data_purchase": "data_phone_input"}
+        screen_name = getattr(self, '_contact_target_screen', None) or self.root.current
+        if screen_name not in field_ids:
+            screen_name = self.root.current
+        if screen_name not in field_ids:
+            return
+        if not number:
+            self.show_toast("That contact has no phone number")
+            return
+        try:
+            self.root.get_screen(screen_name).ids[field_ids[screen_name]].text = number
+            self.show_toast(f"{name}: {number}" if name else number)
+        except Exception as e:
+            print(f"_apply_picked_number error: {e}")
+
+    # ---- Beneficiaries: saved on the phone, per account ----------------
+    def _beneficiaries_path(self):
+        try:
+            return os.path.join(self.user_data_dir, "beneficiaries.json")
+        except Exception:
+            return "beneficiaries.json"
+
+    def _read_beneficiaries_file(self):
+        try:
+            path = self._beneficiaries_path()
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f) or {}
+        except Exception as e:
+            print(f"_read_beneficiaries_file error: {e}")
+        return {}
+
+    def _load_beneficiaries(self):
+        """Merge this account's saved beneficiaries into current_user['beneficiaries']."""
+        if not getattr(self, 'current_user', None):
+            return
+        email = (self.current_user.get('email') or '').lower()
+        if not email:
+            return
+        saved = self._read_beneficiaries_file().get(email, [])
+        current = self.current_user.setdefault('beneficiaries', [])
+        have = {b.get('phone') for b in current}
+        for b in saved:
+            if b.get('phone') and b.get('phone') not in have:
+                current.append({'name': b.get('name', ''), 'phone': b['phone']})
+                have.add(b['phone'])
+
+    def _persist_beneficiaries(self):
+        try:
+            email = (self.current_user.get('email') or '').lower()
+            if not email:
+                return
+            data = self._read_beneficiaries_file()
+            data[email] = [{'name': b.get('name', ''), 'phone': b.get('phone', '')}
+                           for b in self.current_user.get('beneficiaries', [])]
+            path = self._beneficiaries_path()
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+        except Exception as e:
+            print(f"_persist_beneficiaries error: {e}")
+
     def show_beneficiaries(self):
 
            """Show saved beneficiaries"""
+           self._load_beneficiaries()
 
            if not self.current_user:
 
@@ -26598,6 +26810,7 @@ class DashboardApp(ChallengeMixin, MDApp):
 
     )
 
+           self._beneficiary_dialog = dialog
            dialog.open()
 
 
@@ -26735,6 +26948,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                     return
 
             self.current_user['beneficiaries'].append({'name': name, 'phone': phone})
+            self._persist_beneficiaries()
             self.show_success_dialog("Beneficiary added successfully!")
             return
 
@@ -26749,36 +26963,32 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.users[user_id]['beneficiaries'].append({'name': name, 'phone': phone})
         self.current_user = self.users[user_id]
         self.save_users()
+        self._persist_beneficiaries()
         self.show_success_dialog("Beneficiary added successfully!")                
 
 
     def use_beneficiary(self, beneficiary):
-
-           """Use beneficiary for transaction"""
-
-           screen_names = {
-
-                 "airtime_topup": "phone_input",
-
-                 "data_purchase": "data_phone_input",
-
-                 "cable_tv": "smartcard_input"
-
-    }
-
-    
-
-           current_screen = self.root.current
-
-           if current_screen in screen_names:
-
-                 screen = self.root.  get_screen(current_screen)
-
-                 screen.ids[screen_names[current_screen]].text = beneficiary['phone']    
-
-                 self.show_success_dialog(f"Selected {beneficiary['name']}'s number")
-
-
+        """Fill the recipient number from a saved beneficiary and close the list."""
+        try:
+            dlg = getattr(self, '_beneficiary_dialog', None)
+            if dlg:
+                dlg.dismiss()
+                self._beneficiary_dialog = None
+        except Exception:
+            pass
+        current_screen = self.root.current
+        if current_screen == "cable_tv":
+            try:
+                self.root.get_screen("cable_tv").ids["smartcard_input"].text = beneficiary['phone']
+                self.show_toast(f"{beneficiary['name']}: {beneficiary['phone']}")
+            except Exception as e:
+                print(f"use_beneficiary (cable) error: {e}")
+            return
+        if current_screen not in ("airtime_topup", "data_purchase"):
+            self.show_toast("Open Airtime or Data, then pick a beneficiary")
+            return
+        self._contact_target_screen = current_screen
+        self._apply_picked_number(beneficiary['phone'], beneficiary['name'])
 
     def buy_beneficiary(self):
 
