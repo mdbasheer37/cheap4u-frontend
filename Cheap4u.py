@@ -9842,6 +9842,19 @@ LazyScreenManager:
                             size_hint_y: None
                             height: dp(50)
         
+                    MDCard:
+                        orientation: 'vertical'
+                        padding: dp(15)
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: dp(80)
+                        MDRaisedButton:
+                            text: "SPIN & WIN REPORT"
+                            md_bg_color: [0.95, 0.55, 0.1, 1]
+                            on_release: app.show_admin_spin_report()
+                            size_hint_x: 1
+                            size_hint_y: None
+                            height: dp(50)
                     # Total Profit Card
                     MDCard:
                         orientation: 'vertical'
@@ -15006,6 +15019,513 @@ class DashboardApp(ChallengeMixin, MDApp):
         
         return True
         
+    # ------------------------------------------------------------------
+    # ADMIN: Spin & Win report - who spun, how often, how much they won.
+    # Built in Python (not KV) so it can never break a screen's markup; every
+    # network/render step is wrapped so a bad response only shows a message.
+    # ------------------------------------------------------------------
+    _ASP_PERIODS = (("today", "Today"), ("7d", "7 Days"), ("30d", "30 Days"), ("all", "All time"))
+    _ASP_SORTS = (("won", "Most won"), ("spins", "Most spins"), ("recent", "Recent"))
+    _ASP_GREEN = [0.13, 0.62, 0.34, 1]
+    _ASP_RED = [0.84, 0.25, 0.25, 1]
+    _ASP_ORANGE = [0.95, 0.55, 0.10, 1]
+
+    @staticmethod
+    def _asp_safe(text, limit=26):
+        text = str(text or "").replace("[", "(").replace("]", ")")
+        return text if len(text) <= limit else text[:limit - 1] + "…"
+
+    def _asp_money(self, amount):
+        try:
+            return f"₦{float(amount or 0):,.0f}" if float(amount or 0) == int(float(amount or 0)) \
+                else f"₦{float(amount or 0):,.2f}"
+        except Exception:
+            return "₦0"
+
+    @staticmethod
+    def _asp_time(iso):
+        """UTC timestamp from the server -> '17 Oct, 8:52 PM' in Nigeria time."""
+        try:
+            d = datetime.fromisoformat(str(iso)) + timedelta(hours=1)
+            return d.strftime("%d %b, ") + d.strftime("%I:%M %p").lstrip("0")
+        except Exception:
+            return ""
+
+    @staticmethod
+    def _asp_day(iso_date):
+        try:
+            return datetime.fromisoformat(str(iso_date)).strftime("%d %b")
+        except Exception:
+            return str(iso_date)
+
+    def _asp_label(self, text, size="13sp", bold=False, color=None, halign="left",
+                   height=None, ratio=None):
+        lab = MDLabel(text=text, halign=halign, valign="middle", font_size=size, bold=bold)
+        if color is not None:
+            lab.theme_text_color = "Custom"
+            lab.text_color = color
+        elif not bold:
+            lab.theme_text_color = "Secondary"
+        else:
+            lab.theme_text_color = "Primary"
+        if height is not None:
+            lab.size_hint_y = None
+            lab.height = height
+        if ratio is not None:
+            lab.size_hint_x = ratio
+        return lab
+
+    def _asp_request(self, path, params, on_ok, on_fail=None):
+        """GET /api/admin/spin/<path> as the logged-in admin."""
+        from kivy.network.urlrequest import UrlRequest
+        from urllib.parse import urlencode
+
+        def _message(res, fallback):
+            return res.get('message', fallback) if isinstance(res, dict) else fallback
+
+        def _ok(req, result):
+            try:
+                if isinstance(result, dict) and result.get('status') == 'success':
+                    on_ok(result.get('data') or {})
+                else:
+                    self.hide_loader()
+                    self.show_toast(_message(result, "Couldn't load Spin & Win data"))
+            except Exception as e:
+                self.hide_loader()
+                print(f"_asp_request({path}) render error: {traceback.format_exc()}")
+                self.show_toast(f"Display error: {e}")
+
+        def _fail(req, result):
+            self.hide_loader()
+            if on_fail:
+                on_fail()
+            self.show_toast(_message(result, "Couldn't load Spin & Win data"))
+
+        def _err(req, error):
+            self.hide_loader()
+            if on_fail:
+                on_fail()
+            self.show_toast("Connection problem - check your internet")
+
+        url = f"{self.backend_url}/api/admin/spin/{path}"
+        if params:
+            url += "?" + urlencode(params)
+        UrlRequest(
+            url, on_success=_ok, on_failure=_fail, on_error=_err,
+            req_headers={'Authorization': f'Bearer {self.session_token}',
+                         'Content-Type': 'application/json'},
+            timeout=25,
+        )
+
+    # ---- screen construction (once) -----------------------------------
+    def _asp_chips(self, options, current, on_pick):
+        """Row of pill buttons; the current one is filled with the primary colour."""
+        primary = list(self.theme_cls.primary_color)
+        soft = [0.93, 0.95, 0.98, 1] if self.theme_cls.theme_style == "Light" else [0.18, 0.21, 0.27, 1]
+        row = MDBoxLayout(orientation='horizontal', spacing=dp(8), size_hint_y=None, height=dp(38))
+        refs = []
+
+        def paint(selected):
+            for value, card, lab in refs:
+                on = (value == selected)
+                card.md_bg_color = primary if on else soft
+                lab.text_color = [1, 1, 1, 1] if on else [0.45, 0.47, 0.52, 1]
+
+        for value, text in options:
+            card = MDCard(radius=[dp(19)], elevation=0, ripple_behavior=True, md_bg_color=soft,
+                          on_release=lambda x, v=value: (paint(v), on_pick(v)))
+            lab = MDLabel(text=text, halign="center", valign="middle", font_size="13sp",
+                          theme_text_color="Custom", text_color=[0.45, 0.47, 0.52, 1])
+            card.add_widget(lab)
+            row.add_widget(card)
+            refs.append((value, card, lab))
+        paint(current)
+        return row
+
+    def _ensure_admin_spin_screen(self):
+        if self.root.has_screen("admin_spin"):
+            return self.root.get_screen("admin_spin")
+        primary = list(self.theme_cls.primary_color)
+        self._asp = {"period": "today", "sort": "won", "q": "",
+                     "players_page": 1, "players_pages": 1,
+                     "entries_page": 1, "entries_pages": 1}
+        w = self._asp_w = {}
+
+        screen = Screen(name="admin_spin")
+        outer = MDBoxLayout(orientation='vertical')
+
+        bar = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(56),
+                          md_bg_color=primary, padding=[dp(4), 0, dp(4), 0])
+        bar.add_widget(MDIconButton(icon="arrow-left", theme_text_color="Custom",
+                                    text_color=[1, 1, 1, 1],
+                                    on_release=lambda x: self._asp_back()))
+        bar.add_widget(MDLabel(text="Spin & Win Report", font_style="H6", valign="middle",
+                               theme_text_color="Custom", text_color=[1, 1, 1, 1]))
+        bar.add_widget(MDIconButton(icon="refresh", theme_text_color="Custom",
+                                    text_color=[1, 1, 1, 1],
+                                    on_release=lambda x: self._asp_reload()))
+        outer.add_widget(bar)
+
+        holder = MDBoxLayout(orientation='vertical', size_hint_y=None, height=dp(52),
+                             padding=[dp(10), dp(7), dp(10), dp(7)])
+        holder.add_widget(self._asp_chips(self._ASP_PERIODS, "today", self._asp_set_period))
+        outer.add_widget(holder)
+
+        scroll = ScrollView()
+        body = MDBoxLayout(orientation='vertical', spacing=dp(10), adaptive_height=True,
+                           padding=[dp(12), dp(4), dp(12), dp(24)])
+        w['body'] = body
+
+        def section(title_text):
+            body.add_widget(self._asp_label(title_text, size="16sp", bold=True,
+                                            height=dp(34)))
+        def box():
+            b = MDBoxLayout(orientation='vertical', spacing=dp(6), adaptive_height=True)
+            body.add_widget(b)
+            return b
+
+        w['period_note'] = self._asp_label("", size="12sp", height=dp(20))
+        body.add_widget(w['period_note'])
+        w['summary'] = MDGridLayout(cols=2, spacing=dp(10), adaptive_height=True)
+        body.add_widget(w['summary'])
+
+        section("Daily activity")
+        w['daily'] = box()
+        section("Biggest wins")
+        w['wins'] = box()
+        section("Prizes won")
+        w['prizes'] = box()
+
+        section("Players")
+        body.add_widget(self._asp_chips(self._ASP_SORTS, "won", self._asp_set_sort))
+        search_row = MDBoxLayout(orientation='horizontal', spacing=dp(6), size_hint_y=None,
+                                 height=dp(56))
+        w['search'] = MDTextField(hint_text="Search name, phone or email", mode="rectangle",
+                                  size_hint_y=None, height=dp(52))
+        search_row.add_widget(w['search'])
+        search_row.add_widget(MDIconButton(icon="magnify", pos_hint={'center_y': 0.5},
+                                           on_release=lambda x: self._asp_do_search()))
+        body.add_widget(search_row)
+        w['players'] = box()
+        w['players_more'] = MDFlatButton(text="LOAD MORE PLAYERS", size_hint=(1, None), height=0,
+                                         opacity=0, disabled=True,
+                                         on_release=lambda x: self._asp_more_players())
+        body.add_widget(w['players_more'])
+
+        section("Recent spins")
+        w['entries'] = box()
+        w['entries_more'] = MDFlatButton(text="LOAD MORE SPINS", size_hint=(1, None), height=0,
+                                         opacity=0, disabled=True,
+                                         on_release=lambda x: self._asp_more_entries())
+        body.add_widget(w['entries_more'])
+
+        scroll.add_widget(body)
+        outer.add_widget(scroll)
+        screen.add_widget(outer)
+        self.root.add_widget(screen)
+        return screen
+
+    # ---- navigation / reload ------------------------------------------
+    def show_admin_spin_report(self):
+        if not self.session_token:
+            self.show_error_dialog("Please login first")
+            return
+        try:
+            self._ensure_admin_spin_screen()
+            self.root.transition.direction = "left"
+            self.root.current = "admin_spin"
+            self._asp_reload()
+        except Exception as e:
+            print(f"show_admin_spin_report error: {traceback.format_exc()}")
+            self.show_error_dialog(f"Couldn't open the Spin & Win report: {e}")
+
+    def _asp_back(self):
+        self.root.transition.direction = "right"
+        self.root.current = "profit"
+
+    def _asp_set_period(self, value):
+        self._asp["period"] = value
+        self._asp_reload()
+
+    def _asp_set_sort(self, value):
+        self._asp["sort"] = value
+        self._asp_load_players(reset=True)
+
+    def _asp_do_search(self):
+        self._asp["q"] = (self._asp_w["search"].text or "").strip()
+        self._asp_load_players(reset=True)
+
+    def _asp_reload(self):
+        """Fetch report -> players -> recent spins, one after another."""
+        st = self._asp
+        self.show_loader("Loading Spin & Win data...")
+
+        def got_report(data):
+            try:
+                self._asp_render_report(data)
+            except Exception as e:
+                print(f"_asp_render_report error: {traceback.format_exc()}")
+                self.show_toast(f"Display error: {e}")
+            self._asp_load_players(reset=True, then=lambda: self._asp_load_entries(reset=True, hide=True))
+
+        self._asp_request("report", {"period": st["period"]}, got_report)
+
+    def _asp_load_players(self, reset=False, then=None):
+        st = self._asp
+        if reset:
+            st["players_page"] = 1
+        else:
+            st["players_page"] += 1
+        if then is None:
+            self.show_loader("Loading players...")
+
+        def got(data):
+            try:
+                self._asp_render_players(data, append=not reset)
+            except Exception as e:
+                print(f"_asp_render_players error: {traceback.format_exc()}")
+                self.show_toast(f"Display error: {e}")
+            if then is None:
+                self.hide_loader()
+            else:
+                then()
+
+        self._asp_request("players", {"period": st["period"], "sort": st["sort"], "q": st["q"],
+                                      "page": st["players_page"], "per_page": 20}, got)
+
+    def _asp_more_players(self):
+        self._asp_load_players(reset=False)
+
+    def _asp_load_entries(self, reset=False, hide=False):
+        st = self._asp
+        st["entries_page"] = 1 if reset else st["entries_page"] + 1
+        if not hide:
+            self.show_loader("Loading spins...")
+
+        def got(data):
+            try:
+                self._asp_render_entries(data, append=not reset)
+            except Exception as e:
+                print(f"_asp_render_entries error: {traceback.format_exc()}")
+                self.show_toast(f"Display error: {e}")
+            self.hide_loader()
+
+        self._asp_request("entries", {"period": st["period"], "page": st["entries_page"],
+                                      "per_page": 30}, got)
+
+    def _asp_more_entries(self):
+        self._asp_load_entries(reset=False)
+
+    # ---- rendering -----------------------------------------------------
+    def _asp_stat(self, title, value, color=None):
+        soft = [0.94, 0.96, 0.99, 1] if self.theme_cls.theme_style == "Light" else [0.18, 0.21, 0.27, 1]
+        card = MDCard(orientation='vertical', size_hint_y=None, height=dp(74),
+                      padding=[dp(12), dp(8), dp(8), dp(8)], radius=[dp(14)], elevation=0,
+                      md_bg_color=soft)
+        card.add_widget(self._asp_label(title, size="12sp"))
+        card.add_widget(self._asp_label(str(value), size="18sp", bold=True, color=color))
+        return card
+
+    def _asp_row_card(self, height=dp(70)):
+        soft = [0.96, 0.97, 0.99, 1] if self.theme_cls.theme_style == "Light" else [0.15, 0.17, 0.22, 1]
+        return MDCard(orientation='horizontal', size_hint_y=None, height=height,
+                      padding=[dp(12), dp(6), dp(12), dp(6)], spacing=dp(6), radius=[dp(12)],
+                      elevation=0, md_bg_color=soft)
+
+    def _asp_empty(self, text):
+        return self._asp_label(text, size="13sp", halign="center", height=dp(40))
+
+    def _asp_render_report(self, data):
+        w = self._asp_w
+        s = data.get("summary", {})
+        period_text = dict(self._ASP_PERIODS).get(data.get("period"), "")
+        w['period_note'].text = f"{period_text} · days start at midnight, Nigeria time"
+
+        w['summary'].clear_widgets()
+        net = s.get("net_result", 0)
+        for title, value, color in (
+            ("Total spins", f"{s.get('total_spins', 0):,}", None),
+            ("Players who spun", f"{s.get('unique_players', 0):,}", None),
+            ("Free spins", f"{s.get('free_spins', 0):,}", None),
+            ("Paid spins", f"{s.get('paid_spins', 0):,}", self._ASP_ORANGE),
+            ("Fees collected", self._asp_money(s.get('fees_collected')), self._ASP_GREEN),
+            ("Cash won by users", self._asp_money(s.get('cash_won')), self._ASP_RED),
+            ("Coupons issued", f"{s.get('coupons_issued', 0)} · {self._asp_money(s.get('coupon_value_issued'))}", None),
+            ("Coupons used", f"{s.get('coupons_used_count', 0)} · {self._asp_money(s.get('coupons_used_value'))}", None),
+            ("Bonus points given", f"{s.get('points_awarded', 0):,}", None),
+            ("Avg spins / player", f"{s.get('avg_spins_per_player', 0)}", None),
+            ("Spins with no prize", f"{s.get('no_prize_spins', 0):,}", None),
+            ("Net result (fees - payouts)", self._asp_money(net),
+             self._ASP_GREEN if net >= 0 else self._ASP_RED),
+        ):
+            w['summary'].add_widget(self._asp_stat(title, value, color))
+
+        # daily table
+        w['daily'].clear_widgets()
+        head = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(24), padding=[dp(12), 0, dp(12), 0])
+        for text, ratio, al in (("Date", .26, "left"), ("Spins", .18, "center"),
+                                ("Players", .2, "center"), ("Cash won", .36, "right")):
+            head.add_widget(self._asp_label(text, size="11sp", halign=al, ratio=ratio))
+        w['daily'].add_widget(head)
+        for d in reversed(data.get("daily", [])):
+            row = self._asp_row_card(dp(34))
+            row.padding = [dp(12), 0, dp(12), 0]
+            row.add_widget(self._asp_label(self._asp_day(d.get("date")), size="13sp", bold=True, ratio=.26))
+            row.add_widget(self._asp_label(str(d.get("spins", 0)), size="13sp", halign="center", ratio=.18))
+            row.add_widget(self._asp_label(str(d.get("players", 0)), size="13sp", halign="center", ratio=.2))
+            row.add_widget(self._asp_label(self._asp_money(d.get("cash_won")), size="13sp",
+                                           halign="right", ratio=.36))
+            w['daily'].add_widget(row)
+
+        # biggest wins
+        w['wins'].clear_widgets()
+        wins = data.get("biggest_wins", [])
+        if not wins:
+            w['wins'].add_widget(self._asp_empty("No cash wins in this period"))
+        for b in wins:
+            row = self._asp_row_card(dp(62))
+            left = MDBoxLayout(orientation='vertical', size_hint_x=.68)
+            left.add_widget(self._asp_label(self._asp_safe(b.get("name")), size="14sp", bold=True))
+            left.add_widget(self._asp_label(f"{self._asp_safe(b.get('label'), 22)} · {self._asp_time(b.get('created_at'))}", size="11sp"))
+            row.add_widget(left)
+            row.add_widget(self._asp_label(self._asp_money(b.get("reward_value")), size="16sp", bold=True,
+                                           color=self._ASP_RED, halign="right", ratio=.32))
+            w['wins'].add_widget(row)
+
+        # prizes
+        w['prizes'].clear_widgets()
+        prizes = data.get("by_prize", [])
+        if not prizes:
+            w['prizes'].add_widget(self._asp_empty("No spins in this period"))
+        for p in prizes:
+            row = self._asp_row_card(dp(46))
+            row.add_widget(self._asp_label(self._asp_safe(p.get("label"), 24), size="13sp", bold=True, ratio=.5))
+            row.add_widget(self._asp_label(f"{p.get('spins', 0)}x", size="13sp", halign="center", ratio=.2))
+            value = p.get("total_value", 0)
+            text = f"{int(value)} pts" if p.get("reward_type") == "bonus_points" else self._asp_money(value)
+            row.add_widget(self._asp_label(text, size="13sp", halign="right", ratio=.3))
+            w['prizes'].add_widget(row)
+
+    def _asp_toggle_more(self, button, show):
+        button.height = dp(44) if show else 0
+        button.opacity = 1 if show else 0
+        button.disabled = not show
+
+    def _asp_render_players(self, data, append=False):
+        w, st = self._asp_w, self._asp
+        if not append:
+            w['players'].clear_widgets()
+        players = data.get("players", [])
+        st["players_pages"] = data.get("pages", 1)
+        if not players and not append:
+            w['players'].add_widget(self._asp_empty(
+                "No players found" if st["q"] else "Nobody has spun in this period"))
+        for p in players:
+            card = self._asp_row_card(dp(80))
+            card.ripple_behavior = True
+            card.bind(on_release=lambda x, pl=p: self._asp_show_player(pl))
+            left = MDBoxLayout(orientation='vertical', size_hint_x=.64)
+            left.add_widget(self._asp_label(self._asp_safe(p.get("name")), size="14sp", bold=True))
+            left.add_widget(self._asp_label(self._asp_safe(p.get("phone") or p.get("email"), 28), size="11sp"))
+            left.add_widget(self._asp_label(
+                f"{p.get('spins', 0)} spins ({p.get('free_spins', 0)} free · {p.get('paid_spins', 0)} paid)", size="11sp"))
+            card.add_widget(left)
+            right = MDBoxLayout(orientation='vertical', size_hint_x=.36)
+            right.add_widget(self._asp_label(self._asp_money(p.get("cash_won")), size="16sp", bold=True,
+                                             color=self._ASP_RED, halign="right"))
+            right.add_widget(self._asp_label("cash won", size="10sp", halign="right"))
+            extra = []
+            if p.get("coupon_value"):
+                extra.append(f"coupons {self._asp_money(p.get('coupon_value'))}")
+            if p.get("points"):
+                extra.append(f"{p.get('points')} pts")
+            if p.get("fees_paid"):
+                extra.append(f"paid {self._asp_money(p.get('fees_paid'))}")
+            right.add_widget(self._asp_label(self._asp_safe(" · ".join(extra), 26), size="10sp", halign="right"))
+            card.add_widget(right)
+            w['players'].add_widget(card)
+        self._asp_toggle_more(w['players_more'], data.get("page", 1) < data.get("pages", 1))
+
+    def _asp_spin_row(self, e, show_user=True, height=dp(64)):
+        row = self._asp_row_card(height)
+        left = MDBoxLayout(orientation='vertical', size_hint_x=.62)
+        if show_user:
+            left.add_widget(self._asp_label(self._asp_safe(e.get("name")), size="14sp", bold=True))
+            left.add_widget(self._asp_label(self._asp_safe(e.get("label"), 24), size="12sp"))
+        else:
+            left.add_widget(self._asp_label(self._asp_safe(e.get("label"), 26), size="14sp", bold=True))
+            left.add_widget(self._asp_label(self._asp_time(e.get("created_at")), size="11sp"))
+        row.add_widget(left)
+        right = MDBoxLayout(orientation='vertical', size_hint_x=.38)
+        if e.get("is_free_spin"):
+            right.add_widget(self._asp_label("FREE", size="12sp", bold=True, color=self._ASP_GREEN, halign="right"))
+        else:
+            right.add_widget(self._asp_label(f"PAID {self._asp_money(e.get('cost_paid'))}", size="12sp",
+                                             bold=True, color=self._ASP_ORANGE, halign="right"))
+        if show_user:
+            right.add_widget(self._asp_label(self._asp_time(e.get("created_at")), size="10sp", halign="right"))
+        else:
+            value = e.get("reward_value", 0)
+            text = "no prize" if not value else (
+                f"{int(value)} pts" if e.get("reward_type") == "bonus_points" else self._asp_money(value))
+            right.add_widget(self._asp_label(text, size="11sp", halign="right"))
+        row.add_widget(right)
+        return row
+
+    def _asp_render_entries(self, data, append=False):
+        w = self._asp_w
+        if not append:
+            w['entries'].clear_widgets()
+        entries = data.get("entries", [])
+        if not entries and not append:
+            w['entries'].add_widget(self._asp_empty("No spins in this period"))
+        for e in entries:
+            w['entries'].add_widget(self._asp_spin_row(e, show_user=True))
+        self._asp_toggle_more(w['entries_more'], data.get("page", 1) < data.get("pages", 1))
+
+    # ---- one player's full history --------------------------------------
+    def _asp_show_player(self, player):
+        self.show_loader("Loading spins...")
+
+        def got(data):
+            self.hide_loader()
+            try:
+                content = MDBoxLayout(orientation='vertical', spacing=dp(6), size_hint_y=None,
+                                      height=dp(430))
+                content.add_widget(self._asp_label(
+                    f"{player.get('spins', 0)} spins · {self._asp_money(player.get('cash_won'))} cash won · "
+                    f"{player.get('points', 0)} pts", size="12sp", height=dp(22)))
+                content.add_widget(self._asp_label(
+                    self._asp_safe(" · ".join(x for x in (player.get('phone'), player.get('email')) if x), 40),
+                    size="11sp", height=dp(20)))
+                scroll = ScrollView()
+                lst = MDBoxLayout(orientation='vertical', spacing=dp(6), adaptive_height=True)
+                entries = data.get("entries", [])
+                if not entries:
+                    lst.add_widget(self._asp_empty("No spins yet"))
+                for e in entries:
+                    lst.add_widget(self._asp_spin_row(e, show_user=False, height=dp(56)))
+                if data.get("total", 0) > len(entries):
+                    lst.add_widget(self._asp_label(
+                        f"Showing latest {len(entries)} of {data.get('total')} spins",
+                        size="11sp", halign="center", height=dp(28)))
+                scroll.add_widget(lst)
+                content.add_widget(scroll)
+                dialog = MDDialog(
+                    title=self._asp_safe(player.get("name"), 30),
+                    type="custom", content_cls=content,
+                    buttons=[MDFlatButton(text="CLOSE", theme_text_color="Custom",
+                                          text_color=self.theme_cls.primary_color,
+                                          on_release=lambda x: dialog.dismiss())],
+                )
+                dialog.open()
+            except Exception as e:
+                print(f"_asp_show_player error: {traceback.format_exc()}")
+                self.show_toast(f"Display error: {e}")
+
+        self._asp_request("entries", {"period": "all", "user_id": player.get("user_id"),
+                                      "per_page": 40}, got)
+
     def show_admin_users(self):
         """Show all users — safe version that cannot crash the app."""
         if not self.session_token:
@@ -17693,6 +18213,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'referral':        'dashboard',
                 'profit':          'dashboard',
                 'withdraw':        'profit',
+                'admin_spin':      'profit',
                 # FIX: these screens were missing from back_map entirely,
                 # so pressing back on any of them fell through to Android's
                 # default behavior and exited the app instantly instead of
