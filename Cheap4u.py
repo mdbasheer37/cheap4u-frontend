@@ -7678,7 +7678,7 @@ LazyScreenManager:
                         # REPLACED quantity_grid WITH quantity_input TEXT FIELD
                         MDTextField:
                             id: quantity_input
-                            hint_text: "Enter Quantity (1-10)"
+                            hint_text: "Quantity (1, 2 or 5)"
                             input_type: 'number'
                             helper_text: "Enter number of PINs needed"
                             helper_text_mode: "on_focus"
@@ -11107,6 +11107,7 @@ class DashboardApp(ChallengeMixin, MDApp):
     selected_exam_type =  StringProperty("")
     selected_exam_quantity =  NumericProperty(0)
     exam_pin_total_amount =  NumericProperty(0)
+    exam_pin_available = DictProperty({})      # which exams CheapDataHub can sell right now
     exam_pin_prices = DictProperty({
         "WAEC": 3800,     # Cost: 3450, Profit: 350 (10.1%)
         "NECO": 2600,     # Cost: 2350, Profit: 250 (10.6%)
@@ -13341,7 +13342,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         'data':        "One per line: plan_id,phone",
         'electricity': "One per line: disco,meter_number,meter_type,amount,phone",
         'cable_tv':    "One per line: plan_id,smartcard",
-        'exam_pin':    "One per line: exam_name,quantity,selling_price",
+        'exam_pin':    "One per line: exam_name,quantity (quantity must be 1, 2 or 5)",
     }
 
     def set_merchant_job_type(self, job_type):
@@ -13387,8 +13388,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                     plan_id, smartcard = parts[0], parts[1]
                     items.append({'plan_id': plan_id, 'smartcard': smartcard})
                 elif job_type == 'exam_pin':
-                    exam_name, quantity, selling_price = parts[0], parts[1], parts[2]
-                    items.append({'exam_name': exam_name, 'quantity': int(quantity), 'selling_price': float(selling_price)})
+                    exam_name, quantity = parts[0], parts[1]      # price is set by the server
+                    items.append({'exam_name': exam_name, 'quantity': int(quantity)})
             except (IndexError, ValueError):
                 errors.append(f"Line {i}: invalid format — {line}")
 
@@ -17494,6 +17495,7 @@ class DashboardApp(ChallengeMixin, MDApp):
     
     def setup_exam_pin_screen(self):
         """Setup exam PIN screen with exam types - WITH IMAGES"""
+        self.load_exam_pin_prices(force=True)
         screen = self.root.get_screen("exam_pin")
         
         # Setup exam types with LOGOS
@@ -17555,30 +17557,66 @@ class DashboardApp(ChallengeMixin, MDApp):
         screen.ids.quantity_input.text = ""
         
  
+    _EXAM_PRICE_TTL = 120          # seconds a price list stays fresh
+
+    def load_exam_pin_prices(self, force=False, then=None):
+        """Fetch today's exam PIN prices (provider price + margin) from the server.
+        then(ok) is called when done. Prices are re-fetched when older than 2 minutes."""
+        now = time.time()
+        loaded_at = getattr(self, '_exam_prices_at', 0)
+        if not force and loaded_at and now - loaded_at < self._EXAM_PRICE_TTL:
+            if then:
+                then(True)
+            return
+
+        def callback(success, response):
+            ok = False
+            try:
+                data = (response or {}).get('data') or {}
+                prices = data.get('prices') or {}
+                if success and prices:
+                    self.exam_pin_prices = {k: v for k, v in prices.items()}
+                    self.exam_pin_available = data.get('available') or {}
+                    self._exam_prices_at = time.time()
+                    ok = True
+            except Exception as e:
+                print(f"load_exam_pin_prices error: {e}")
+            if then:
+                then(ok)
+
+        self.backend_api_request('vtpass/exam-pins/prices', 'GET', callback=callback)
+
+    def _recalc_exam_total(self):
+        """Re-price the current selection after the live prices arrive/change."""
+        try:
+            if not self.selected_exam_type or not self.selected_exam_quantity:
+                return
+            price = self.exam_pin_prices.get(self.selected_exam_type, 0)
+            self.exam_pin_total_amount = price * self.selected_exam_quantity
+            screen = self.root.get_screen("exam_pin")
+            screen.ids.total_amount_label.text = self.format_currency(self.exam_pin_total_amount)
+        except Exception as e:
+            print(f"_recalc_exam_total error: {e}")
+
     def validate_quantity_input(self, text):
         """Validate quantity input"""
         screen = self.root.get_screen("exam_pin")
         
         if not text:
             screen.ids.quantity_input.error = False
-            screen.ids.quantity_input.helper_text = "Enter quantity (1-10)"
+            screen.ids.quantity_input.helper_text = "Enter 1, 2 or 5"
             self.selected_exam_quantity = 0
             return False
         
         try:
             quantity = int(text)
             
-            if quantity < 1:
+            if quantity not in (1, 2, 5):
                 screen.ids.quantity_input.error = True
-                screen.ids.quantity_input.helper_text = "Minimum quantity is 1"
+                screen.ids.quantity_input.helper_text = "You can buy 1, 2 or 5 PINs at a time"
                 self.selected_exam_quantity = 0
                 return False
-            elif quantity > 10:
-                screen.ids.quantity_input.error = True
-                screen.ids.quantity_input.helper_text = "Maximum quantity is 10"
-                self.selected_exam_quantity = 0
-                return False
-            
+
             # Valid quantity
             screen.ids.quantity_input.error = False
             screen.ids.quantity_input.helper_text = "Valid quantity"
@@ -17612,6 +17650,10 @@ class DashboardApp(ChallengeMixin, MDApp):
    
     def select_exam_type(self, exam_type):
         """Handle exam type selection WITH VISUAL FEEDBACK"""
+        if self.exam_pin_available.get(exam_type) is False:
+            self.show_toast(f"{exam_type} PINs are not available right now")
+            return
+        self.load_exam_pin_prices(then=lambda ok: self._recalc_exam_total())
         screen = self.root.get_screen("exam_pin")
         
         # Reset all cards to default color
@@ -17636,7 +17678,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         screen.ids.quantity_input.disabled = False
         screen.ids.quantity_input.opacity = 1
         screen.ids.quantity_input.text = ""
-        screen.ids.quantity_input.helper_text = "Enter quantity (1-10)"
+        screen.ids.quantity_input.helper_text = "Enter 1, 2 or 5"
         
         # Reset quantity and amount
         self.selected_exam_quantity = 0
@@ -17743,8 +17785,9 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self._clear_verified_pin()
                 if success and response.get('status') == 'success':
                     data = response.get('data', {})
-                    pins = [data.get('pin')] if data.get('pin') else []
-                    serial = data.get('serial')
+                    pins = data.get('pins') or ([{'pin': data.get('pin'), 'serial': data.get('serial')}]
+                                                if data.get('pin') else [])
+                    serial = None
                     profit_amount = data.get('profit_amount', 0)
                     discount = data.get('discount_amount', 0)
                     
@@ -17760,6 +17803,8 @@ class DashboardApp(ChallengeMixin, MDApp):
                     self.reset_exam_pin_selections()
                     self.pending_coupon_code = None
                 else:
+                    if response.get('code') == 'price_changed':
+                        self.load_exam_pin_prices(force=True, then=lambda ok: self._recalc_exam_total())
                     error_msg = response.get('message', 'Exam PIN purchase failed')
                     self.show_error_dialog(f"Exam PIN purchase failed: {error_msg}")
             
@@ -17778,62 +17823,78 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.show_error_dialog("Please select an exam type")
             return False
         
-        if not self.selected_exam_quantity or self.selected_exam_quantity < 1:
-            self.show_error_dialog("Please enter a valid quantity (1-10)")
+        if self.selected_exam_quantity not in (1, 2, 5):
+            self.show_error_dialog("Please choose 1, 2 or 5 PINs")
+            return False
+
+        if not getattr(self, '_exam_prices_at', 0):
+            # never got the live prices: try again instead of guessing a price
+            self.load_exam_pin_prices(force=True, then=lambda ok: self._recalc_exam_total())
+            self.show_error_dialog("Couldn't load today's prices. Check your internet and try again.")
             return False
         
         return True
 
 
     def show_exam_pins_dialog(self, pins, profit_amount, serial=None):
-        """Show dialog with generated exam PINs."""
+        """Show every PIN that was bought, each with its serial number when there is one."""
+        entries = []
+        for p in pins or []:
+            if isinstance(p, dict):
+                entries.append({'pin': str(p.get('pin') or ''), 'serial': p.get('serial')})
+            else:
+                entries.append({'pin': str(p), 'serial': None})
+        if serial and entries and not entries[0]['serial']:
+            entries[0]['serial'] = serial
+
+        soft = [0.95, 0.96, 0.99, 1] if self.theme_cls.theme_style == "Light" else [0.18, 0.21, 0.27, 1]
         content = MDBoxLayout(
-            orientation='vertical',
-            spacing=dp(15),
-            padding=dp(20),
-            size_hint_y=None,
-            height=dp(300)  # increased for serial
+            orientation='vertical', spacing=dp(8), padding=[dp(6), dp(4), dp(6), dp(4)],
+            size_hint_y=None, height=dp(min(400, 110 + 100 * len(entries))),
         )
-        
         content.add_widget(MDLabel(
             text=f"{self.selected_exam_type} PIN(s) Generated Successfully!",
-            halign='center',
-            bold=True
+            halign='center', bold=True, size_hint_y=None, height=dp(30),
         ))
-        
         content.add_widget(MDLabel(
-            text=f"Profit earned: ₦{profit_amount:,.2f}",
-            halign='center',
-            theme_text_color="Primary"
+            text=f"Profit earned: ₦{profit_amount:,.2f}", halign='center',
+            theme_text_color="Primary", size_hint_y=None, height=dp(24),
         ))
-        
-        # Display PIN
-        for i, pin in enumerate(pins):
-            pin_box = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(40), spacing=dp(10))
-            pin_box.add_widget(MDLabel(text=f"PIN {i+1}:", size_hint_x=0.3))
-            pin_box.add_widget(MDLabel(text=pin, bold=True, theme_text_color="Primary", size_hint_x=0.5))
-            copy_btn = MDIconButton(icon="content-copy", size_hint_x=0.2, on_release=lambda x, p=pin: self.copy_to_clipboard(p))
-            pin_box.add_widget(copy_btn)
-            content.add_widget(pin_box)
-        
-        # Display serial if present
-        if serial:
-            serial_box = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(40), spacing=dp(10))
-            serial_box.add_widget(MDLabel(text="Serial:", size_hint_x=0.3))
-            serial_box.add_widget(MDLabel(text=serial, bold=True, theme_text_color="Secondary", size_hint_x=0.5))
-            copy_btn2 = MDIconButton(icon="content-copy", size_hint_x=0.2, on_release=lambda x, s=serial: self.copy_to_clipboard(s))
-            serial_box.add_widget(copy_btn2)
-            content.add_widget(serial_box)
-        
+
+        scroll = ScrollView()
+        lst = MDBoxLayout(orientation='vertical', spacing=dp(8), adaptive_height=True)
+        lines = []
+        for i, e in enumerate(entries, 1):
+            rows = [("PIN", e['pin'])] + ([("Serial", e['serial'])] if e['serial'] else [])
+            card = MDCard(orientation='vertical', size_hint_y=None, height=dp(44 * len(rows) + 10),
+                          padding=[dp(10), dp(4), dp(4), dp(4)], radius=[dp(12)], elevation=0,
+                          md_bg_color=soft)
+            for label, value in rows:
+                row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(44), spacing=dp(6))
+                row.add_widget(MDLabel(text=f"{label} {i}:" if len(entries) > 1 else f"{label}:",
+                                       size_hint_x=0.3, theme_text_color="Secondary"))
+                row.add_widget(MDLabel(text=value, bold=True, size_hint_x=0.5,
+                                       theme_text_color="Primary" if label == "PIN" else "Secondary"))
+                row.add_widget(MDIconButton(icon="content-copy", size_hint_x=0.2,
+                                            on_release=lambda x, v=value: self.copy_to_clipboard(v)))
+                card.add_widget(row)
+                lines.append(f"{label} {i}: {value}" if len(entries) > 1 else f"{label}: {value}")
+            lst.add_widget(card)
+        scroll.add_widget(lst)
+        content.add_widget(scroll)
+
+        all_text = "\n".join(lines)
         dialog = MDDialog(
             title="Exam PINs Generated",
             type="custom",
             content_cls=content,
-            buttons=[MDFlatButton(text="CLOSE", on_release=lambda x: dialog.dismiss())],
-            radius=[20, 7, 20, 7]
+            buttons=[
+                MDFlatButton(text="COPY ALL", on_release=lambda x: self.copy_to_clipboard(all_text)),
+                MDFlatButton(text="CLOSE", on_release=lambda x: dialog.dismiss()),
+            ],
+            radius=[20, 7, 20, 7],
         )
         dialog.open()
-     
 
     def generate_and_deliver_exam_pins(self):
         """Generate exam PINs and deliver to user"""
@@ -17928,7 +17989,7 @@ class DashboardApp(ChallengeMixin, MDApp):
                 screen.ids.selected_exam_type_box.opacity = 0
                 screen.ids.quantity_input.text = ""
                 screen.ids.quantity_input.error = False
-                screen.ids.quantity_input.helper_text = "Enter quantity (1-10)"
+                screen.ids.quantity_input.helper_text = "Enter 1, 2 or 5"
                 screen.ids.quantity_input.disabled = True
                 screen.ids.quantity_input.opacity = 0.5
                 screen.ids.selected_quantity_box.height = 0
@@ -24137,7 +24198,9 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         """Return color based on transaction status"""
 
-        return self.theme_cls.success_color if status.lower() == "successful" else self.theme_cls.error_color
+        if str(status).strip().lower() in ("successful", "success"):
+            return [0.10, 0.62, 0.30, 1]          # green: the check mark and the word "Successful"
+        return self.theme_cls.error_color          # failed / anything else keeps the red
 
 
 
