@@ -6843,6 +6843,8 @@ LazyScreenManager:
         ScrollView:
             size_hint: 1, 1
             do_scroll_x: False
+            scroll_timeout: 25
+            scroll_distance: dp(24)
             MDBoxLayout:
                 orientation: 'vertical'
                 padding: dp(30), dp(56), dp(30), dp(30)
@@ -7059,7 +7061,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("1")
+                            on_press: app.pin_keypad_press("1")
                         MDFlatButton:
                             text: "2"
                             font_size: "26sp"
@@ -7067,7 +7069,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("2")
+                            on_press: app.pin_keypad_press("2")
                         MDFlatButton:
                             text: "3"
                             font_size: "26sp"
@@ -7075,7 +7077,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("3")
+                            on_press: app.pin_keypad_press("3")
 
                     MDBoxLayout:
                         orientation: 'horizontal'
@@ -7090,7 +7092,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("4")
+                            on_press: app.pin_keypad_press("4")
                         MDFlatButton:
                             text: "5"
                             font_size: "26sp"
@@ -7098,7 +7100,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("5")
+                            on_press: app.pin_keypad_press("5")
                         MDFlatButton:
                             text: "6"
                             font_size: "26sp"
@@ -7106,7 +7108,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("6")
+                            on_press: app.pin_keypad_press("6")
 
                     MDBoxLayout:
                         orientation: 'horizontal'
@@ -7121,7 +7123,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("7")
+                            on_press: app.pin_keypad_press("7")
                         MDFlatButton:
                             text: "8"
                             font_size: "26sp"
@@ -7129,7 +7131,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("8")
+                            on_press: app.pin_keypad_press("8")
                         MDFlatButton:
                             text: "9"
                             font_size: "26sp"
@@ -7137,7 +7139,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("9")
+                            on_press: app.pin_keypad_press("9")
 
                     MDBoxLayout:
                         orientation: 'horizontal'
@@ -7151,7 +7153,7 @@ LazyScreenManager:
                             theme_text_color: "Secondary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_clear()
+                            on_press: app.pin_keypad_clear()
                         MDFlatButton:
                             text: "0"
                             font_size: "26sp"
@@ -7159,7 +7161,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_release: app.pin_keypad_press("0")
+                            on_press: app.pin_keypad_press("0")
                         MDIconButton:
                             icon: "backspace-outline"
                             theme_text_color: "Custom"
@@ -7167,7 +7169,7 @@ LazyScreenManager:
                             icon_size: "24sp"
                             size_hint: 1, 1
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            on_release: app.pin_keypad_backspace()
+                            on_press: app.pin_keypad_backspace()
 
                 Widget:
                     size_hint_y: None
@@ -17052,12 +17054,11 @@ class DashboardApp(ChallengeMixin, MDApp):
         if filter_type in filter_map:
             transactions = [t for t in transactions if filter_map[filter_type](t)]
 
-        history_list = screen.ids.history_list
-        history_list.clear_widgets()
+        self._history_raw = list(transactions) if filter_type == 'all' else getattr(self, '_history_raw', None) or list(transactions)
 
+        display_items = []
         for txn in transactions:
-            # Convert backend transaction dict to display format
-            display_txn = {
+            display_items.append({
                 'type': (txn.get('service_type') or txn.get('type') or 'Transaction').replace('_', ' ').title(),
                 'amount': f"₦{txn.get('amount', 0):,.2f}",
                 'status': txn.get('status', 'pending').capitalize(),
@@ -17065,16 +17066,14 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'reference': txn.get('reference', ''),
                 'details': txn.get('details', {}),
                 'service_type': txn.get('service_type', ''),
-            }
+            })
 
-            try:
-                card = self._create_transaction_item(display_txn)
-                history_list.add_widget(card)
-            except Exception as e:
-                print(f"Transaction card error: {e}")
+        if not display_items:                      # filter matched nothing
+            screen.ids.history_list.clear_widgets()
+            self._show_empty_state(True)
+            return
+        self._render_history_chunked(display_items)
 
-        history_list.height = history_list.minimum_height                
-    
     def backend_api_request(self, endpoint, method="GET", data=None, callback=None, on_failure=None):
         """Threaded request using requests library with extended timeout for Render free tier."""
         if not self.backend_url:
@@ -19571,7 +19570,7 @@ class DashboardApp(ChallengeMixin, MDApp):
     # Splash timing: a short minimum so the brand mark doesn't just flash
     # (feels broken, not "fast"), and a hard maximum failsafe so a slow
     # device/network can never hold the user on the splash screen.
-    SPLASH_MIN_DURATION = 0.6
+    SPLASH_MIN_DURATION = 0.3
     SPLASH_MAX_DURATION = 2.0
 
     # ------------------------------------------------------------------
@@ -19727,6 +19726,11 @@ class DashboardApp(ChallengeMixin, MDApp):
         try:
             # Fire-and-forget backend warm-up; does not block navigation.
             self.initialize_services()
+            # Build the screen we are about to show NOW, while the splash is
+            # still on screen, so it appears instantly instead of after it.
+            qp = self.quick_pin_data
+            target = "pin_login" if (qp and qp.get('pin_hash') and qp.get('session_token')) else "login"
+            self.root.get_screen(target)
         except Exception as e:
             print(f"run_startup_tasks error: {e}")
         finally:
@@ -23735,10 +23739,9 @@ class DashboardApp(ChallengeMixin, MDApp):
             if screen_name == 'history':
                 # Only reload if no transactions already showing
                 screen = self.root.get_screen('history')
-                if not screen.ids.history_list.children:
-                    Clock.schedule_once(
-                        lambda dt: self.load_transaction_history(), 0.1
-                    )
+                stale = time.time() - getattr(self, '_history_loaded_at', 0) > 20
+                if stale or not screen.ids.history_list.children:
+                    Clock.schedule_once(lambda dt: self.load_transaction_history(), 0)
         except Exception as e:
             print(f"switch_screen error: {e}")
       
@@ -23823,6 +23826,10 @@ class DashboardApp(ChallengeMixin, MDApp):
         """Filter history — reloads from backend with filter applied."""
         screen = self.root.get_screen('history')
         self._update_filter_chips(screen, filter_type)
+        raw = getattr(self, '_history_raw', None)
+        if raw:
+            self._history_filter = filter_type
+            self._display_backend_transactions(raw, filter_type)      # instant, from what we have
         self.load_transaction_history(filter_type)
 
     
@@ -23866,78 +23873,170 @@ class DashboardApp(ChallengeMixin, MDApp):
             banner.height = 0
             banner.opacity = 0
 
-    def load_transaction_history(self, filter_type='all'):
-        """Load transaction history from backend."""
+    # ------------------------------------------------------------------
+    # Transaction history: show what we already know INSTANTLY, refresh quietly.
+    #  * the last list fetched for this account is cached on the phone, so the
+    #    screen is filled in the very first frame (no blank page while a sleeping
+    #    server wakes up);
+    #  * cards are created a few per frame, so building 50 of them never freezes
+    #    the UI;
+    #  * a background prefetch after unlock keeps the cache fresh.
+    # ------------------------------------------------------------------
+    def _history_cache_path(self):
+        try:
+            return os.path.join(self.user_data_dir, "history_cache.json")
+        except Exception:
+            return "history_cache.json"
+
+    def _history_email(self):
+        return ((getattr(self, 'current_user', None) or {}).get('email') or '').lower()
+
+    def _read_history_cache(self):
+        email = self._history_email()
+        try:
+            path = self._history_cache_path()
+            if email and os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    return (json.load(f) or {}).get(email) or []
+        except Exception as e:
+            print(f"_read_history_cache error: {e}")
+        return []
+
+    def _write_history_cache(self, txns):
+        email = self._history_email()
+        if not email:
+            return
+        try:
+            path = self._history_cache_path()
+            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({email: list(txns)[:50]}, f)      # only the signed-in account is kept
+        except Exception as e:
+            print(f"_write_history_cache error: {e}")
+
+    def _history_signature(self, txns):
+        return tuple((t.get('reference'), t.get('status')) for t in txns)
+
+    def _render_history_chunked(self, items, first_batch=6, batch=6):
+        """Create the transaction cards a few per frame (first ones immediately)."""
+        screen = self.root.get_screen("history")
+        history_list = screen.ids.history_list
+        self._history_render_token = getattr(self, '_history_render_token', 0) + 1
+        token = self._history_render_token
+        history_list.clear_widgets()
+        position = [0]
+
+        def step(_dt=None):
+            if token != self._history_render_token:      # a newer render replaced this one
+                return
+            count = first_batch if position[0] == 0 else batch
+            for txn in items[position[0]:position[0] + count]:
+                try:
+                    history_list.add_widget(self._create_transaction_item(txn))
+                except Exception as e:
+                    print(f"Transaction card error: {e}")
+            position[0] += count
+            if position[0] < len(items):
+                Clock.schedule_once(step, 0)
+
+        step()
+
+    def _prefetch_history(self):
+        """Quietly refresh the history cache (no UI)."""
+        try:
+            self.load_transaction_history(silent=True)
+        except Exception as e:
+            print(f"_prefetch_history error: {e}")
+
+    def load_transaction_history(self, filter_type='all', silent=False):
+        """Load transaction history (cached copy first, then the server)."""
         if not self.current_user or not self.session_token:
             return
 
-        # Safely reset screen state
-        try:
-            screen = self.root.get_screen("history")
-            screen.ids.loading_indicator.opacity = 1
-            screen.ids.history_spinner.active = True
-            screen.ids.empty_state.opacity = 0
-            screen.ids.history_list.clear_widgets()
-            screen.ids.history_list.height = 0
-            self._show_history_offline_banner(screen, False)
-            self._show_history_skeleton(screen, True)
-        except Exception as e:
-            print(f"History screen reset error: {e}")
+        screen = None
+        showing_cached = False
+        if not silent:
+            try:
+                screen = self.root.get_screen("history")
+                email = self._history_email()
+                if getattr(self, '_history_shown_for', None) == email and screen.ids.history_list.children:
+                    showing_cached = True                    # this account's list is already on screen
+                else:
+                    cached = self._read_history_cache()
+                    if cached:
+                        self._history_shown_for = email
+                        self._history_filter = filter_type
+                        self._display_backend_transactions(cached, filter_type)
+                        showing_cached = True
+                if showing_cached:
+                    screen.ids.loading_indicator.opacity = 0
+                    screen.ids.history_spinner.active = False
+                else:
+                    screen.ids.loading_indicator.opacity = 1
+                    screen.ids.history_spinner.active = True
+                    screen.ids.empty_state.opacity = 0
+                    screen.ids.history_list.clear_widgets()
+                    screen.ids.history_list.height = 0
+                    self._show_history_offline_banner(screen, False)
+                    self._show_history_skeleton(screen, True)
+            except Exception as e:
+                print(f"History screen reset error: {e}")
+
+        def stop_loading_ui(offline):
+            if screen is None:
+                return
+            try:
+                screen.ids.loading_indicator.opacity = 0
+                screen.ids.history_spinner.active = False
+                self._show_history_skeleton(screen, False)
+                self._show_history_offline_banner(screen, offline)
+            except Exception:
+                pass
 
         def on_success(req, result):
-            try:
-                screen.ids.loading_indicator.opacity = 0
-                screen.ids.history_spinner.active = False
-                self._show_history_skeleton(screen, False)
-                self._show_history_offline_banner(screen, False)
-            except Exception:
-                pass
+            if result.get('status') != 'success':
+                stop_loading_ui(False)
+                if not silent and not showing_cached:
+                    self._show_empty_state(True)
+                return
+            txns = result.get('data', {}).get('transactions', [])
+            self._write_history_cache(txns)
+            self._history_loaded_at = time.time()
+            if silent:
+                return
+            stop_loading_ui(False)
+            email = self._history_email()
+            unchanged = (showing_cached
+                         and self._history_signature(txns) == getattr(self, '_history_sig', None)
+                         and filter_type == getattr(self, '_history_filter', 'all')
+                         and getattr(self, '_history_shown_for', None) == email)
+            if unchanged:
+                return                                       # nothing new - leave the list alone
+            self._history_sig = self._history_signature(txns)
+            self._history_filter = filter_type
+            self._history_shown_for = email
+            self._display_backend_transactions(txns, filter_type)
 
-            if result.get('status') == 'success':
-                txns = result.get('data', {}).get('transactions', [])
-                Clock.schedule_once(
-                    lambda dt: self._display_backend_transactions(txns, filter_type), 0.1
-                )
-            else:
-                self._show_empty_state(True)
-
-        def on_failure(req, error):
-            try:
-                screen.ids.loading_indicator.opacity = 0
-                screen.ids.history_spinner.active = False
-                self._show_history_skeleton(screen, False)
-                self._show_history_offline_banner(screen, True)
-            except Exception:
-                pass
+        def on_offline(req, error):
             print(f"History load failed: {error}")
-            Clock.schedule_once(
-                lambda dt: self._display_transaction_history(), 0.1
-            )
-
-        def on_error(req, error):
-            try:
-                screen.ids.loading_indicator.opacity = 0
-                screen.ids.history_spinner.active = False
-                self._show_history_skeleton(screen, False)
-                self._show_history_offline_banner(screen, True)
-            except Exception:
-                pass
-            Clock.schedule_once(
-                lambda dt: self._display_transaction_history(), 0.1
-            )
+            if silent:
+                return
+            stop_loading_ui(True)
+            if not showing_cached:
+                Clock.schedule_once(lambda dt: self._display_transaction_history(), 0.1)
 
         from kivy.network.urlrequest import UrlRequest
         UrlRequest(
             f"{self.backend_url}/api/payment/transactions?per_page=50",
             on_success=on_success,
-            on_failure=on_failure,
-            on_error=on_error,
+            on_failure=on_offline,
+            on_error=on_offline,
             req_headers={
                 'Authorization': f'Bearer {self.session_token}',
                 'Content-Type': 'application/json',
             },
-            timeout=20,
-        )  
+            timeout=60,
+        )
 
     def _display_transaction_history(self):
         """Fallback: display local transactions when backend unavailable."""
@@ -25323,6 +25422,8 @@ class DashboardApp(ChallengeMixin, MDApp):
             self.update_dashboard_virtual_account()
             self.fetch_virtual_account_details()
             self.root.current = "dashboard"
+            # Fill the History cache in the background so that screen opens instantly.
+            Clock.schedule_once(lambda dt: self._prefetch_history(), 2.5)
 
             email = self.quick_pin_data.get("email")
             if pin and email:
@@ -25800,6 +25901,10 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.update_theme_colors()
         Window.bind(on_keyboard=self.handle_back_button)
         root = Builder.load_string(KV_CORE)
+        try:
+            root.transition.duration = 0.16      # default 0.4 s slide felt sluggish
+        except Exception as e:
+            print(f"transition speed-up skipped: {e}")
         register_challenge_screens(root, self)
         # These are local JSON caches nothing in the KV tree reads at parse
         # time (route_to_login_or_pin only depends on load_quick_pin(),
