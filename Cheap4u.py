@@ -25801,7 +25801,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             return
 
         email = (email or '').strip()
-        self.show_loader("Signing in...")
+        self.show_loader("Signing in... (the first sign-in can take up to a minute)")
         login_data = {'email': email.lower(), 'password': password}
 
         def callback(success, response):
