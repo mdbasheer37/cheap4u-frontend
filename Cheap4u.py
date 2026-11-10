@@ -6843,18 +6843,16 @@ LazyScreenManager:
         ScrollView:
             size_hint: 1, 1
             do_scroll_x: False
-            scroll_timeout: 25
-            scroll_distance: dp(24)
             MDBoxLayout:
                 orientation: 'vertical'
-                padding: dp(30), dp(56), dp(30), dp(30)
+                padding: dp(30), dp(20), dp(30), dp(20)
                 spacing: dp(4)
                 size_hint_y: None
                 height: self.minimum_height
 
                 MDCard:
                     size_hint: None, None
-                    size: dp(96), dp(96)
+                    size: dp(80), dp(80)
                     pos_hint: {'center_x': 0.5}
                     radius: [24]
                     elevation: 0
@@ -6874,7 +6872,7 @@ LazyScreenManager:
 
                 Widget:
                     size_hint_y: None
-                    height: dp(18)
+                    height: dp(8)
 
                 MDLabel:
                     id: pin_welcome_label
@@ -6899,7 +6897,7 @@ LazyScreenManager:
 
                 Widget:
                     size_hint_y: None
-                    height: dp(26)
+                    height: dp(12)
 
                 MDBoxLayout:
                     orientation: 'horizontal'
@@ -7036,7 +7034,7 @@ LazyScreenManager:
                     theme_text_color: "Error"
                     font_style: "Caption"
                     size_hint_y: None
-                    height: dp(22)
+                    height: dp(18)
 
                 Widget:
                     size_hint_y: None
@@ -7051,7 +7049,7 @@ LazyScreenManager:
                     MDBoxLayout:
                         orientation: 'horizontal'
                         size_hint_y: None
-                        height: dp(64)
+                        height: dp(56)
                         spacing: dp(4)
 
                         MDFlatButton:
@@ -7061,7 +7059,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("1")
+                            on_release: app.pin_keypad_press("1")
                         MDFlatButton:
                             text: "2"
                             font_size: "26sp"
@@ -7069,7 +7067,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("2")
+                            on_release: app.pin_keypad_press("2")
                         MDFlatButton:
                             text: "3"
                             font_size: "26sp"
@@ -7077,12 +7075,12 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("3")
+                            on_release: app.pin_keypad_press("3")
 
                     MDBoxLayout:
                         orientation: 'horizontal'
                         size_hint_y: None
-                        height: dp(64)
+                        height: dp(56)
                         spacing: dp(4)
 
                         MDFlatButton:
@@ -7092,7 +7090,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("4")
+                            on_release: app.pin_keypad_press("4")
                         MDFlatButton:
                             text: "5"
                             font_size: "26sp"
@@ -7100,7 +7098,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("5")
+                            on_release: app.pin_keypad_press("5")
                         MDFlatButton:
                             text: "6"
                             font_size: "26sp"
@@ -7108,12 +7106,12 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("6")
+                            on_release: app.pin_keypad_press("6")
 
                     MDBoxLayout:
                         orientation: 'horizontal'
                         size_hint_y: None
-                        height: dp(64)
+                        height: dp(56)
                         spacing: dp(4)
 
                         MDFlatButton:
@@ -7123,7 +7121,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("7")
+                            on_release: app.pin_keypad_press("7")
                         MDFlatButton:
                             text: "8"
                             font_size: "26sp"
@@ -7131,7 +7129,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("8")
+                            on_release: app.pin_keypad_press("8")
                         MDFlatButton:
                             text: "9"
                             font_size: "26sp"
@@ -7139,12 +7137,12 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("9")
+                            on_release: app.pin_keypad_press("9")
 
                     MDBoxLayout:
                         orientation: 'horizontal'
                         size_hint_y: None
-                        height: dp(64)
+                        height: dp(56)
                         spacing: dp(4)
 
                         MDFlatButton:
@@ -7153,7 +7151,7 @@ LazyScreenManager:
                             theme_text_color: "Secondary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_clear()
+                            on_release: app.pin_keypad_clear()
                         MDFlatButton:
                             text: "0"
                             font_size: "26sp"
@@ -7161,7 +7159,7 @@ LazyScreenManager:
                             theme_text_color: "Primary"
                             size_hint: 1, 1
                             halign: "center"
-                            on_press: app.pin_keypad_press("0")
+                            on_release: app.pin_keypad_press("0")
                         MDIconButton:
                             icon: "backspace-outline"
                             theme_text_color: "Custom"
@@ -7169,7 +7167,7 @@ LazyScreenManager:
                             icon_size: "24sp"
                             size_hint: 1, 1
                             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                            on_press: app.pin_keypad_backspace()
+                            on_release: app.pin_keypad_backspace()
 
                 Widget:
                     size_hint_y: None
@@ -23917,7 +23915,7 @@ class DashboardApp(ChallengeMixin, MDApp):
     def _history_signature(self, txns):
         return tuple((t.get('reference'), t.get('status')) for t in txns)
 
-    def _render_history_chunked(self, items, first_batch=6, batch=6):
+    def _render_history_chunked(self, items, first_batch=5, batch=5):
         """Create the transaction cards a few per frame (first ones immediately)."""
         screen = self.root.get_screen("history")
         history_list = screen.ids.history_list
@@ -23942,7 +23940,12 @@ class DashboardApp(ChallengeMixin, MDApp):
         step()
 
     def _prefetch_history(self):
-        """Quietly refresh the history cache (no UI)."""
+        """Quietly refresh the history cache (no UI) and pre-build the History screen,
+        so opening it later is instant."""
+        try:
+            self.root.get_screen('history')          # builds the screen's layout while we're idle
+        except Exception as e:
+            print(f"history warm-up skipped: {e}")
         try:
             self.load_transaction_history(silent=True)
         except Exception as e:
@@ -24019,6 +24022,13 @@ class DashboardApp(ChallengeMixin, MDApp):
 
         def on_offline(req, error):
             print(f"History load failed: {error}")
+            status = getattr(req, 'resp_status', None)
+            # A sleeping Render server answers 502/503/504 (or nothing) for the first
+            # seconds: try again a couple of times instead of declaring "offline".
+            if state['attempt'] < 3 and status in (None, 0, 502, 503, 504):
+                state['attempt'] += 1
+                Clock.schedule_once(lambda dt: fetch(), 4)
+                return
             if silent:
                 return
             stop_loading_ui(True)
@@ -24026,17 +24036,22 @@ class DashboardApp(ChallengeMixin, MDApp):
                 Clock.schedule_once(lambda dt: self._display_transaction_history(), 0.1)
 
         from kivy.network.urlrequest import UrlRequest
-        UrlRequest(
-            f"{self.backend_url}/api/payment/transactions?per_page=50",
-            on_success=on_success,
-            on_failure=on_offline,
-            on_error=on_offline,
-            req_headers={
-                'Authorization': f'Bearer {self.session_token}',
-                'Content-Type': 'application/json',
-            },
-            timeout=60,
-        )
+        state = {'attempt': 0}
+
+        def fetch():
+            UrlRequest(
+                f"{self.backend_url}/api/payment/transactions?per_page=50",
+                on_success=on_success,
+                on_failure=on_offline,
+                on_error=on_offline,
+                req_headers={
+                    'Authorization': f'Bearer {self.session_token}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=45,
+            )
+
+        fetch()
 
     def _display_transaction_history(self):
         """Fallback: display local transactions when backend unavailable."""
@@ -24268,9 +24283,18 @@ class DashboardApp(ChallengeMixin, MDApp):
             padding=[dp(16), dp(10), dp(16), dp(10)],
             spacing=dp(6),
             radius=[12],
-            elevation=1,
+            elevation=0,                      # drop-shadows on 50 cards were the main drawing/scrolling cost
             md_bg_color=self._get_card_bg_color(),
             on_release=lambda x: self.show_transaction_details(transaction)
+        )
+        # thin outline instead of the shadow
+        from kivy.graphics import Color, Line
+        with card.canvas.after:
+            Color(*([0.86, 0.87, 0.91, 1] if self.theme_cls.theme_style == "Light" else [0.32, 0.33, 0.40, 1]))
+            border = Line(rounded_rectangle=(card.x, card.y, card.width, card.height, 12), width=dp(1))
+        card.bind(
+            pos=lambda *a: setattr(border, 'rounded_rectangle', (card.x, card.y, card.width, card.height, 12)),
+            size=lambda *a: setattr(border, 'rounded_rectangle', (card.x, card.y, card.width, card.height, 12)),
         )
         self._build_card_content(card, transaction)
         return card
@@ -25950,6 +25974,12 @@ class DashboardApp(ChallengeMixin, MDApp):
     
     def update_dashboard(self):
         """Update dashboard with current data"""
+        if time.time() - getattr(self, '_history_loaded_at', 0) > 60 and not getattr(self, '_history_prefetch_queued', False):
+            self._history_prefetch_queued = True
+            def _run_prefetch(dt):
+                self._history_prefetch_queued = False
+                self._prefetch_history()
+            Clock.schedule_once(_run_prefetch, 3)
         if hasattr(self, 'root') and self.root:
             screen = self.root.get_screen("dashboard")
             if screen:
