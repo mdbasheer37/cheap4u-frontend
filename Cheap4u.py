@@ -380,9 +380,6 @@ class CashbackScreen(Screen):
 class SpinScreen(Screen):
     pass
 
-class CouponScreen(Screen):
-    pass
-
 class MerchantScreen(Screen):
     pass
 
@@ -457,7 +454,6 @@ _LAZY_SCREEN_CLASSES = {
     'referral':         'ReferralScreen',
     'cashback':         'CashbackScreen',
     'spin':             'SpinScreen',
-    'coupons':          'CouponScreen',
     'merchant':         'MerchantScreen',
     'cards':            'CardScreen',
     'reminders':        'BillReminderScreen',
@@ -5127,70 +5123,6 @@ LazyScreenManager:
 
                             md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
 
-                            on_release: app.show_coupon_screen()
-
-                            MDBoxLayout:
-
-                                orientation: "vertical"
-
-                                spacing: dp(5)
-
-                                padding: [dp(5), dp(5), dp(5), dp(15)]
-
-                                size_hint_y: None
-
-                                height: dp(60)
-
-                                pos_hint: {"center_x": 0.5}
-
-                                MDIcon:
-
-                                    icon: "ticket-percent"
-
-                                    size_hint: [None, None]
-
-                                    size: [dp(30), dp(30)]
-
-                                    pos_hint: {"center_x": 0.5}
-
-                                    theme_text_color: "Custom"
-
-                                    text_color: [0.35, 0.3, 0.9, 1]
-
-                                MDLabel:
-
-                                    text: "Coupons"
-
-                                    font_style: "Caption"
-
-                                    halign: "center"
-
-                                    text_size: self.width, None
-
-                                    theme_text_color: "Custom"
-
-                                    text_color: [0.1, 0.1, 0.1, 1] if app.theme_cls.theme_style == "Light" else [1, 1, 1, 1]
-
-                                    size_hint_y: None
-
-                                    height: self.texture_size[1]
-
-                        MDCard:
-
-                            orientation: "vertical"
-
-                            spacing: dp(0)
-
-                            size_hint: [1, None]
-
-                            height: dp(80)
-
-                            radius: [15]
-
-                            elevation: 2
-
-                            md_bg_color: [0.9, 0.95, 1, 1] if app.theme_cls.theme_style == "Light" else [0.2, 0.2, 0.3, 1]
-
                             on_release: app.show_merchant_screen()
 
                             MDBoxLayout:
@@ -8952,76 +8884,6 @@ LazyScreenManager:
                         id: spin_history_list
                         spacing: dp(4)
 
-<CouponScreen>:
-    name: "coupons"
-
-    MDScreen:
-        md_bg_color: app.theme_cls.bg_normal
-
-        MDBoxLayout:
-            orientation: 'vertical'
-            padding: dp(10)
-            spacing: dp(10)
-
-            # Header
-            MDBoxLayout:
-                size_hint_y: None
-                height: dp(60)
-                padding: [dp(10), 0]
-                spacing: dp(10)
-                md_bg_color: [0.1294, 0.5882, 0.9529, 1]
-                radius: [10, 10, 0, 0]
-
-                MDIconButton:
-                    icon: "arrow-left"
-                    theme_icon_color: "Custom"
-                    icon_color: [1, 1, 1, 1]
-                    on_release: app.root.current = "dashboard"
-                    radius: [4, ]
-
-                MDLabel:
-                    text: "My Coupons"
-                    font_style: "H5"
-                    bold: True
-                    theme_text_color: "Custom"
-                    text_color: [1, 1, 1, 1]
-                    halign: "center"
-                    size_hint_x: 0.8
-
-                MDIconButton:
-                    icon: "refresh"
-                    theme_icon_color: "Custom"
-                    icon_color: [1, 1, 1, 1]
-                    on_release: app.load_coupon_data()
-
-            ScrollView:
-                MDBoxLayout:
-                    orientation: 'vertical'
-                    spacing: dp(15)
-                    padding: [dp(20), dp(20), dp(20), dp(20)]
-                    size_hint_y: None
-                    height: self.minimum_height
-
-                    MDLabel:
-                        text: "Enter a coupon code at checkout on any airtime, data, cable TV, electricity or exam-pin purchase to redeem it."
-                        halign: "left"
-                        text_size: self.width, None
-                        theme_text_color: "Secondary"
-                        size_hint_y: None
-                        height: self.texture_size[1]
-
-                    MDLabel:
-                        id: coupon_empty_label
-                        text: ""
-                        halign: "center"
-                        theme_text_color: "Secondary"
-                        size_hint_y: None
-                        height: dp(30)
-
-                    MDList:
-                        id: coupon_list
-                        spacing: dp(6)
-
 <MerchantScreen>:
     name: "merchant"
 
@@ -9585,13 +9447,6 @@ LazyScreenManager:
 
                     MDBoxLayout:
                         id: compare_badges_box
-                        orientation: 'vertical'
-                        spacing: dp(8)
-                        size_hint_y: None
-                        height: self.minimum_height
-
-                    MDBoxLayout:
-                        id: compare_promo_box
                         orientation: 'vertical'
                         spacing: dp(8)
                         size_hint_y: None
@@ -11997,108 +11852,6 @@ class DashboardApp(ChallengeMixin, MDApp):
         if hasattr(self, 'verified_pin'):
             self.verified_pin = ""
 
-    # ── Coupon System (shared across all purchase flows) ────────────
-
-    def _prompt_coupon_then_pin(self, category, amount, on_ready):
-        """Optional 'have a coupon?' step shown before PIN verification.
-        Works the same for data/electricity/cable/exam-pin — pass the
-        purchase category + amount so the backend can validate the coupon
-        against the right rules before the PIN dialog opens. Airtime skips
-        this step entirely and goes straight to the PIN prompt."""
-        self.pending_coupon_code = None
-        self.pending_coupon_category = category
-        self.pending_coupon_amount = amount
-
-        if category == "airtime":
-            self.verify_transaction_pin(on_ready)
-            return
-
-        content = MDBoxLayout(
-            orientation='vertical', spacing=dp(10),
-            size_hint_y=None, height=dp(80), padding=dp(10),
-        )
-        coupon_input = MDTextField(
-            hint_text="Coupon code (optional)",
-            icon_left="ticket-percent-outline",
-            mode="rectangle",
-        )
-        content.add_widget(coupon_input)
-
-        def _skip(*_):
-            dialog.dismiss()
-            self.pending_coupon_code = None
-            self.verify_transaction_pin(on_ready)
-
-        def _apply(*_):
-            dialog.dismiss()
-            code = (coupon_input.text or "").strip()
-            if not code:
-                self.pending_coupon_code = None
-                self.verify_transaction_pin(on_ready)
-            else:
-                self._validate_and_store_coupon(code, category, amount, on_ready)
-
-        dialog = MDDialog(
-            title="Have a coupon code?",
-            type="custom",
-            content_cls=content,
-            buttons=[
-                MDFlatButton(
-                    text="SKIP",
-                    theme_text_color="Custom",
-                    text_color=self.theme_cls.primary_color,
-                    on_release=_skip,
-                ),
-                MDRaisedButton(
-                    text="APPLY",
-                    md_bg_color=self.theme_cls.primary_color,
-                    on_release=_apply,
-                ),
-            ],
-            radius=[20, 7, 20, 7],
-        )
-        dialog.open()
-
-    def _validate_and_store_coupon(self, code, category, amount, on_ready):
-        """Validates a coupon against the backend before proceeding to
-        PIN verification. On failure, tells the user and still lets them
-        continue the purchase without a discount rather than blocking them."""
-        if not self.session_token:
-            self.pending_coupon_code = None
-            self.verify_transaction_pin(on_ready)
-            return
-
-        self.show_loader("Checking coupon...")
-
-        def on_success(req, result):
-            self.hide_loader()
-            if result.get('status') == 'success':
-                data = result.get('data', {})
-                self.pending_coupon_code = data.get('code')
-                discount = data.get('discount_amount', 0)
-                self.show_success_dialog(f"Coupon applied — you save {self.format_currency(discount)}")
-            else:
-                self.pending_coupon_code = None
-                self.show_error_dialog(result.get('message', 'Invalid or expired coupon'))
-            Clock.schedule_once(lambda dt: self.verify_transaction_pin(on_ready), 0.4)
-
-        def on_failure(req, error):
-            self.hide_loader()
-            self.pending_coupon_code = None
-            self.verify_transaction_pin(on_ready)
-
-        UrlRequest(
-            f"{self.backend_url}/api/coupons/validate?code={code}&category={category}&amount={amount}",
-            on_success=on_success,
-            on_failure=on_failure,
-            on_error=on_failure,
-            req_headers={
-                'Authorization': f'Bearer {self.session_token}',
-                'Content-Type': 'application/json',
-            },
-            timeout=15,
-        )
-
     def process_vtpass_transaction_with_referral(self, transaction_data):
         """Process VTU transaction with referral bonus check"""
         try:
@@ -12970,136 +12723,10 @@ class DashboardApp(ChallengeMixin, MDApp):
         reward_type = data.get('reward_type', '')
 
         if value and value > 0:
-            if reward_type == 'coupon' and data.get('coupon_code'):
-                message = f"You won {label}!\nCoupon code: {data.get('coupon_code')}"
-            else:
-                message = f"You won {label}!"
+            message = f"You won {label}!"
             self.show_success_dialog(message)
         else:
             self.show_success_dialog("Better luck next time! Come back for your next spin.")
-
-    # ── Coupon System ────────────────────────────────────────────────
-
-    def show_coupon_screen(self):
-        """Navigate to the My Coupons screen and load fresh data."""
-        if not self.current_user or not self.session_token:
-            self.show_error_dialog("Please login to view your coupons")
-            self.root.current = "login"
-            return
-        self.root.current = "coupons"
-        Clock.schedule_once(lambda dt: self.load_coupon_data(), 0.3)
-
-    def load_coupon_data(self):
-        """Load coupons personally awarded to this user (referral rewards,
-        spin wins, etc.) from both the coupon system and Spin & Win."""
-        if not self.current_user or not self.session_token:
-            return
-
-        collected = []
-
-        def render_if_ready():
-            try:
-                screen = self.root.get_screen('coupons')
-                self.update_coupon_list_ui(screen, collected)
-            except Exception as e:
-                print(f"Coupon list render error: {e}")
-
-        def on_coupons_success(req, result):
-            if result.get('status') == 'success':
-                for c in result.get('data', []):
-                    collected.append({
-                        'code': c.get('code'),
-                        'discount_type': c.get('discount_type', 'fixed'),
-                        'discount_value': c.get('discount_value', 0),
-                        'expires_at': c.get('expires_at'),
-                        'source': 'Personal offer',
-                    })
-            render_if_ready()
-
-        UrlRequest(
-            f"{self.backend_url}/api/coupons/my-coupons",
-            on_success=on_coupons_success,
-            on_failure=lambda req, error: render_if_ready(),
-            on_error=lambda req, error: render_if_ready(),
-            req_headers={
-                'Authorization': f'Bearer {self.session_token}',
-                'Content-Type': 'application/json',
-            },
-            timeout=15,
-        )
-
-        def on_spin_coupons_success(req, result):
-            if result.get('status') == 'success':
-                for c in result.get('data', []):
-                    if not c.get('is_used'):
-                        collected.append({
-                            'code': c.get('code'),
-                            'discount_type': 'fixed',
-                            'discount_value': c.get('discount_amount', 0),
-                            'expires_at': c.get('expires_at'),
-                            'source': 'Spin & Win prize',
-                        })
-            render_if_ready()
-
-        UrlRequest(
-            f"{self.backend_url}/api/spin/coupons",
-            on_success=on_spin_coupons_success,
-            on_failure=lambda req, error: render_if_ready(),
-            on_error=lambda req, error: render_if_ready(),
-            req_headers={
-                'Authorization': f'Bearer {self.session_token}',
-                'Content-Type': 'application/json',
-            },
-            timeout=15,
-        )
-
-    def update_coupon_list_ui(self, screen, coupons):
-        """Populate the My Coupons list. Called after both sources have
-        responded (or failed) so the list only renders once, complete."""
-        try:
-            ids = screen.ids
-            if not hasattr(ids, 'coupon_list'):
-                return
-
-            coupon_list = ids.coupon_list
-            coupon_list.clear_widgets()
-
-            if not coupons:
-                if hasattr(ids, 'coupon_empty_label'):
-                    ids.coupon_empty_label.text = "No personal coupons yet — win one from Spin & Win!"
-                return
-
-            if hasattr(ids, 'coupon_empty_label'):
-                ids.coupon_empty_label.text = ""
-
-            for c in coupons:
-                if c.get('discount_type') == 'percentage':
-                    discount_text = f"{c.get('discount_value', 0):.0f}% off"
-                else:
-                    discount_text = f"{self.format_currency(c.get('discount_value', 0))} off"
-
-                expiry_text = ""
-                if c.get('expires_at'):
-                    try:
-                        dt = datetime.fromisoformat(c['expires_at'].replace('Z', ''))
-                        expiry_text = f" • Expires {dt.strftime('%b %d, %Y')}"
-                    except Exception:
-                        pass
-
-                item = TwoLineListItem(
-                    text=f"{c.get('code', '')}  —  {discount_text}",
-                    secondary_text=f"{c.get('source', '')}{expiry_text}",
-                    on_release=lambda x, code=c.get('code'): self._copy_coupon_code(code),
-                )
-                coupon_list.add_widget(item)
-        except Exception as e:
-            print(f"update_coupon_list_ui error: {e}")
-
-    def _copy_coupon_code(self, code):
-        if not code:
-            return
-        Clipboard.copy(code)
-        self.show_success_dialog(f"Coupon code {code} copied — paste it at checkout")
 
     # ── Merchant Dashboard ────────────────────────────────────────────
 
@@ -14267,20 +13894,6 @@ class DashboardApp(ChallengeMixin, MDApp):
         card.add_widget(text_box)
         return card
 
-    def _render_promotions(self, ids, promotions):
-        box = ids.compare_promo_box
-        box.clear_widgets()
-        if not promotions:
-            return
-        box.add_widget(MDLabel(text="Active Promotions", font_style="H6", bold=True,
-                                 size_hint_y=None, height=dp(28)))
-        for p in promotions:
-            if p.get('discount_type') == 'percentage':
-                desc = f"{p.get('discount_value', 0):.0f}% off"
-            else:
-                desc = f"{self.format_currency(p.get('discount_value', 0))} off"
-            box.add_widget(self._make_badge("ticket-percent", f"Code: {p.get('code')}", desc, [0.85, 0.55, 0.1, 1]))
-
     def _render_data_comparison(self, screen, data):
         ids = screen.ids
         ids.compare_note_label.text = "Comparing live prices, speed, and reliability across all data providers."
@@ -14308,7 +13921,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 "star", f"Best Value — {best_value.get('provider')} {best_value.get('size')}",
                 f"Score {best_value.get('value_score', 0)}/100", [0.3, 0.25, 0.7, 1]))
 
-        self._render_promotions(ids, data.get('promotions', []))
 
         results_box = ids.compare_results_box
         results_box.clear_widgets()
@@ -14344,7 +13956,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 "shield-check", f"Most Reliable — {reliable}",
                 f"{net_stats.get('success_rate', 0)}% success", [0.1, 0.6, 0.3, 1]))
 
-        self._render_promotions(ids, data.get('promotions', []))
 
         results_box = ids.compare_results_box
         results_box.clear_widgets()
@@ -14699,7 +14310,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_airtime_purchase()
         
-        self._prompt_coupon_then_pin("airtime", self.selected_airtime_amount, on_pin_success)
+        self.verify_transaction_pin(on_pin_success)
 
     def _execute_airtime_purchase(self):
         """Execute airtime purchase after PIN verified"""
@@ -14722,7 +14333,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'amount': amount,
                 'pin': self.verified_pin,
                 'user_email': self.current_user.get('email'),
-                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -14732,19 +14342,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                 if success and response.get('status') == 'success':
                     profit_amount = response.get('data', {}).get('profit_amount', 0)
                     new_balance   = response.get('data', {}).get('new_balance')
-                    discount      = response.get('data', {}).get('discount_amount', 0)
                     if new_balance is not None and self.current_user:
                         self.current_user['wallet_balance'] = new_balance
                     msg = f"Airtime topup of ₦{amount:,} successful!\nProfit earned: ₦{profit_amount:,.2f}"
-                    if discount:
-                        msg += f"\nCoupon savings: {self.format_currency(discount)}"
                     self.show_success_dialog(msg)
                     self.update_dashboard()
                     
                     
                     self.root.current = "dashboard"
                     self.reset_airtime_selections()
-                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Airtime topup failed')
                     self.show_error_dialog(f"Airtime topup failed: {error_msg}")
@@ -14954,7 +14560,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'phone': phone,
                 'pin': self.verified_pin,
                 'user_email': self.current_user.get('email'),
-                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -14962,15 +14567,11 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self._clear_verified_pin()
                 if success and response.get('status') == 'success':
                     profit_amount = response.get('data', {}).get('profit_amount', 0)
-                    discount = response.get('data', {}).get('discount_amount', 0)
                     msg = f"Data purchase of {self.selected_data_plan} successful!\nProfit earned: ₦{profit_amount:,.2f}"
-                    if discount:
-                        msg += f"\nCoupon savings: {self.format_currency(discount)}"
                     self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
                     self.reset_data_selections()
-                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Data purchase failed')
                     self.show_error_dialog(f"Data purchase failed: {error_msg}")
@@ -14993,7 +14594,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_data_purchase()
         
-        self._prompt_coupon_then_pin("data", float(self.selected_data_amount), on_pin_success)
+        self.verify_transaction_pin(on_pin_success)
 
     
 
@@ -15351,8 +14952,6 @@ class DashboardApp(ChallengeMixin, MDApp):
             ("Paid spins", f"{s.get('paid_spins', 0):,}", self._ASP_ORANGE),
             ("Fees collected", self._asp_money(s.get('fees_collected')), self._ASP_GREEN),
             ("Cash won by users", self._asp_money(s.get('cash_won')), self._ASP_RED),
-            ("Coupons issued", f"{s.get('coupons_issued', 0)} · {self._asp_money(s.get('coupon_value_issued'))}", None),
-            ("Coupons used", f"{s.get('coupons_used_count', 0)} · {self._asp_money(s.get('coupons_used_value'))}", None),
             ("Bonus points given", f"{s.get('points_awarded', 0):,}", None),
             ("Avg spins / player", f"{s.get('avg_spins_per_player', 0)}", None),
             ("Spins with no prize", f"{s.get('no_prize_spins', 0):,}", None),
@@ -15436,8 +15035,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                                              color=self._ASP_RED, halign="right"))
             right.add_widget(self._asp_label("cash won", size="10sp", halign="right"))
             extra = []
-            if p.get("coupon_value"):
-                extra.append(f"coupons {self._asp_money(p.get('coupon_value'))}")
             if p.get("points"):
                 extra.append(f"{p.get('points')} pts")
             if p.get("fees_paid"):
@@ -16328,8 +15925,6 @@ class DashboardApp(ChallengeMixin, MDApp):
         self.spin_status = {}
         self.spin_in_progress = False
 
-        self.pending_coupon_code = None
-
         self.merchant_profile = {}
         self.merchant_business_type = 'individual'
         self.merchant_job_type = 'airtime'
@@ -17165,7 +16760,7 @@ class DashboardApp(ChallengeMixin, MDApp):
             amount = float(screen.ids.electricity_amount_input.text.replace('₦', '').replace(',', ''))
         except Exception:
             amount = 0
-        self._prompt_coupon_then_pin("electricity", amount, on_pin_success)
+        self.verify_transaction_pin(on_pin_success)
 
     def _execute_electricity_payment(self):
         """Execute electricity payment after PIN verified"""
@@ -17191,7 +16786,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'phone': phone,
                 'pin': self.verified_pin,
                 'user_email': self.current_user.get('email'),
-                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -17202,18 +16796,14 @@ class DashboardApp(ChallengeMixin, MDApp):
                     data = response.get('data', {})
                     token = data.get('token', '')
                     profit_amount = data.get('profit_amount', 0)
-                    discount = data.get('discount_amount', 0)
                     
                     if token:
                         self._show_electricity_success(token, meter_number, amount, profit_amount)
                     else:
                         msg = f"Electricity payment of ₦{amount:,} successful!\nProfit earned: ₦{profit_amount:,.2f}"
-                        if discount:
-                            msg += f"\nCoupon savings: {self.format_currency(discount)}"
                         self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
-                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Electricity payment failed')
                     self.show_error_dialog(f"Electricity payment failed: {error_msg}")
@@ -17291,7 +16881,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_cable_subscription()
         
-        self._prompt_coupon_then_pin("cable_tv", self.selected_cable_amount, on_pin_success)
+        self.verify_transaction_pin(on_pin_success)
 
     
 
@@ -17752,7 +17342,7 @@ class DashboardApp(ChallengeMixin, MDApp):
         def on_pin_success():
             self._execute_exam_pin_purchase()
         
-        self._prompt_coupon_then_pin("exam_pin", self.exam_pin_total_amount, on_pin_success)
+        self.verify_transaction_pin(on_pin_success)
 
 
     def _execute_exam_pin_purchase(self):
@@ -17774,7 +17364,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'selling_price': amount,   # ← send selling price to backend
                 'pin': self.verified_pin,
                 'user_email': self.current_user.get('email'),
-                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -17786,19 +17375,15 @@ class DashboardApp(ChallengeMixin, MDApp):
                                                 if data.get('pin') else [])
                     serial = None
                     profit_amount = data.get('profit_amount', 0)
-                    discount = data.get('discount_amount', 0)
                     
                     if pins:
                         self.show_exam_pins_dialog(pins, profit_amount, serial)
                     else:
                         msg = f"{self.selected_exam_type} PIN purchase successful!\nProfit earned: ₦{profit_amount:,.2f}"
-                        if discount:
-                            msg += f"\nCoupon savings: {self.format_currency(discount)}"
                         self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
                     self.reset_exam_pin_selections()
-                    self.pending_coupon_code = None
                 else:
                     if response.get('code') == 'price_changed':
                         self.load_exam_pin_prices(force=True, then=lambda ok: self._recalc_exam_total())
@@ -18278,7 +17863,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 # returning to the dashboard like every other screen does.
                 'cashback':        'dashboard',
                 'spin':            'dashboard',
-                'coupons':         'dashboard',
                 'merchant':        'dashboard',
                 'cards':           'dashboard',
                 'reminders':       'dashboard',
@@ -21853,7 +21437,6 @@ class DashboardApp(ChallengeMixin, MDApp):
                 'smartcard': smartcard,
                 'pin': self.verified_pin,
                 'user_email': self.current_user.get('email'),
-                'coupon_code': getattr(self, 'pending_coupon_code', None),
             }
             
             def callback(success, response):
@@ -21861,15 +21444,11 @@ class DashboardApp(ChallengeMixin, MDApp):
                 self._clear_verified_pin()
                 if success and response.get('status') == 'success':
                     profit_amount = response.get('data', {}).get('profit_amount', 0)
-                    discount = response.get('data', {}).get('discount_amount', 0)
                     msg = f"{self.selected_cable_provider} subscription successful!\nProfit earned: ₦{profit_amount:,.2f}"
-                    if discount:
-                        msg += f"\nCoupon savings: {self.format_currency(discount)}"
                     self.show_success_dialog(msg)
                     self.update_dashboard()
                     self.root.current = "dashboard"
                     self.reset_cable_selections()
-                    self.pending_coupon_code = None
                 else:
                     error_msg = response.get('message', 'Cable subscription failed')
                     self.show_error_dialog(f"Cable subscription failed: {error_msg}")
