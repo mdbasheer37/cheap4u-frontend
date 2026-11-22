@@ -54,6 +54,7 @@ from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.pickers import MDDatePicker
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.spinner import MDSpinner
+from kivymd.uix.refreshlayout import MDScrollViewRefreshLayout
 from kivymd.uix.segmentedcontrol import MDSegmentedControl, MDSegmentedControlItem   # idan kana amfani da su a KV
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.menu import MDDropdownMenu
@@ -4359,7 +4360,13 @@ LazyScreenManager:
 
             
 
-            ScrollView:
+            MDScrollViewRefreshLayout:
+
+                id: dashboard_refresh_layout
+
+                root_layout: root
+
+                refresh_callback: app.refresh_dashboard
 
                 md_bg_color: [0.95, 0.95, 0.98, 1] if app.theme_cls.theme_style == "Light" else [0.1, 0.1, 0.15, 1]
 
@@ -24543,8 +24550,16 @@ class DashboardApp(ChallengeMixin, MDApp):
             else:
                 screen.ids.virtual_account_display.text = "No virtual account yet"   
    
-    def fetch_virtual_account_details(self):
+    def fetch_virtual_account_details(self, on_done=None):
+        def _done():
+            if on_done:
+                try:
+                    on_done()
+                except Exception as e:
+                    print(f"fetch_virtual_account_details on_done error: {e}")
+
         if not self.session_token:
+            _done()
             return
 
         def on_success(req, result):
@@ -24564,16 +24579,19 @@ class DashboardApp(ChallengeMixin, MDApp):
                     self.current_user['wallet_balance'] = balance
                 self.update_dashboard()
                 self.update_dashboard_virtual_account()
+            _done()
 
         def on_failure(req, error):
             print(f"fetch_virtual_account_details failed: {error}")
             if not self.virtual_account_number:
                 self.virtual_account_status = 'Not ready - tap RETRY'
+            _done()
 
         def on_error(req, error):
             print(f"fetch_virtual_account_details error: {error}")
             if not self.virtual_account_number:
                 self.virtual_account_status = 'No connection - tap RETRY'
+            _done()
 
         UrlRequest(
             f"{self.backend_url}/api/payment/account-details",
@@ -25551,6 +25569,40 @@ class DashboardApp(ChallengeMixin, MDApp):
             
 
     
+    def refresh_dashboard(self, *args):
+        """Pull-to-refresh on the dashboard: re-fetches the wallet balance /
+        virtual account, the monthly challenge card and the history cache,
+        then stops the spinner."""
+        state = {'finished': False}
+
+        def _finish(*_):
+            if state['finished']:
+                return
+            state['finished'] = True
+            try:
+                layout = self.root.get_screen('dashboard').ids.dashboard_refresh_layout
+                layout.refresh_done()
+            except Exception as e:
+                print(f"refresh_dashboard finish error: {e}")
+
+        if not self.session_token:
+            Clock.schedule_once(_finish, 0.3)
+            return
+
+        try:
+            self.refresh_challenge_dashboard_card()
+        except Exception as e:
+            print(f"refresh_dashboard challenge error: {e}")
+        try:
+            self._prefetch_history()
+        except Exception as e:
+            print(f"refresh_dashboard history error: {e}")
+
+        # Spinner stops when the balance request comes back; the timeout is a
+        # safety net so it can never spin forever on a bad connection.
+        Clock.schedule_once(_finish, 15)
+        self.fetch_virtual_account_details(on_done=lambda: Clock.schedule_once(_finish, 0))
+
     def update_dashboard(self):
         """Update dashboard with current data"""
         if time.time() - getattr(self, '_history_loaded_at', 0) > 60 and not getattr(self, '_history_prefetch_queued', False):
