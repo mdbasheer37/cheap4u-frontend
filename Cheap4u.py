@@ -54,7 +54,6 @@ from kivymd.uix.progressbar import MDProgressBar
 from kivymd.uix.pickers import MDDatePicker
 from kivymd.uix.filemanager import MDFileManager
 from kivymd.uix.spinner import MDSpinner
-from kivymd.uix.refreshlayout import MDScrollViewRefreshLayout
 from kivymd.uix.segmentedcontrol import MDSegmentedControl, MDSegmentedControlItem   # idan kana amfani da su a KV
 from kivymd.uix.selectioncontrol import MDCheckbox
 from kivymd.uix.menu import MDDropdownMenu
@@ -377,6 +376,89 @@ class ReferralScreen(Screen):
 
 class CashbackScreen(Screen):
     pass
+
+class PullRefreshScrollView(ScrollView):
+    """ScrollView with pull-down-to-refresh. Content never moves: when the
+    user drags down from the very top past a threshold and lets go, a
+    spinner appears at the top of the screen and refresh_callback runs.
+    The callback (or whoever it hands off to) must call refresh_done()."""
+    refresh_callback = ObjectProperty(None, allownone=True)
+
+    _TOP = 0.995
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._refreshing = False
+        self._spinner = None
+
+    def _threshold(self):
+        return dp(90)
+
+    def _ensure_spinner(self):
+        if self._spinner is not None:
+            return self._spinner
+        host = self.parent.parent if (self.parent and self.parent.parent) else None
+        if host is None:
+            return None
+        self._spinner = MDSpinner(
+            size_hint=(None, None), size=(dp(36), dp(36)),
+            pos_hint={'center_x': 0.5, 'top': 0.97},
+            active=False, opacity=0,
+        )
+        host.add_widget(self._spinner)
+        return self._spinner
+
+    def on_touch_down(self, touch):
+        if (self.collide_point(*touch.pos) and not self._refreshing
+                and not getattr(touch, 'is_mouse_scrolling', False)):
+            touch.ud['ptr_start_y'] = touch.y
+            touch.ud['ptr_at_top'] = self.scroll_y >= self._TOP
+        return super().on_touch_down(touch)
+
+    def on_touch_move(self, touch):
+        ret = super().on_touch_move(touch)
+        try:
+            if (touch.ud.get('ptr_at_top') and not self._refreshing
+                    and self.scroll_y >= self._TOP):
+                pulled = touch.ud['ptr_start_y'] - touch.y
+                spinner = self._ensure_spinner()
+                if spinner is not None:
+                    spinner.opacity = max(0.0, min(1.0, pulled / self._threshold()))
+        except Exception:
+            pass
+        return ret
+
+    def on_touch_up(self, touch):
+        start = touch.ud.pop('ptr_start_y', None)
+        at_top = touch.ud.get('ptr_at_top')
+        ret = super().on_touch_up(touch)
+        if start is not None and at_top and not self._refreshing:
+            pulled = start - touch.y
+            if pulled >= self._threshold() and self.scroll_y >= self._TOP:
+                self._start_refresh()
+            elif self._spinner is not None:
+                self._spinner.opacity = 0
+        return ret
+
+    def _start_refresh(self):
+        spinner = self._ensure_spinner()
+        self._refreshing = True
+        if spinner is not None:
+            spinner.opacity = 1
+            spinner.active = True
+        try:
+            if self.refresh_callback:
+                self.refresh_callback()
+        except Exception as e:
+            print(f"PullRefreshScrollView callback error: {e}")
+            self.refresh_done()
+
+    def refresh_done(self):
+        self._refreshing = False
+        if self._spinner is not None:
+            self._spinner.active = False
+            self._spinner.opacity = 0
+
 
 class SpinScreen(Screen):
     pass
@@ -4360,11 +4442,9 @@ LazyScreenManager:
 
             
 
-            MDScrollViewRefreshLayout:
+            PullRefreshScrollView:
 
                 id: dashboard_refresh_layout
-
-                root_layout: root
 
                 refresh_callback: app.refresh_dashboard
 
